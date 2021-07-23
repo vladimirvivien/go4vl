@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+    <title>Go WebCam</title>
+
+    <!-- CSS  -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+</head>
+<body>
+
+<div class="section no-pad-bot" id="index-banner">
+    <div class="container">
+        <div class="row center">
+            <img src="/gologo.png" height="75"/>
+        </div>
+        <br><br>
+        <h1 class="header center blue-text">WebCam</h1>
+        <div class="row center">
+            <h3 class="header col s12 light">Realtime video capture using the Go programming language</h3>
+        </div>
+
+        <div class="center">
+            <div class="col s12 m7">
+                <div class="card">
+                    <div class="card-image">
+                        <img id="img" src="{{.streamPath}}"/>
+                        <span class="card-title">Go WebCam (at {{.fps}})</span>
+                    </div>
+                    <div class="card-content">
+                        <p class="flow-text">Images are captured using the Video for Linux API (V4L2) and are streamed as JPEG using
+                            multipart/x-mixed-replace header with boundaries.</p>
+                    </div>
+                    <div class="card-action">
+                        <a href="#"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+</div>
+
+<!--  Scripts-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+</body>
+</html>
