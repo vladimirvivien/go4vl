@@ -59,28 +59,29 @@ type RequestBuffers struct {
 // BufferInfo represents type v4l2_buffer which contains unions as shown below.
 // Remember, the union is represented as an arry of bytes sized as the largest
 // member in bytes.
-// struct v4l2_buffer {
-// 	__u32			index;
-// 	__u32			type;
-// 	__u32			bytesused;
-// 	__u32			flags;
-// 	__u32			field;
-// 	struct timeval		timestamp;
-// 	struct v4l2_timecode	timecode;
-// 	__u32			sequence;
-// 	__u32			memory;
-// 	union {
-// 		__u32           offset;
-// 		unsigned long   userptr;
-// 		struct v4l2_plane *planes;
-// 		__s32		fd;
-// 	} m;
-// 	__u32			length;
-// 	__u32			reserved2;
-// 	union {
-// 		__s32		request_fd;
-// 		__u32		reserved;
-// 	};
+//
+//   struct v4l2_buffer {
+// 	   __u32			index;
+// 	   __u32			type;
+// 	   __u32			bytesused;
+// 	   __u32			flags;
+// 	   __u32			field;
+// 	   struct timeval		timestamp;
+// 	   struct v4l2_timecode	timecode;
+// 	   __u32			sequence;
+// 	   __u32			memory;
+// 	   union {
+// 		  __u32             offset;
+// 		  unsigned long     userptr;
+// 		  struct v4l2_plane *planes;
+// 		  __s32		fd;
+// 	   } m;
+// 	   __u32	length;
+// 	   __u32	reserved2;
+// 	   union {
+// 		  __s32		request_fd;
+// 		  __u32		reserved;
+// 	   };
 // };
 type BufferInfo struct {
 	Index      uint32
@@ -157,7 +158,7 @@ type PlaneService struct {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOn(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := Send(fd, vidiocStreamOn, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := Send(fd, VidiocStreamOn, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return fmt.Errorf("stream on: unsupported: %w", err)
@@ -173,7 +174,7 @@ func StreamOn(fd uintptr) error {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOff(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := Send(fd, vidiocStreamOff, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := Send(fd, VidiocStreamOff, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return fmt.Errorf("stream off: unsupported: %w", err)
@@ -193,7 +194,7 @@ func AllocateBuffers(fd uintptr, buffSize uint32) (RequestBuffers, error) {
 		Memory:     StreamMemoryTypeMMAP,
 	}
 
-	if err := Send(fd, vidiocReqBufs, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := Send(fd, VidiocReqBufs, uintptr(unsafe.Pointer(&req))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return RequestBuffers{}, fmt.Errorf("request buffers: unsupported: %w", err)
@@ -217,7 +218,7 @@ func GetBufferInfo(fd uintptr, index uint32) (BufferInfo, error) {
 		Index:      index,
 	}
 
-	if err := Send(fd, vidiocQueryBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
+	if err := Send(fd, VidiocQueryBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return BufferInfo{}, fmt.Errorf("buffer info: unsupported: %w", err)
@@ -250,7 +251,7 @@ func QueueBuffer(fd uintptr, index uint32) (BufferInfo, error) {
 		Index:      index,
 	}
 
-	if err := Send(fd, vidiocQueueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
+	if err := Send(fd, VidiocQueueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return BufferInfo{}, fmt.Errorf("buffer: unsupported: %w", err)
@@ -272,7 +273,7 @@ func DequeueBuffer(fd uintptr) (BufferInfo, error) {
 		Memory:     StreamMemoryTypeMMAP,
 	}
 
-	if err := Send(fd, vidiocDequeueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
+	if err := Send(fd, VidiocDequeueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return BufferInfo{}, fmt.Errorf("buffer: unsupported: %w", err)

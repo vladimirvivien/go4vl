@@ -18,7 +18,8 @@ const (
 	CapStreaming          = 0x04000000 // V4L2_CAP_STREAMING
 )
 
-// v4l2Capabiolity type for device (see v4l2_capability
+// v4l2Capability type for device (see v4l2_capability)
+// This type stores the capability information returned by the device.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querycap.html#c.V4L.v4l2_capability
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L440
 type v4l2Capability struct {
@@ -32,7 +33,7 @@ type v4l2Capability struct {
 }
 
 // Capability represents capabilities retrieved for the device.
-// Use methods on this type to access capabilities.
+// Use attached methods on this type to access capabilities.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querycap.html#c.V4L.v4l2_capability
 type Capability struct {
 	v4l2Cap v4l2Capability
@@ -41,7 +42,7 @@ type Capability struct {
 // GetCapability retrieves capability info for device
 func GetCapability(fd uintptr) (Capability, error) {
 	v4l2Cap := v4l2Capability{}
-	if err := Send(fd, vidiocQueryCap, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
+	if err := Send(fd, VidiocQueryCap, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
 		return Capability{}, fmt.Errorf("capability: %w", err)
 	}
 	return Capability{v4l2Cap: v4l2Cap}, nil
@@ -60,38 +61,51 @@ func (c Capability) GetDeviceCaps() uint32 {
 	return c.v4l2Cap.deviceCaps
 }
 
+// IsVideoCaptureSupported returns true if the device supports video capture.
+// See V4L2 API's V4L2_CAP_VIDEO_CAPTURE
 func (c Capability) IsVideoCaptureSupported() bool {
 	return (c.v4l2Cap.capabilities & CapVideoCapture) != 0
 }
 
+// IsVideoOutputSupported returns true if device supports video output
+// See V4L2 API's V4L2_CAP_VIDEO_OUTPUT
 func (c Capability) IsVideoOutputSupported() bool {
 	return (c.v4l2Cap.capabilities & CapVideoOutput) != 0
 }
 
+// IsReadWriteSupported returns true if device supports direct read-write operations
+// See V4L2 API's V4L2_CAP_READWRITE
 func (c Capability) IsReadWriteSupported() bool {
 	return (c.v4l2Cap.capabilities & CapReadWrite) != 0
 }
 
+// IsStreamingSupported returns true if the device supports streaming.
+// See V4L2 API's V4L2_CAP_STREAMING
 func (c Capability) IsStreamingSupported() bool {
 	return (c.v4l2Cap.capabilities & CapStreaming) != 0
 }
 
+// DriverName returns a string value for the driver name
 func (c Capability) DriverName() string {
-	return GoString(c.v4l2Cap.driver[:])
+	return toGoString(c.v4l2Cap.driver[:])
 }
 
+// CardName returns a string value for device's card
 func (c Capability) CardName() string {
-	return GoString(c.v4l2Cap.card[:])
+	return toGoString(c.v4l2Cap.card[:])
 }
 
+// BusInfo returns the device's bus info
 func (c Capability) BusInfo() string {
-	return GoString(c.v4l2Cap.busInfo[:])
+	return toGoString(c.v4l2Cap.busInfo[:])
 }
 
+// GetVersion returns the device's version
 func (c Capability) GetVersion() uint32 {
 	return c.v4l2Cap.version
 }
 
+// String returns a string value representing driver information
 func (c Capability) String() string {
 	return fmt.Sprintf("driver: %s; card: %s; bus info: %s", c.DriverName(), c.CardName(), c.BusInfo())
 }

@@ -24,6 +24,14 @@ var (
 	PixelFmtMPEG4 = fourcc('M', 'P', 'G', '4') // V4L2_PIX_FMT_MPEG4
 )
 
+// fourcc implements the four character code encoding found
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L81
+// #define v4l2_fourcc(a, b, c, d)\
+// 	 ((__u32)(a) | ((__u32)(b) << 8) | ((__u32)(c) << 16) | ((__u32)(d) << 24))
+func fourcc(a, b, c, d uint32) uint32 {
+	return (a | b<<8) | c<<16 | d<<24
+}
+
 // YcbcrEncoding (v4l2_ycbcr_encoding)
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_ycbcr_encoding
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L300
@@ -54,7 +62,7 @@ const (
 type XferFunction = uint32
 
 const (
-	ferFuncDefault    XferFunction = iota // V4L2_XFER_FUNC_DEFAULT = 0
+	XferFuncDefault   XferFunction = iota // V4L2_XFER_FUNC_DEFAULT     = 0
 	XferFunc709                           // V4L2_XFER_FUNC_709         = 1,
 	ferFuncSRGB                           // V4L2_XFER_FUNC_SRGB        = 2,
 	XferFuncOpRGB                         // V4L2_XFER_FUNC_OPRGB       = 3,
@@ -100,7 +108,7 @@ type PixFormat struct {
 	XferFunc     XferFunction
 }
 
-// Format (v4l2_format)
+// v4l2Format (v4l2_format)
 // https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/vidioc-g-fmt.html?highlight=v4l2_format
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2303
 //
@@ -119,25 +127,25 @@ type PixFormat struct {
 // 		__u8	raw_data[200];   /* user-defined */
 // 	} fmt;
 // };
-type Format struct {
+type v4l2Format struct {
 	StreamType uint32
 	fmt        [200]byte
 }
 
-func (f Format) GetPixFormat() PixFormat {
+func (f v4l2Format) getPixFormat() PixFormat {
 	pixfmt := (*PixFormat)(unsafe.Pointer(&f.fmt[0]))
 	return *pixfmt
 }
 
-func (f Format) SetPixFormat(newPix PixFormat) {
+func (f v4l2Format) setPixFormat(newPix PixFormat) {
 	*(*PixFormat)(unsafe.Pointer(&f.fmt[0])) = newPix
 }
 
 // GetPixFormat retrieves pixel information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
-func GetPixFormat(fd uintptr) (PixFormat, error){
-	format := Format{StreamType: BufTypeVideoCapture}
-	if err := Send(fd, vidiocGetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
+func GetPixFormat(fd uintptr) (PixFormat, error) {
+	format := v4l2Format{StreamType: BufTypeVideoCapture}
+	if err := Send(fd, VidiocGetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return PixFormat{}, fmt.Errorf("pix format: unsupported: %w", err)
@@ -146,16 +154,16 @@ func GetPixFormat(fd uintptr) (PixFormat, error){
 		}
 	}
 
-	return format.GetPixFormat(), nil
+	return format.getPixFormat(), nil
 }
 
 // SetPixFormat sets the pixel format information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
 func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
-	format := Format{StreamType: BufTypeVideoCapture}
-	format.SetPixFormat(pixFmt)
+	format := v4l2Format{StreamType: BufTypeVideoCapture}
+	format.setPixFormat(pixFmt)
 
-	if err := Send(fd, vidiocSetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
+	if err := Send(fd, VidiocSetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return fmt.Errorf("pix format: unsupported operation: %w", err)

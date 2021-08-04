@@ -47,7 +47,7 @@ type Crop struct {
 func GetCropCapability(fd uintptr) (CropCapability, error) {
 	cropCap := CropCapability{}
 	cropCap.StreamType = BufTypeVideoCapture
-	if err := Send(fd, vidiocCropCap, uintptr(unsafe.Pointer(&cropCap))); err != nil {
+	if err := Send(fd, VidiocCropCap, uintptr(unsafe.Pointer(&cropCap))); err != nil {
 		return CropCapability{}, fmt.Errorf("crop capability: %w", err)
 	}
 	return cropCap, nil
@@ -57,7 +57,7 @@ func GetCropCapability(fd uintptr) (CropCapability, error) {
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html#ioctl-vidioc-g-crop-vidioc-s-crop
 func SetCropRect(fd uintptr, r Rect) error {
 	crop := Crop{Rect: r, StreamType: BufTypeVideoCapture}
-	if err := Send(fd, vidiocSetCrop, uintptr(unsafe.Pointer(&crop))); err != nil {
+	if err := Send(fd, VidiocSetCrop, uintptr(unsafe.Pointer(&crop))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return fmt.Errorf("setcrop: unsupported: %w", err)
