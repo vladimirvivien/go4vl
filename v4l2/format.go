@@ -6,6 +6,9 @@ import (
 	"unsafe"
 )
 
+// FourCCEncoding represents the four character encoding value
+type FourCCEncoding = uint32
+
 // Some Predefined pixel format definitions
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/pixfmt.html
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L518
@@ -28,7 +31,7 @@ var (
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L81
 // #define v4l2_fourcc(a, b, c, d)\
 // 	 ((__u32)(a) | ((__u32)(b) << 8) | ((__u32)(c) << 16) | ((__u32)(d) << 24))
-func fourcc(a, b, c, d uint32) uint32 {
+func fourcc(a, b, c, d uint32) FourCCEncoding {
 	return (a | b<<8) | c<<16 | d<<24
 }
 
@@ -96,8 +99,8 @@ const (
 type PixFormat struct {
 	Width        uint32
 	Height       uint32
-	PixelFormat  uint32
-	Field        uint32
+	PixelFormat  FourCCEncoding
+	Field        Field
 	BytesPerLine uint32
 	SizeImage    uint32
 	Colorspace   uint32
@@ -132,11 +135,13 @@ type v4l2Format struct {
 	fmt        [200]byte
 }
 
+// getPixFormat returns the PixFormat by casting the pointer to the union type
 func (f v4l2Format) getPixFormat() PixFormat {
 	pixfmt := (*PixFormat)(unsafe.Pointer(&f.fmt[0]))
 	return *pixfmt
 }
 
+// setPixFormat sets the PixFormat by casting the pointer to the fmt union and set its value
 func (f v4l2Format) setPixFormat(newPix PixFormat) {
 	*(*PixFormat)(unsafe.Pointer(&f.fmt[0])) = newPix
 }

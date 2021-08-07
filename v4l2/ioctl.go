@@ -73,6 +73,7 @@ func ioctl(fd, req, arg uintptr) (err error) {
 
 var (
 	VidiocQueryCap   = iocEncRead('V', 0, uintptr(unsafe.Sizeof(v4l2Capability{})))       // Represents command VIDIOC_QUERYCAP
+	VidioEnumFmt     = iocEncReadWrite('V', 2, uintptr(unsafe.Sizeof(v4l2FormatDesc{})))  // Represents command VIDIOC_ENUM_FMT
 	VidiocGetFormat  = iocEncReadWrite('V', 4, uintptr(unsafe.Sizeof(v4l2Format{})))      // Represents command VIDIOC_G_FMT
 	VidiocSetFormat  = iocEncReadWrite('V', 5, uintptr(unsafe.Sizeof(v4l2Format{})))      // Represents command VIDIOC_S_FMT
 	VidiocReqBufs    = iocEncReadWrite('V', 8, uintptr(unsafe.Sizeof(RequestBuffers{})))  // Represents command VIDIOC_REQBUFS
