@@ -72,18 +72,19 @@ func ioctl(fd, req, arg uintptr) (err error) {
 // https://www.kernel.org/doc/html/v4.14/media/uapi/v4l/user-func.html
 
 var (
-	VidiocQueryCap   = iocEncRead('V', 0, uintptr(unsafe.Sizeof(v4l2Capability{})))       // Represents command VIDIOC_QUERYCAP
-	VidioEnumFmt     = iocEncReadWrite('V', 2, uintptr(unsafe.Sizeof(v4l2FormatDesc{})))  // Represents command VIDIOC_ENUM_FMT
-	VidiocGetFormat  = iocEncReadWrite('V', 4, uintptr(unsafe.Sizeof(v4l2Format{})))      // Represents command VIDIOC_G_FMT
-	VidiocSetFormat  = iocEncReadWrite('V', 5, uintptr(unsafe.Sizeof(v4l2Format{})))      // Represents command VIDIOC_S_FMT
-	VidiocReqBufs    = iocEncReadWrite('V', 8, uintptr(unsafe.Sizeof(RequestBuffers{})))  // Represents command VIDIOC_REQBUFS
-	VidiocQueryBuf   = iocEncReadWrite('V', 9, uintptr(unsafe.Sizeof(BufferInfo{})))      // Represents command VIDIOC_QUERYBUF
-	VidiocQueueBuf   = iocEncReadWrite('V', 15, uintptr(unsafe.Sizeof(BufferInfo{})))     // Represents command VIDIOC_QBUF
-	VidiocDequeueBuf = iocEncReadWrite('V', 17, uintptr(unsafe.Sizeof(BufferInfo{})))     // Represents command VIDIOC_DQBUF
-	VidiocStreamOn   = iocEncWrite('V', 18, uintptr(unsafe.Sizeof(int32(0))))             // Represents command VIDIOC_STREAMON
-	VidiocStreamOff  = iocEncWrite('V', 19, uintptr(unsafe.Sizeof(int32(0))))             // Represents command VIDIOC_STREAMOFF
-	VidiocCropCap    = iocEncReadWrite('V', 58, uintptr(unsafe.Sizeof(CropCapability{}))) // Represents command VIDIOC_CROPCAP
-	VidiocSetCrop    = iocEncWrite('V', 60, uintptr(unsafe.Sizeof(Crop{})))               // Represents command VIDIOC_S_CROP
+	VidiocQueryCap       = iocEncRead('V', 0, uintptr(unsafe.Sizeof(v4l2Capability{})))          // Represents command VIDIOC_QUERYCAP
+	VidiocEnumFmt        = iocEncReadWrite('V', 2, uintptr(unsafe.Sizeof(v4l2FormatDesc{})))     // Represents command VIDIOC_ENUM_FMT
+	VidiocGetFormat      = iocEncReadWrite('V', 4, uintptr(unsafe.Sizeof(v4l2Format{})))         // Represents command VIDIOC_G_FMT
+	VidiocSetFormat      = iocEncReadWrite('V', 5, uintptr(unsafe.Sizeof(v4l2Format{})))         // Represents command VIDIOC_S_FMT
+	VidiocReqBufs        = iocEncReadWrite('V', 8, uintptr(unsafe.Sizeof(RequestBuffers{})))     // Represents command VIDIOC_REQBUFS
+	VidiocQueryBuf       = iocEncReadWrite('V', 9, uintptr(unsafe.Sizeof(BufferInfo{})))         // Represents command VIDIOC_QUERYBUF
+	VidiocQueueBuf       = iocEncReadWrite('V', 15, uintptr(unsafe.Sizeof(BufferInfo{})))        // Represents command VIDIOC_QBUF
+	VidiocDequeueBuf     = iocEncReadWrite('V', 17, uintptr(unsafe.Sizeof(BufferInfo{})))        // Represents command VIDIOC_DQBUF
+	VidiocStreamOn       = iocEncWrite('V', 18, uintptr(unsafe.Sizeof(int32(0))))                // Represents command VIDIOC_STREAMON
+	VidiocStreamOff      = iocEncWrite('V', 19, uintptr(unsafe.Sizeof(int32(0))))                // Represents command VIDIOC_STREAMOFF
+	VidiocCropCap        = iocEncReadWrite('V', 58, uintptr(unsafe.Sizeof(CropCapability{})))    // Represents command VIDIOC_CROPCAP
+	VidiocSetCrop        = iocEncWrite('V', 60, uintptr(unsafe.Sizeof(Crop{})))                  // Represents command VIDIOC_S_CROP
+	VidiocEnumFrameSizes = iocEncReadWrite('V', 74, uintptr(unsafe.Sizeof(v4l2FrameSizeEnum{}))) // Represents command VIDIOC_ENUM_FRAMESIZES
 )
 
 // Send sends a raw ioctl request to the kernel (via ioctl syscall)

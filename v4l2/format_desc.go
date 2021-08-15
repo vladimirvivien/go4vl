@@ -40,6 +40,7 @@ type v4l2FormatDesc struct {
 // FormatDescription provides access to the device format description
 // See v4l2FormatDesc
 type FormatDescription struct {
+	fd uintptr
 	v4l2FormatDesc
 }
 
@@ -73,10 +74,20 @@ func (d FormatDescription) GetBusCode() uint32 {
 	return d.mbusCode
 }
 
+// GetFrameSize return the supported frame size for the format in description.
+// NOTE: This method must be used on a FormatDescription value that was created
+// with a call to GetFormatDescription or GetAllFormatDescriptions.
+func (d FormatDescription) GetFrameSize() (FrameSize, error) {
+	if d.fd == 0{
+		return FrameSize{}, fmt.Errorf("invalid file descriptor")
+	}
+	return GetFormatFrameSize(d.fd, d.index, d.pixelFormat)
+}
+
 // GetFormatDescription returns a device format description at index
 func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 	desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
-	if err := Send(fd, VidiocGetFormat, uintptr(unsafe.Pointer(&desc))); err != nil {
+	if err := Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
 		switch {
 		case errors.Is(err, ErrorUnsupported):
 			return FormatDescription{}, fmt.Errorf("format desc: index %d: not found %w", index, err)
@@ -84,7 +95,7 @@ func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 			return FormatDescription{}, fmt.Errorf("format desc failed: %w", err)
 		}
 	}
-	return FormatDescription{v4l2FormatDesc:desc}, nil
+	return FormatDescription{fd:fd, v4l2FormatDesc:desc}, nil
 }
 
 // GetAllFormatDescriptions attempts to retrieve all device format descriptions by
@@ -95,10 +106,10 @@ func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error
 	index := uint32(0)
 	for {
 		desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
-		if err = Send(fd, VidiocGetFormat, uintptr(unsafe.Pointer(&desc))); err != nil {
+		if err = Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
 			break
 		}
-		result = append(result, FormatDescription{v4l2FormatDesc:desc})
+		result = append(result, FormatDescription{fd: fd, v4l2FormatDesc:desc})
 		index++
 	}
 	return result, err
