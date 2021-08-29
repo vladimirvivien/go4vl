@@ -108,6 +108,14 @@ func (d *Device) SetPixFormat(pixFmt PixFormat) error {
 	return nil
 }
 
+func (d *Device) GetFormatDescriptions() ([]FormatDescription, error) {
+	if err := d.assertVideoCaptureSupport(); err != nil {
+		return nil, fmt.Errorf("device: %w", err)
+	}
+
+	return GetAllFormatDescriptions(d.fd)
+}
+
 func (d *Device) StartStream(buffSize uint32) error {
 	if d.streaming {
 		return nil

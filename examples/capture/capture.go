@@ -22,11 +22,47 @@ func main() {
 	}
 	defer device.Close()
 
-	// configuration
+	// helper function to search for format descriptions
+	findPreferredFmt := func(fmts []v4l2.FormatDescription, pixEncoding v4l2.FourCCEncoding) *v4l2.FormatDescription {
+		for _, desc := range fmts {
+			if desc.GetPixelFormat() == pixEncoding{
+				return &desc
+			}
+		}
+		return nil
+	}
+
+	// get supported format descriptions
+	fmtDescs, err := device.GetFormatDescriptions()
+	if err != nil{
+		log.Fatal("failed to get format desc:", err)
+	}
+
+	// search for preferred formats
+	preferredFmts := []v4l2.FourCCEncoding{v4l2.PixelFmtMPEG, v4l2.PixelFmtMJPEG, v4l2.PixelFmtJPEG, v4l2.PixelFmtYUYV}
+	var fmtDesc *v4l2.FormatDescription
+	for _, preferredFmt := range preferredFmts{
+		fmtDesc = findPreferredFmt(fmtDescs, preferredFmt)
+		if fmtDesc != nil {
+			break
+		}
+	}
+
+	// no preferred pix fmt supported
+	if fmtDesc == nil {
+		log.Fatalf("device does not support any of %#v", preferredFmts)
+	}
+
+	frameSize, err := fmtDesc.GetFrameSize()
+	if err!=nil{
+		log.Fatalf("failed to get framesize info: %s", err)
+	}
+
+	// configure device with preferred fmt
 	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width:       640,
-		Height:      480,
-		PixelFormat: v4l2.PixelFmtMJPEG,
+		Width:       frameSize.Width,
+		Height:      frameSize.Height,
+		PixelFormat: fmtDesc.GetPixelFormat(),
 		Field:       v4l2.FieldNone,
 	}); err != nil {
 		log.Fatalf("failed to set format: %s", err)

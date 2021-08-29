@@ -24,7 +24,7 @@ func setDefaultCrop(device *v4l2.Device) error {
 		return err
 	}
 	log.Printf("device crop capability: %s", cap.String())
-	err = device.SetCropRect(cap.DefaultRect())
+	err = device.SetCropRect(cap.DefaultRect)
 	if err != nil {
 		log.Printf("setcrop unsupported: %s", err)
 	}
