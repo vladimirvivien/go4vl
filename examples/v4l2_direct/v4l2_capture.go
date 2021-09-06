@@ -16,9 +16,9 @@ import (
 
 const (
 	//ioctl command layout
-	iocOpNone  = 0
-	iocOpWrite = 1
-	iocOpRead  = 2
+	iocNone  = 0 // no op
+	iocWrite = 1 // userland app is writing, kernel reading
+	iocRead  = 2 // userland app is reading, kernel writing
 
 	iocTypeBits   = 8
 	iocNumberBits = 8
@@ -40,15 +40,15 @@ func ioEnc(iocMode, iocType, number, size uintptr) uintptr {
 }
 
 func ioEncR(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocOpRead, iocType, number, size)
+	return ioEnc(iocRead, iocType, number, size)
 }
 
 func ioEncW(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocOpWrite, iocType, number, size)
+	return ioEnc(iocWrite, iocType, number, size)
 }
 
 func ioEncRW(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocOpRead|iocOpWrite, iocType, number, size)
+	return ioEnc(iocRead|iocWrite, iocType, number, size)
 }
 
 // four character pixel format encoding

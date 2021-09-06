@@ -159,12 +159,7 @@ type PlaneService struct {
 func StreamOn(fd uintptr) error {
 	bufType := BufTypeVideoCapture
 	if err := Send(fd, VidiocStreamOn, uintptr(unsafe.Pointer(&bufType))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return fmt.Errorf("stream on: unsupported: %w", err)
-		default:
-			return fmt.Errorf("stream on: %w", err)
-		}
+		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
 }
@@ -175,12 +170,7 @@ func StreamOn(fd uintptr) error {
 func StreamOff(fd uintptr) error {
 	bufType := BufTypeVideoCapture
 	if err := Send(fd, VidiocStreamOff, uintptr(unsafe.Pointer(&bufType))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return fmt.Errorf("stream off: unsupported: %w", err)
-		default:
-			return fmt.Errorf("stream off: %w", err)
-		}
+		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
 }
@@ -195,12 +185,7 @@ func AllocateBuffers(fd uintptr, buffSize uint32) (RequestBuffers, error) {
 	}
 
 	if err := Send(fd, VidiocReqBufs, uintptr(unsafe.Pointer(&req))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return RequestBuffers{}, fmt.Errorf("request buffers: unsupported: %w", err)
-		default:
-			return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
-		}
+		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 	if req.Count < 2 {
 		return RequestBuffers{}, errors.New("request buffers: insufficient memory on device")
@@ -219,12 +204,7 @@ func GetBufferInfo(fd uintptr, index uint32) (BufferInfo, error) {
 	}
 
 	if err := Send(fd, VidiocQueryBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return BufferInfo{}, fmt.Errorf("buffer info: unsupported: %w", err)
-		default:
-			return BufferInfo{}, fmt.Errorf("buffer info: %w", err)
-		}
+		return BufferInfo{}, fmt.Errorf("buffer info: %w", err)
 	}
 
 	return buf, nil
@@ -252,12 +232,7 @@ func QueueBuffer(fd uintptr, index uint32) (BufferInfo, error) {
 	}
 
 	if err := Send(fd, VidiocQueueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return BufferInfo{}, fmt.Errorf("buffer: unsupported: %w", err)
-		default:
-			return BufferInfo{}, fmt.Errorf("buffer: %w", err)
-		}
+		return BufferInfo{}, fmt.Errorf("buffer queue: %w", err)
 	}
 
 	return buf, nil
@@ -274,12 +249,8 @@ func DequeueBuffer(fd uintptr) (BufferInfo, error) {
 	}
 
 	if err := Send(fd, VidiocDequeueBuf, uintptr(unsafe.Pointer(&buf))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return BufferInfo{}, fmt.Errorf("buffer: unsupported: %w", err)
-		default:
-			return BufferInfo{}, fmt.Errorf("buffer: %w", err)
-		}
+		return BufferInfo{}, fmt.Errorf("buffer dequeue: %w", err)
+
 	}
 
 	return buf, nil

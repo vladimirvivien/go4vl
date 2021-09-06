@@ -1,0 +1,33 @@
+package v4l2
+
+import (
+	"errors"
+	sys "syscall"
+)
+
+var (
+	ErrorSystem = errors.New("system error")
+	ErrorBadArgument = errors.New("bad argument error")
+	ErrorTemporary = errors.New("temporary error")
+	ErrorTimeout = errors.New("timeout error")
+	ErrorUnsupported = errors.New("unsupported error")
+)
+
+func parseErrorType(errno sys.Errno) error {
+	switch errno {
+	case sys.EBADF, sys.ENOMEM, sys.ENODEV, sys.EIO, sys.ENXIO: // structural, terminal
+	return ErrorSystem
+	case sys.EFAULT, sys.EINVAL: // bad argument, terminal
+	return ErrorBadArgument
+	case sys.ENOTTY: // unsupported
+	return ErrorUnsupported
+	default:
+		if errno.Timeout() {
+			return ErrorTimeout
+		}
+		if errno.Temporary() {
+			return ErrorTemporary
+		}
+		return errno
+	}
+}

@@ -1,7 +1,6 @@
 package v4l2
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -58,12 +57,7 @@ func GetCropCapability(fd uintptr) (CropCapability, error) {
 func SetCropRect(fd uintptr, r Rect) error {
 	crop := Crop{Rect: r, StreamType: BufTypeVideoCapture}
 	if err := Send(fd, VidiocSetCrop, uintptr(unsafe.Pointer(&crop))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return fmt.Errorf("setcrop: unsupported: %w", err)
-		default:
-			return fmt.Errorf("setcrop failed: %w", err)
-		}
+		return fmt.Errorf("set crop: %w", err)
 	}
 	return nil
 }

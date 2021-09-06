@@ -116,6 +116,20 @@ func (d *Device) GetFormatDescriptions() ([]FormatDescription, error) {
 	return GetAllFormatDescriptions(d.fd)
 }
 
+func (d *Device) GetVideoInputIndex()(int32, error) {
+	if err := d.assertVideoCaptureSupport(); err != nil {
+		return 0, fmt.Errorf("device: %w", err)
+	}
+	return GetCurrentVideoInputIndex(d.fd)
+}
+
+func (d *Device) GetVideoInputInfo(index uint32) (InputInfo, error) {
+	if err := d.assertVideoCaptureSupport(); err != nil {
+		return InputInfo{}, fmt.Errorf("device: %w", err)
+	}
+	return GetVideoInputInfo(d.fd, index)
+}
+
 func (d *Device) StartStream(buffSize uint32) error {
 	if d.streaming {
 		return nil

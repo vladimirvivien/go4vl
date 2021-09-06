@@ -1,7 +1,6 @@
 package v4l2
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -87,7 +86,7 @@ type v4l2FrameSizeEnum struct {
 
 // getFrameSize retrieves the supported frame size
 func (fs v4l2FrameSizeEnum) getFrameSize() FrameSize {
-	frameSize := FrameSize{FrameSizeType:fs.frameSizeType, PixelFormat: fs.pixelFormat}
+	frameSize := FrameSize{FrameSizeType: fs.frameSizeType, PixelFormat: fs.pixelFormat}
 	switch fs.frameSizeType {
 	case FrameSizeTypeDiscrete:
 		fsDiscrete := (*FrameSizeDiscrete)(unsafe.Pointer(&fs.frameSize[0]))
@@ -103,12 +102,7 @@ func (fs v4l2FrameSizeEnum) getFrameSize() FrameSize {
 func GetFormatFrameSize(fd uintptr, index uint32, encoding FourCCEncoding) (FrameSize, error) {
 	fsEnum := v4l2FrameSizeEnum{index: index, pixelFormat: encoding}
 	if err := Send(fd, VidiocEnumFrameSizes, uintptr(unsafe.Pointer(&fsEnum))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return FrameSize{}, fmt.Errorf("frame size: index %d: not found %w", index, err)
-		default:
-			return FrameSize{}, fmt.Errorf("frame size: %w", err)
-		}
+		return FrameSize{}, fmt.Errorf("frame size: index %d: %w", index, err)
 	}
 	return fsEnum.getFrameSize(), nil
 }
@@ -134,7 +128,7 @@ func GetAllFormatFrameSizes(fd uintptr) (result []FrameSize, err error) {
 			// At index 0, check the frame type, if not discrete exit loop.
 			// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
 			result = append(result, fsEnum.getFrameSize())
-			if index == 0 && fsEnum.frameSizeType != FrameSizeTypeDiscrete{
+			if index == 0 && fsEnum.frameSizeType != FrameSizeTypeDiscrete {
 				break
 			}
 

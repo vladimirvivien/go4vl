@@ -1,9 +1,10 @@
 package v4l2
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // FmtDescFlag image format description flags
@@ -78,7 +79,7 @@ func (d FormatDescription) GetBusCode() uint32 {
 // NOTE: This method must be used on a FormatDescription value that was created
 // with a call to GetFormatDescription or GetAllFormatDescriptions.
 func (d FormatDescription) GetFrameSize() (FrameSize, error) {
-	if d.fd == 0{
+	if d.fd == 0 {
 		return FrameSize{}, fmt.Errorf("invalid file descriptor")
 	}
 	return GetFormatFrameSize(d.fd, d.index, d.pixelFormat)
@@ -88,28 +89,27 @@ func (d FormatDescription) GetFrameSize() (FrameSize, error) {
 func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 	desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
 	if err := Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
-		switch {
-		case errors.Is(err, ErrorUnsupported):
-			return FormatDescription{}, fmt.Errorf("format desc: index %d: not found %w", index, err)
-		default:
-			return FormatDescription{}, fmt.Errorf("format desc failed: %w", err)
-		}
+		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
+
 	}
-	return FormatDescription{fd:fd, v4l2FormatDesc:desc}, nil
+	return FormatDescription{fd: fd, v4l2FormatDesc: desc}, nil
 }
 
 // GetAllFormatDescriptions attempts to retrieve all device format descriptions by
-// iterating from 0 upto an index that returns an error. At that point, the function
+// iterating from 0 up to an index that returns an error. At that point, the function
 // will return the collected descriptions and the error.
 // So if len(result) > 0, then error could be ignored.
-func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error){
+func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
 	index := uint32(0)
 	for {
 		desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
 		if err = Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
-			break
+			errno := err.(sys.Errno)
+			if errno.Is(sys.EINVAL) && len(result) > 0 {
+				break
+			}
 		}
-		result = append(result, FormatDescription{fd: fd, v4l2FormatDesc:desc})
+		result = append(result, FormatDescription{fd: fd, v4l2FormatDesc: desc})
 		index++
 	}
 	return result, err
