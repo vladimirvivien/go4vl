@@ -46,87 +46,19 @@ var PixelFormats = map[FourCCEncoding]string{
 	PixelFmtMPEG4: "MPEG-4 Part 2 ES",
 }
 
-// YcbcrEncoding (v4l2_ycbcr_encoding)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_ycbcr_encoding
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L300
-type YcbcrEncoding = uint32
-
-const (
-	YcbcrEncDefault YcbcrEncoding = iota // V4L2_YCBCR_ENC_DEFAULT
-	YcbcrEnc601                          // V4L2_YCBCR_ENC_601
-	YcbcrEnc709                          // V4L2_YCBCR_ENC_709
-	YcbcrEncXV601                        // V4L2_YCBCR_ENC_XV601
-	YcbcrEncXV709                        // V4L2_YCBCR_ENC_XV709
-)
-
-// Quantization (v4l2_quantization)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_quantization#c.V4L.v4l2_quantization
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L372
-type Quantization = uint32
-
-const (
-	QuantizationDefault   Quantization = iota // V4L2_QUANTIZATION_DEFAULT
-	QuantizationFullRange                     // V4L2_QUANTIZATION_FULL_RANGE
-	QuantizationLimRange                      // V4L2_QUANTIZATION_LIM_RANGE
-)
-
-// XferFunctionType (v4l2_xfer_func)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_xfer_func#c.V4L.v4l2_xfer_func
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L259
-type XferFunctionType = uint32
-
-const (
-	XferFuncDefault   XferFunctionType = iota // V4L2_XFER_FUNC_DEFAULT     = 0
-	XferFunc709                               // V4L2_XFER_FUNC_709         = 1,
-	XferFuncSRGB                              // V4L2_XFER_FUNC_SRGB        = 2,
-	XferFuncOpRGB                             // V4L2_XFER_FUNC_OPRGB       = 3,
-	XferFuncSMPTE240M                         // V4L2_XFER_FUNC_SMPTE240M   = 4,
-	XferFuncNone                              // V4L2_XFER_FUNC_NONE        = 5,
-	XferFuncDCIP3                             // V4L2_XFER_FUNC_DCI_P3      = 6,
-	XferFuncSMPTE2084                         // V4L2_XFER_FUNC_SMPTE2084   = 7,
-)
-
-var XferFunctions = map[XferFunctionType]string{
-	XferFuncDefault:   "Default",
-	XferFunc709:       "Rec. 709",
-	XferFuncSRGB:      "sRGB",
-	XferFuncOpRGB:     "opRGB",
-	XferFuncSMPTE240M: "SMPTE 240M",
-	XferFuncNone:      "None",
-	XferFuncDCIP3:     "DCI-P3",
-	XferFuncSMPTE2084: "SMPTE 2084",
-}
-
-// FieldType (v4l2_field)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/field-order.html?highlight=v4l2_field#c.v4l2_field
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L88
-type FieldType = uint32
-
-const (
-	FieldAny                 FieldType = iota // V4L2_FIELD_ANY
-	FieldNone                                 // V4L2_FIELD_NONE
-	FieldTop                                  // V4L2_FIELD_TOP
-	FieldBottom                               // V4L2_FIELD_BOTTOM
-	FieldInterlaced                           // V4L2_FIELD_INTERLACED
-	FieldSequentialTopBottom                  // V4L2_FIELD_SEQ_TB
-	FieldSequentialBottomTop                  // V4L2_FIELD_SEQ_BT
-	FieldAlternate                            // V4L2_FIELD_ALTERNATE
-	FieldInterlacedTopBottom                  // V4L2_FIELD_INTERLACED_TB
-	FieldInterlacedBottomTop                  // V4L2_FIELD_INTERLACED_BT
-)
-
-// Fields is a map of FieldType description
-var Fields = map[FieldType]string{
-	FieldAny:                 "any",
-	FieldNone:                "none",
-	FieldTop:                 "top",
-	FieldBottom:              "bottom",
-	FieldInterlaced:          "interlaced",
-	FieldSequentialTopBottom: "sequential top-bottom",
-	FieldSequentialBottomTop: "Sequential botton-top",
-	FieldAlternate:           "alternating",
-	FieldInterlacedTopBottom: "interlaced top-bottom",
-	FieldInterlacedBottomTop: "interlaced bottom-top",
+// IsPixYUVEncoded returns true if the pixel format is a chrome+luminance YUV format
+func IsPixYUVEncoded(pixFmt FourCCEncoding) bool {
+	switch pixFmt {
+	case
+		PixelFmtYUYV,
+		PixelFmtYYUV,
+		PixelFmtYVYU,
+		PixelFmtUYVY,
+		PixelFmtVYUY:
+		return true
+	default:
+		return false
+	}
 }
 
 // ColorspaceType
@@ -162,6 +94,161 @@ var Colorspaces = map[ColorspaceType]string{
 	ColorspaceDCIP3:       "DCI-P3",
 }
 
+// YCbCrEncodingType (v4l2_ycbcr_encoding)
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_ycbcr_encoding
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L300
+type YCbCrEncodingType = uint32
+
+const (
+	YCbCrEncodingDefault        YCbCrEncodingType = iota // V4L2_YCBCR_ENC_DEFAULT
+	YCbCrEncoding601                                     // V4L2_YCBCR_ENC_601
+	YCbCrEncoding709                                     // V4L2_YCBCR_ENC_709
+	YCbCrEncodingXV601                                   // V4L2_YCBCR_ENC_XV601
+	YCbCrEncodingXV709                                   // V4L2_YCBCR_ENC_XV709
+	_                                                    // V4L2_YCBCR_ENC_SYCC (absolete)
+	YCbCrEncodingBT2020                                  // V4L2_YCBCR_ENC_BT2020
+	YCbCrEncodingBT2020ConstLum                          // V4L2_YCBCR_ENC_BT2020_CONST_LUM
+)
+
+var YCbCrEncodings = map[YCbCrEncodingType]string{
+	YCbCrEncodingDefault:        "Default",
+	YCbCrEncoding601:            "ITU-R 601",
+	YCbCrEncoding709:            "Rec. 709",
+	YCbCrEncodingXV601:          "xvYCC 601",
+	YCbCrEncodingXV709:          "xvYCC 709",
+	YCbCrEncodingBT2020:         "BT.2020",
+	YCbCrEncodingBT2020ConstLum: "BT.2020 constant luminance",
+	HSVEncoding180:              "HSV 0-179",
+	HSVEncoding256:              "HSV 0-255",
+}
+
+// ColorspaceToYCbCrEnc is used to get the YCbCrEncoding when only a default YCbCr and the colorspace is known
+func ColorspaceToYCbCrEnc(cs ColorspaceType) YCbCrEncodingType {
+	switch cs {
+	case ColorspaceREC709, ColorspaceDCIP3:
+		return YCbCrEncoding709
+	case ColorspaceBT2020:
+		return YCbCrEncodingBT2020
+	default:
+		return YCbCrEncoding601
+	}
+}
+
+// HSVEncodingType (v4l2_hsv_encoding)
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L352
+type HSVEncodingType = YCbCrEncodingType
+
+const (
+	HSVEncoding180 = HSVEncodingType(128) // V4L2_HSV_ENC_180
+	HSVEncoding256 = HSVEncodingType(129) // V4L2_HSV_ENC_256
+)
+
+// QuantizationType (v4l2_quantization)
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_quantization#c.V4L.v4l2_quantization
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L372
+type QuantizationType = uint32
+
+const (
+	QuantizationDefault      QuantizationType = iota // V4L2_QUANTIZATION_DEFAULT
+	QuantizationFullRange                            // V4L2_QUANTIZATION_FULL_RANGE
+	QuantizationLimitedRange                         // V4L2_QUANTIZATION_LIM_RANGE
+)
+
+var Quantizations = map[QuantizationType]string{
+	QuantizationDefault:      "Default",
+	QuantizationFullRange:    "Full range",
+	QuantizationLimitedRange: "Limited range",
+}
+
+func ColorspaceToQuantization(cs ColorspaceType) QuantizationType {
+	// TODO any RGB/HSV pixel formats should also return full-range
+	switch cs {
+	case ColorspaceOPRGB, ColorspaceSRGB, ColorspaceJPEG:
+		return QuantizationFullRange
+	default:
+		return QuantizationLimitedRange
+	}
+}
+
+// XferFunctionType (v4l2_xfer_func)
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_xfer_func#c.V4L.v4l2_xfer_func
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L259
+type XferFunctionType = uint32
+
+const (
+	XferFuncDefault   XferFunctionType = iota // V4L2_XFER_FUNC_DEFAULT     = 0
+	XferFunc709                               // V4L2_XFER_FUNC_709         = 1,
+	XferFuncSRGB                              // V4L2_XFER_FUNC_SRGB        = 2,
+	XferFuncOpRGB                             // V4L2_XFER_FUNC_OPRGB       = 3,
+	XferFuncSMPTE240M                         // V4L2_XFER_FUNC_SMPTE240M   = 4,
+	XferFuncNone                              // V4L2_XFER_FUNC_NONE        = 5,
+	XferFuncDCIP3                             // V4L2_XFER_FUNC_DCI_P3      = 6,
+	XferFuncSMPTE2084                         // V4L2_XFER_FUNC_SMPTE2084   = 7,
+)
+
+var XferFunctions = map[XferFunctionType]string{
+	XferFuncDefault:   "Default",
+	XferFunc709:       "Rec. 709",
+	XferFuncSRGB:      "sRGB",
+	XferFuncOpRGB:     "opRGB",
+	XferFuncSMPTE240M: "SMPTE 240M",
+	XferFuncNone:      "None",
+	XferFuncDCIP3:     "DCI-P3",
+	XferFuncSMPTE2084: "SMPTE 2084",
+}
+
+// ColorspaceToXferFunc used to get true XferFunc when only colorspace and default XferFuc are known.
+func ColorspaceToXferFunc(cs ColorspaceType) XferFunctionType {
+	switch cs {
+	case ColorspaceOPRGB:
+		return XferFuncOpRGB
+	case ColorspaceSMPTE240M:
+		return XferFuncSMPTE240M
+	case ColorspaceDCIP3:
+		return XferFuncDCIP3
+	case ColorspaceRaw:
+		return XferFuncNone
+	case ColorspaceSRGB:
+		return XferFuncSRGB
+	case ColorspaceJPEG:
+		return XferFuncSRGB
+	default:
+		return XferFunc709
+	}
+}
+
+// FieldType (v4l2_field)
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/field-order.html?highlight=v4l2_field#c.v4l2_field
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L88
+type FieldType = uint32
+
+const (
+	FieldAny                 FieldType = iota // V4L2_FIELD_ANY
+	FieldNone                                 // V4L2_FIELD_NONE
+	FieldTop                                  // V4L2_FIELD_TOP
+	FieldBottom                               // V4L2_FIELD_BOTTOM
+	FieldInterlaced                           // V4L2_FIELD_INTERLACED
+	FieldSequentialTopBottom                  // V4L2_FIELD_SEQ_TB
+	FieldSequentialBottomTop                  // V4L2_FIELD_SEQ_BT
+	FieldAlternate                            // V4L2_FIELD_ALTERNATE
+	FieldInterlacedTopBottom                  // V4L2_FIELD_INTERLACED_TB
+	FieldInterlacedBottomTop                  // V4L2_FIELD_INTERLACED_BT
+)
+
+// Fields is a map of FieldType description
+var Fields = map[FieldType]string{
+	FieldAny:                 "any",
+	FieldNone:                "none",
+	FieldTop:                 "top",
+	FieldBottom:              "bottom",
+	FieldInterlaced:          "interlaced",
+	FieldSequentialTopBottom: "sequential top-bottom",
+	FieldSequentialBottomTop: "Sequential botton-top",
+	FieldAlternate:           "alternating",
+	FieldInterlacedTopBottom: "interlaced top-bottom",
+	FieldInterlacedBottomTop: "interlaced bottom-top",
+}
+
 // PixFormat (v4l2_pix_format)
 // https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/pixfmt-002.html?highlight=v4l2_pix_format
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L496
@@ -175,8 +262,8 @@ type PixFormat struct {
 	Colorspace   ColorspaceType
 	Priv         uint32
 	Flags        uint32
-	YcbcrEnc     YcbcrEncoding
-	Quantization Quantization
+	YcbcrEnc     YCbCrEncodingType
+	Quantization QuantizationType
 	XferFunc     XferFunctionType
 }
 

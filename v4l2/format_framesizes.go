@@ -1,6 +1,7 @@
 package v4l2
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -91,9 +92,15 @@ func (fs v4l2FrameSizeEnum) getFrameSize() FrameSize {
 	case FrameSizeTypeDiscrete:
 		fsDiscrete := (*FrameSizeDiscrete)(unsafe.Pointer(&fs.frameSize[0]))
 		frameSize.FrameSizeDiscrete = *fsDiscrete
+		frameSize.FrameSizeStepwise.MinWidth = frameSize.FrameSizeDiscrete.Width
+		frameSize.FrameSizeStepwise.MinHeight = frameSize.FrameSizeDiscrete.Height
+		frameSize.FrameSizeStepwise.MaxWidth = frameSize.FrameSizeDiscrete.Width
+		frameSize.FrameSizeStepwise.MaxHeight = frameSize.FrameSizeDiscrete.Height
 	case FrameSizeTypeStepwise, FrameSizeTypeContinuous:
 		fsStepwise := (*FrameSizeStepwise)(unsafe.Pointer(&fs.frameSize[0]))
 		frameSize.FrameSizeStepwise = *fsStepwise
+		frameSize.FrameSizeDiscrete.Width = frameSize.FrameSizeStepwise.MaxWidth
+		frameSize.FrameSizeDiscrete.Height = frameSize.FrameSizeStepwise.MaxHeight
 	}
 	return frameSize
 }
@@ -107,6 +114,29 @@ func GetFormatFrameSize(fd uintptr, index uint32, encoding FourCCEncoding) (Fram
 	return fsEnum.getFrameSize(), nil
 }
 
+// GetFormatFrameSizes returns all supported device frame sizes for a specified encoding
+func GetFormatFrameSizes(fd uintptr, encoding FourCCEncoding) (result []FrameSize, err error) {
+	index := uint32(0)
+	for {
+		fsEnum := v4l2FrameSizeEnum{index: index, pixelFormat: encoding}
+		if err = Send(fd, VidiocEnumFrameSizes, uintptr(unsafe.Pointer(&fsEnum))); err != nil {
+			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
+				break
+			}
+			return result, fmt.Errorf("frame sizes: encoding %s: %w", PixelFormats[encoding], err)
+		}
+
+		// At index 0, check the frame type, if not discrete exit loop.
+		// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
+		result = append(result, fsEnum.getFrameSize())
+		if index == 0 && fsEnum.frameSizeType != FrameSizeTypeDiscrete {
+			break
+		}
+		index++
+	}
+	return result, nil
+}
+
 // GetAllFormatFrameSizes returns all supported frame sizes for all supported formats.
 // It iterates from format at index 0 until it encounters and error and then stops. For
 // each supported format, it retrieves all supported frame sizes.
@@ -117,12 +147,15 @@ func GetAllFormatFrameSizes(fd uintptr) (result []FrameSize, err error) {
 	}
 
 	// for each supported format, grab frame size
-	for _, fmt := range formats {
+	for _, format := range formats {
 		index := uint32(0)
 		for {
-			fsEnum := v4l2FrameSizeEnum{index: index, pixelFormat: fmt.GetPixelFormat()}
+			fsEnum := v4l2FrameSizeEnum{index: index, pixelFormat: format.GetPixelFormat()}
 			if err = Send(fd, VidiocEnumFrameSizes, uintptr(unsafe.Pointer(&fsEnum))); err != nil {
-				break
+				if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
+					break
+				}
+				return result, err
 			}
 
 			// At index 0, check the frame type, if not discrete exit loop.
@@ -131,9 +164,8 @@ func GetAllFormatFrameSizes(fd uintptr) (result []FrameSize, err error) {
 			if index == 0 && fsEnum.frameSizeType != FrameSizeTypeDiscrete {
 				break
 			}
-
 			index++
 		}
 	}
-	return result, err
+	return result, nil
 }

@@ -41,6 +41,11 @@ func (d *Device) Close() error {
 	return d.file.Close()
 }
 
+// GetFileDescriptor returns the file descriptor value for the device
+func (d *Device) GetFileDescriptor() uintptr {
+	return d.fd
+}
+
 // GetCapability retrieves device capability info and
 // caches it for future capability check.
 func (d *Device) GetCapability() (*Capability, error) {
@@ -108,6 +113,17 @@ func (d *Device) SetPixFormat(pixFmt PixFormat) error {
 	return nil
 }
 
+// GetFormatDescription returns a format description for the device at specified format index
+func (d *Device) GetFormatDescription(idx uint32) (FormatDescription, error) {
+	if err := d.assertVideoCaptureSupport(); err != nil {
+		return FormatDescription{}, fmt.Errorf("device: %w", err)
+	}
+
+	return GetFormatDescription(d.fd, idx)
+}
+
+
+// GetFormatDescriptions returns all possible format descriptions for device
 func (d *Device) GetFormatDescriptions() ([]FormatDescription, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return nil, fmt.Errorf("device: %w", err)
@@ -116,6 +132,7 @@ func (d *Device) GetFormatDescriptions() ([]FormatDescription, error) {
 	return GetAllFormatDescriptions(d.fd)
 }
 
+// GetVideoInputIndex returns current video input index for device
 func (d *Device) GetVideoInputIndex()(int32, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return 0, fmt.Errorf("device: %w", err)
@@ -123,11 +140,20 @@ func (d *Device) GetVideoInputIndex()(int32, error) {
 	return GetCurrentVideoInputIndex(d.fd)
 }
 
+// GetVideoInputInfo returns video input info for device
 func (d *Device) GetVideoInputInfo(index uint32) (InputInfo, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return InputInfo{}, fmt.Errorf("device: %w", err)
 	}
 	return GetVideoInputInfo(d.fd, index)
+}
+
+// GetCaptureParam returns streaming capture parameter information
+func (d *Device) GetCaptureParam() (CaptureParam, error) {
+	if err := d.assertVideoCaptureSupport(); err != nil {
+		return CaptureParam{}, fmt.Errorf("device: %w", err)
+	}
+	return GetStreamCaptureParam(d.fd)
 }
 
 func (d *Device) StartStream(buffSize uint32) error {

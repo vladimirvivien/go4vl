@@ -1,10 +1,9 @@
 package v4l2
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // FmtDescFlag image format description flags
@@ -13,17 +12,29 @@ import (
 type FmtDescFlag = uint32
 
 const (
-	FmtDescFlagCompressed           FmtDescFlag = 0x0001                 // V4L2_FMT_FLAG_COMPRESSED
-	FmtDescFlagEmulated             FmtDescFlag = 0x0002                 // V4L2_FMT_FLAG_EMULATED
-	FmtDescFlagContinuousBytestream FmtDescFlag = 0x0004                 // V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
-	FmtDescFlagDynResolution        FmtDescFlag = 0x0008                 // V4L2_FMT_FLAG_DYN_RESOLUTION
-	FmtDescFlagEncCapFrameInterval  FmtDescFlag = 0x0010                 //  V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
-	FmtDescFlagCscColorspace        FmtDescFlag = 0x0020                 //  V4L2_FMT_FLAG_CSC_COLORSPACE
-	FmtDescFlagCscXferFunc          FmtDescFlag = 0x0040                 // V4L2_FMT_FLAG_CSC_XFER_FUNC
-	FmtDescFlagCscYcbcrEnc          FmtDescFlag = 0x0080                 //  V4L2_FMT_FLAG_CSC_YCBCR_ENC
-	FmtDescFlagCscHsvEnc            FmtDescFlag = FmtDescFlagCscYcbcrEnc // V4L2_FMT_FLAG_CSC_HSV_ENC
-	FmtDescFlagCscQuantization      FmtDescFlag = 0x0100                 // V4L2_FMT_FLAG_CSC_QUANTIZATION
+	FmtDescFlagCompressed                  FmtDescFlag = 0x0001                    // V4L2_FMT_FLAG_COMPRESSED
+	FmtDescFlagEmulated                    FmtDescFlag = 0x0002                    // V4L2_FMT_FLAG_EMULATED
+	FmtDescFlagContinuousBytestream        FmtDescFlag = 0x0004                    // V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
+	FmtDescFlagDynResolution               FmtDescFlag = 0x0008                    // V4L2_FMT_FLAG_DYN_RESOLUTION
+	FmtDescFlagEncodedCaptureFrameInterval FmtDescFlag = 0x0010                    //  V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
+	FmtDescFlagConfigColorspace            FmtDescFlag = 0x0020                    //  V4L2_FMT_FLAG_CSC_COLORSPACE
+	FmtDescFlagConfigXferFunc              FmtDescFlag = 0x0040                    // V4L2_FMT_FLAG_CSC_XFER_FUNC
+	FmtDescFlagConfigYcbcrEnc              FmtDescFlag = 0x0080                    //  V4L2_FMT_FLAG_CSC_YCBCR_ENC
+	FmtDescFlagConfigHsvEnc                FmtDescFlag = FmtDescFlagConfigYcbcrEnc // V4L2_FMT_FLAG_CSC_HSV_ENC
+	FmtDescFlagConfigQuantization          FmtDescFlag = 0x0100                    // V4L2_FMT_FLAG_CSC_QUANTIZATION
 )
+
+var FormatDescriptionFlags = map[FmtDescFlag]string{
+	FmtDescFlagCompressed:                  "Compressed",
+	FmtDescFlagEmulated:                    "Emulated",
+	FmtDescFlagContinuousBytestream:        "Continuous bytestream",
+	FmtDescFlagDynResolution:               "Dynamic resolution",
+	FmtDescFlagEncodedCaptureFrameInterval: "Encoded capture frame interval",
+	FmtDescFlagConfigColorspace:            "Colorspace update supported",
+	FmtDescFlagConfigXferFunc:              "Transfer func update supported",
+	FmtDescFlagConfigYcbcrEnc:              "YCbCr/HSV update supported",
+	FmtDescFlagConfigQuantization:          "Quantization update supported",
+}
 
 // v4l2FormatDesc  (v4l2_fmtdesc)
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L784
@@ -75,14 +86,12 @@ func (d FormatDescription) GetBusCode() uint32 {
 	return d.mbusCode
 }
 
-// GetFrameSize return the supported frame size for the format in description.
-// NOTE: This method must be used on a FormatDescription value that was created
-// with a call to GetFormatDescription or GetAllFormatDescriptions.
-func (d FormatDescription) GetFrameSize() (FrameSize, error) {
+// GetFrameSizes return all supported frame sizes for the format description.
+func (d FormatDescription) GetFrameSizes() ([]FrameSize, error) {
 	if d.fd == 0 {
-		return FrameSize{}, fmt.Errorf("invalid file descriptor")
+		return nil, fmt.Errorf("invalid file descriptor")
 	}
-	return GetFormatFrameSize(d.fd, d.index, d.pixelFormat)
+	return GetFormatFrameSizes(d.fd, d.pixelFormat)
 }
 
 // GetFormatDescription returns a device format description at index
@@ -104,13 +113,28 @@ func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error
 	for {
 		desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
 		if err = Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
-			errno := err.(sys.Errno)
-			if errno.Is(sys.EINVAL) && len(result) > 0 {
+			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break
 			}
+			return result, fmt.Errorf("format desc: all: %w", err)
 		}
 		result = append(result, FormatDescription{fd: fd, v4l2FormatDesc: desc})
 		index++
 	}
-	return result, err
+	return result, nil
+}
+
+// GetFormatDescriptionByEncoding returns a FormatDescription that matches the specified encoded pixel format
+func GetFormatDescriptionByEncoding(fd uintptr, enc FourCCEncoding)(FormatDescription, error) {
+	descs, err := GetAllFormatDescriptions(fd)
+	if err != nil {
+		return FormatDescription{}, fmt.Errorf("format desc: encoding %s: %s", PixelFormats[enc], err)
+	}
+	for _, desc := range descs {
+		if desc.GetPixelFormat() == enc{
+			return desc, nil
+		}
+	}
+
+	return FormatDescription{}, fmt.Errorf("format desc: driver does not support encoding %d", enc)
 }

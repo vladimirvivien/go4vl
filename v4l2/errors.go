@@ -15,9 +15,9 @@ var (
 
 func parseErrorType(errno sys.Errno) error {
 	switch errno {
-	case sys.EBADF, sys.ENOMEM, sys.ENODEV, sys.EIO, sys.ENXIO: // structural, terminal
+	case sys.EBADF, sys.ENOMEM, sys.ENODEV, sys.EIO, sys.ENXIO, sys.EFAULT: // structural, terminal
 	return ErrorSystem
-	case sys.EFAULT, sys.EINVAL: // bad argument, terminal
+	case sys.EINVAL: // bad argument
 	return ErrorBadArgument
 	case sys.ENOTTY: // unsupported
 	return ErrorUnsupported

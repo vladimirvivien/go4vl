@@ -87,6 +87,7 @@ var (
 	VidiocDequeueBuf     = iocEncRW('V', 17, unsafe.Sizeof(BufferInfo{}))        // Represents command VIDIOC_DQBUF
 	VidiocStreamOn       = iocEncW('V', 18, unsafe.Sizeof(int32(0)))             // Represents command VIDIOC_STREAMON
 	VidiocStreamOff      = iocEncW('V', 19, unsafe.Sizeof(int32(0)))             // Represents command VIDIOC_STREAMOFF
+	VidiocGetParam       = iocEncRW('V', 21, unsafe.Sizeof(v4l2StreamParam{}))   // Represents command VIDIOC_G_PARM
 	VidiocEnumInput      = iocEncRW('V', 26, unsafe.Sizeof(v4l2InputInfo{}))     // Represents command VIDIOC_ENUMINPUT
 	VidiocGetVideoInput  = iocEncR('V', 38, unsafe.Sizeof(int32(0)))             // Represents command VIDIOC_G_INPUT
 	VidiocCropCap        = iocEncRW('V', 58, unsafe.Sizeof(CropCapability{}))    // Represents command VIDIOC_CROPCAP
