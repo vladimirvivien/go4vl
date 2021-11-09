@@ -267,9 +267,24 @@ type PixFormat struct {
 	XferFunc     XferFunctionType
 }
 
+func (f PixFormat) String() string {
+	return fmt.Sprintf(
+		"%s [%dx%d]; field=%s; bytes per line=%d; size image=%d; colorspace=%s; YCbCr=%s; Quant=%s; XferFunc=%s",
+		PixelFormats[f.PixelFormat],
+		f.Width, f.Height,
+		Fields[f.Field],
+		f.BytesPerLine,
+		f.SizeImage,
+		Colorspaces[f.Colorspace],
+		YCbCrEncodings[f.YcbcrEnc],
+		Quantizations[f.Quantization],
+		XferFunctions[f.XferFunc],
+	)
+}
+
 // v4l2Format (v4l2_format)
 // https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/vidioc-g-fmt.html?highlight=v4l2_format
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2303
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
 //
 // field fmt is a union, thus it's constructed as an appropriately sized array:
 //
@@ -292,21 +307,21 @@ type v4l2Format struct {
 }
 
 // getPixFormat returns the PixFormat by casting the pointer to the union type
-func (f v4l2Format) getPixFormat() PixFormat {
+func (f *v4l2Format) getPixFormat() PixFormat {
 	pixfmt := (*PixFormat)(unsafe.Pointer(&f.fmt[0]))
 	return *pixfmt
 }
 
 // setPixFormat sets the PixFormat by casting the pointer to the fmt union and set its value
-func (f v4l2Format) setPixFormat(newPix PixFormat) {
-	*(*PixFormat)(unsafe.Pointer(&f.fmt[0])) = newPix
+func (f *v4l2Format) setPixFormat(newPix PixFormat) {
+	f.fmt = *(*[200]byte)(unsafe.Pointer(&newPix))
 }
 
 // GetPixFormat retrieves pixel information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
 func GetPixFormat(fd uintptr) (PixFormat, error) {
-	format := v4l2Format{StreamType: BufTypeVideoCapture}
-	if err := Send(fd, VidiocGetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
+	format := &v4l2Format{StreamType: BufTypeVideoCapture}
+	if err := Send(fd, VidiocGetFormat, uintptr(unsafe.Pointer(format))); err != nil {
 		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
 	}
 
@@ -316,10 +331,9 @@ func GetPixFormat(fd uintptr) (PixFormat, error) {
 // SetPixFormat sets the pixel format information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
 func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
-	format := v4l2Format{StreamType: BufTypeVideoCapture}
+	format := &v4l2Format{StreamType: BufTypeVideoCapture}
 	format.setPixFormat(pixFmt)
-
-	if err := Send(fd, VidiocSetFormat, uintptr(unsafe.Pointer(&format))); err != nil {
+	if err := Send(fd, VidiocSetFormat, uintptr(unsafe.Pointer(format))); err != nil {
 		return fmt.Errorf("pix format failed: %w", err)
 	}
 	return nil

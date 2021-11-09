@@ -8,14 +8,17 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/vladimirvivien/go4vl/imgsupport"
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
 var (
 	frames <-chan []byte
 	fps    uint32 = 30
+	pixfmt v4l2.FourCCEncoding
 )
 
 // servePage reads templated HTML
@@ -56,9 +59,22 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 		io.WriteString(w, fmt.Sprintf("Content-Length: %d\n\n", len(frame)))
 
 		// write frame
-		if _, err := w.Write(frame); err != nil {
-			log.Printf("failed to write image: %s", err)
-			return
+		switch pixfmt {
+		case v4l2.PixelFmtMJPEG:
+			if _, err := w.Write(frame); err != nil {
+				log.Printf("failed to write image: %s", err)
+				return
+			}
+		case v4l2.PixelFmtYUYV:
+			data, err := imgsupport.Yuyv2Jpeg(640, 480, frame)
+			if err != nil {
+				log.Printf("failed to convert yuyv to jpeg: %s", err)
+				continue
+			}
+			if _, err := w.Write(data); err != nil {
+				log.Printf("failed to write image: %s", err)
+				return
+			}
 		}
 		// close boundary
 		if _, err := io.WriteString(w, "\n"); err != nil {
@@ -71,9 +87,42 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 func main() {
 	port := ":9090"
 	devName := "/dev/video0"
+	defaultDev, err := v4l2.Open(devName)
+	skipDefault := false
+	if err != nil {
+		skipDefault = true
+	}
+
+	width := 640
+	height := 480
+	format := "yuyv"
+	if !skipDefault {
+		pix, err := defaultDev.GetPixFormat()
+		if err == nil {
+			width = int(pix.Width)
+			height = int(pix.Height)
+			switch pix.PixelFormat {
+			case v4l2.PixelFmtMJPEG:
+				format = "mjpeg"
+			case v4l2.PixelFmtH264:
+				format = "h264"
+			default:
+				format = "yuyv"
+			}
+		}
+	}
+
 	flag.StringVar(&devName, "d", devName, "device name (path)")
+	flag.IntVar(&width, "w", width, "capture width")
+	flag.IntVar(&height, "h", height, "capture height")
+	flag.StringVar(&format, "f", format, "pixel format")
 	flag.StringVar(&port, "p", port, "webcam service port")
 	flag.Parse()
+
+	// close device used for default info
+	if err := defaultDev.Close(); err != nil {
+		// default device failed to close
+	}
 
 	// open device and setup device
 	device, err := v4l2.Open(devName)
@@ -89,17 +138,23 @@ func main() {
 	log.Printf("device info: %s", caps.String())
 
 	// set device format
-	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width:       640,
-		Height:      480,
-		PixelFormat: v4l2.PixelFmtMJPEG,
-		Field:       v4l2.FieldNone,
-	}); err != nil {
+	currFmt, err := device.GetPixFormat()
+	if err != nil {
+		log.Fatalf("unable to get format: %s", err)
+	}
+	log.Printf("Current format: %s", currFmt)
+	if err := device.SetPixFormat(updateFormat(currFmt, format, width, height)); err != nil {
 		log.Fatalf("failed to set format: %s", err)
 	}
+	currFmt, err = device.GetPixFormat()
+	if err != nil {
+		log.Fatalf("unable to get format: %s", err)
+	}
+	pixfmt = currFmt.PixelFormat
+	log.Printf("Updated format: %s", currFmt)
 
 	// Setup and start stream capture
-	if err := device.StartStream(15); err != nil {
+	if err := device.StartStream(2); err != nil {
 		log.Fatalf("unable to start stream: %s", err)
 	}
 
@@ -126,4 +181,20 @@ func main() {
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func updateFormat(pix v4l2.PixFormat, fmtStr string, w, h int) v4l2.PixFormat {
+	pix.Width = uint32(w)
+	pix.Height = uint32(h)
+
+	switch strings.ToLower(fmtStr) {
+	case "mjpeg", "jpeg":
+		pix.PixelFormat = v4l2.PixelFmtMJPEG
+	case "h264", "h.264":
+		pix.PixelFormat = v4l2.PixelFmtH264
+	case "yuyv":
+		pix.PixelFormat = v4l2.PixelFmtYUYV
+	}
+
+	return pix
 }
