@@ -1,7 +1,10 @@
-# Example: capture with V4L2 directly
+# Example: using handcrafted types (Deprecated) 
 :warning: 
 
-This example is here to illustrate the complexity of v4l2.
+This example is here to illustrate the complexity of v4l2 when using hand-crafted 
+Go types to communicate with the driver.  This approach was abandoned in favor of 
+cgo-generated types (see v4l2 package) for stability.
+
 Do not use it. 
 
 If you want to play around with image capture, use the 

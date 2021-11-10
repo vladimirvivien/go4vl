@@ -1,5 +1,8 @@
 package v4l2
 
+// #include <linux/videodev2.h>
+import "C"
+
 import (
 	"fmt"
 	"unsafe"
@@ -9,42 +12,41 @@ import (
 // see https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L451
 
 const (
-	CapVideoCapture       = 0x00000001 // V4L2_CAP_VIDEO_CAPTURE
-	CapVideoOutput        = 0x00000002 // V4L2_CAP_VIDEO_OUTPUT
-	CapVideoOverlay       = 0x00000004 // V4L2_CAP_VIDEO_OVERLAY
-	CapVBICapture         = 0x00000010 // V4L2_CAP_VBI_CAPTURE
-	CapVBIOutput          = 0x00000020 // V4L2_CAP_VBI_OUTPUT
-	CapSlicedVBICapture   = 0x00000040 // V4L2_CAP_SLICED_VBI_CAPTURE
-	CapSlicedVBIOutput    = 0x00000080 // V4L2_CAP_SLICED_VBI_OUTPUT
-	CapRDSCapture         = 0x00000100 // V4L2_CAP_RDS_CAPTURE
-	CapVideoOutputOverlay = 0x00000200 // V4L2_CAP_VIDEO_OUTPUT_OVERLAY
-	CapHWFrequencySeek    = 0x00000400 // V4L2_CAP_HW_FREQ_SEEK
-	CapRDSOutput          = 0x00000800 // V4L2_CAP_RDS_OUTPUT
+	CapVideoCapture       uint32 = C.V4L2_CAP_VIDEO_CAPTURE
+	CapVideoOutput        uint32 = C.V4L2_CAP_VIDEO_OUTPUT
+	CapVideoOverlay       uint32 = C.V4L2_CAP_VIDEO_OVERLAY
+	CapVBICapture         uint32 = C.V4L2_CAP_VBI_CAPTURE
+	CapVBIOutput          uint32 = C.V4L2_CAP_VBI_OUTPUT
+	CapSlicedVBICapture   uint32 = C.V4L2_CAP_SLICED_VBI_CAPTURE
+	CapSlicedVBIOutput    uint32 = C.V4L2_CAP_SLICED_VBI_OUTPUT
+	CapRDSCapture         uint32 = C.V4L2_CAP_RDS_CAPTURE
+	CapVideoOutputOverlay uint32 = C.V4L2_CAP_VIDEO_OUTPUT_OVERLAY
+	CapHWFrequencySeek    uint32 = C.V4L2_CAP_HW_FREQ_SEEK
+	CapRDSOutput          uint32 = C.V4L2_CAP_RDS_OUTPUT
 
-	CapVideoCaptureMPlane = 0x00001000 // V4L2_CAP_VIDEO_CAPTURE_MPLANE
-	CapVideoOutputMPlane  = 0x00002000 // V4L2_CAP_VIDEO_OUTPUT_MPLANE
-	CapVideoMem2MemMPlane = 0x00004000 // V4L2_CAP_VIDEO_M2M_MPLANE
-	CapVideoMem2Mem       = 0x00008000 // V4L2_CAP_VIDEO_M2M
+	CapVideoCaptureMPlane uint32 = C.V4L2_CAP_VIDEO_CAPTURE_MPLANE
+	CapVideoOutputMPlane  uint32 = C.V4L2_CAP_VIDEO_OUTPUT_MPLANE
+	CapVideoMem2MemMPlane uint32 = C.V4L2_CAP_VIDEO_M2M_MPLANE
+	CapVideoMem2Mem       uint32 = C.V4L2_CAP_VIDEO_M2M
 
-	CapTuner     = 0x00010000 // V4L2_CAP_TUNER
-	CapAudio     = 0x00020000 // V4L2_CAP_AUDIO
-	CapRadio     = 0x00040000 // V4L2_CAP_RADIO
-	CapModulator = 0x00080000 // V4L2_CAP_MODULATOR
+	CapTuner     uint32 = C.V4L2_CAP_TUNER
+	CapAudio     uint32 = C.V4L2_CAP_AUDIO
+	CapRadio     uint32 = C.V4L2_CAP_RADIO
+	CapModulator uint32 = C.V4L2_CAP_MODULATOR
 
-	CapSDRCapture        = 0x00100000 // V4L2_CAP_SDR_CAPTURE
-	CapExtendedPixFormat = 0x00200000 // V4L2_CAP_EXT_PIX_FORMAT
-	CapSDROutput         = 0x00400000 // V4L2_CAP_SDR_OUTPUT
-	CapMetadataCapture   = 0x00800000 // V4L2_CAP_META_CAPTURE
+	CapSDRCapture        uint32 = C.V4L2_CAP_SDR_CAPTURE
+	CapExtendedPixFormat uint32 = C.V4L2_CAP_EXT_PIX_FORMAT
+	CapSDROutput         uint32 = C.V4L2_CAP_SDR_OUTPUT
+	CapMetadataCapture   uint32 = C.V4L2_CAP_META_CAPTURE
 
-	CapReadWrite      = 0x01000000 // V4L2_CAP_READWRITE
-	CapAsyncIO        = 0x02000000 // V4L2_CAP_ASYNCIO
-	CapStreaming      = 0x04000000 // V4L2_CAP_STREAMING
-	CapMetadataOutput = 0x08000000 // V4L2_CAP_META_OUTPUT
+	CapReadWrite uint32 = C.V4L2_CAP_READWRITE
+	CapAsyncIO   uint32 = C.V4L2_CAP_ASYNCIO
+	CapStreaming uint32 = C.V4L2_CAP_STREAMING
 
-	CapTouch             = 0x10000000 // V4L2_CAP_TOUCH
-	CapIOMediaController = 0x20000000 // V4L2_CAP_IO_MC
-
-	CapDeviceCapabilities = 0x80000000 // V4L2_CAP_DEVICE_CAPS
+	CapMetadataOutput     uint32 = C.V4L2_CAP_META_OUTPUT
+	CapTouch              uint32 = C.V4L2_CAP_TOUCH
+	CapIOMediaController  uint32 = C.V4L2_CAP_IO_MC
+	CapDeviceCapabilities uint32 = C.V4L2_CAP_DEVICE_CAPS
 )
 
 type CapabilityDesc struct {
@@ -93,87 +95,84 @@ var (
 	}
 )
 
-// v4l2Capability type for device (see v4l2_capability)
-// This type stores the capability information returned by the device.
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querycap.html#c.V4L.v4l2_capability
-// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L440
-type v4l2Capability struct {
-	driver       [16]uint8
-	card         [32]uint8
-	busInfo      [32]uint8
-	version      uint32
-	capabilities uint32
-	deviceCaps   uint32
-	reserved     [3]uint32
-}
-
-// Capability represents capabilities retrieved for the device.
+// Capability represents capabilities retrieved for the device (see v4l2_capability).
 // Use attached methods on this type to access capabilities.
-// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querycap.html#c.V4L.v4l2_capability
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L440
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querycap.html#c.V4L.v4l2_capability
 type Capability struct {
-	v4l2Cap v4l2Capability
+	// Driver name of the driver module
+	Driver string
+
+	// Card name of the device card
+	Card string
+
+	// BusInfo is the name of the device bus
+	BusInfo string 
+
+	// Version is the kernel version
+	Version uint32
+
+	// Capabilities returns all exported capabilities for the physical device (opened or not)
+	Capabilities uint32
+
+	// DeviceCapabilities is the capability for this particular (opened) device or node
+	DeviceCapabilities uint32 
 }
 
 // GetCapability retrieves capability info for device
 func GetCapability(fd uintptr) (Capability, error) {
-	v4l2Cap := v4l2Capability{}
-	if err := Send(fd, VidiocQueryCap, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
+	var v4l2Cap C.struct_v4l2_capability
+	if err := send(fd, C.VIDIOC_QUERYCAP, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
 		return Capability{}, fmt.Errorf("capability: %w", err)
 	}
-	return Capability{v4l2Cap: v4l2Cap}, nil
-}
-
-// GetCapabilities returns the capability mask as a union of
-// all exported capabilities for the physical device (opened or not).
-// Use this method to access capabilities.
-func (c Capability) GetCapabilities() uint32 {
-	return c.v4l2Cap.capabilities
-}
-
-// GetDeviceCaps returns the capability mask for the open device.
-// This is a subset of capabilities returned by GetCapabilities.
-func (c Capability) GetDeviceCaps() uint32 {
-	return c.v4l2Cap.deviceCaps
+	return Capability{
+		Driver:             C.GoString((*C.char)(&v4l2Cap.driver[0])),
+		Card:               C.GoString((*C.char)(&v4l2Cap.card[0])),
+		BusInfo:            C.GoString((*C.char)(&v4l2Cap.bus_info[0])),
+		Version:            uint32(v4l2Cap.version),
+		Capabilities:       uint32(v4l2Cap.capabilities),
+		DeviceCapabilities: uint32(v4l2Cap.device_caps),
+	}, nil
 }
 
 // IsVideoCaptureSupported returns caps & CapVideoCapture
 func (c Capability) IsVideoCaptureSupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoCapture) != 0
+	return (uint32(c.Capabilities) & CapVideoCapture) != 0
 }
 
 // IsVideoOutputSupported returns caps & CapVideoOutput
 func (c Capability) IsVideoOutputSupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoOutput) != 0
+	return (uint32(c.Capabilities) & CapVideoOutput) != 0
 }
 
 // IsVideoOverlaySupported returns caps & CapVideoOverlay
 func (c Capability) IsVideoOverlaySupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoOverlay) != 0
+	return (uint32(c.Capabilities) & CapVideoOverlay) != 0
 }
 
 // IsVideoOutputOverlaySupported returns caps & CapVideoOutputOverlay
 func (c Capability) IsVideoOutputOverlaySupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoOutputOverlay) != 0
+	return (uint32(c.Capabilities) & CapVideoOutputOverlay) != 0
 }
 
 // IsVideoCaptureMultiplanarSupported returns caps & CapVideoCaptureMPlane
 func (c Capability) IsVideoCaptureMultiplanarSupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoCaptureMPlane) != 0
+	return (uint32(c.Capabilities) & CapVideoCaptureMPlane) != 0
 }
 
 // IsVideoOutputMultiplanerSupported returns caps & CapVideoOutputMPlane
 func (c Capability) IsVideoOutputMultiplanerSupported() bool {
-	return (c.v4l2Cap.capabilities & CapVideoOutputMPlane) != 0
+	return (uint32(c.Capabilities) & CapVideoOutputMPlane) != 0
 }
 
 // IsReadWriteSupported returns caps & CapReadWrite
 func (c Capability) IsReadWriteSupported() bool {
-	return (c.v4l2Cap.capabilities & CapReadWrite) != 0
+	return (uint32(c.Capabilities) & CapReadWrite) != 0
 }
 
 // IsStreamingSupported returns caps & CapStreaming
 func (c Capability) IsStreamingSupported() bool {
-	return (c.v4l2Cap.capabilities & CapStreaming) != 0
+	return (uint32(c.Capabilities) & CapStreaming) != 0
 }
 
 // IsDeviceCapabilitiesProvided returns true if the device returns
@@ -181,14 +180,14 @@ func (c Capability) IsStreamingSupported() bool {
 // See notes on VL42_CAP_DEVICE_CAPS:
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-querycap.html?highlight=v4l2_cap_device_caps
 func (c Capability) IsDeviceCapabilitiesProvided() bool {
-	return (c.v4l2Cap.capabilities & CapDeviceCapabilities) != 0
+	return (uint32(c.Capabilities) & CapDeviceCapabilities) != 0
 }
 
 // GetDriverCapDescriptions return textual descriptions of driver capabilities
 func (c Capability) GetDriverCapDescriptions() []CapabilityDesc {
 	var result []CapabilityDesc
 	for _, cap := range Capabilities {
-		if c.GetCapabilities() & cap.Cap == cap.Cap {
+		if c.Capabilities&cap.Cap == cap.Cap {
 			result = append(result, cap)
 		}
 	}
@@ -199,34 +198,18 @@ func (c Capability) GetDriverCapDescriptions() []CapabilityDesc {
 func (c Capability) GetDeviceCapDescriptions() []CapabilityDesc {
 	var result []CapabilityDesc
 	for _, cap := range Capabilities {
-		if c.GetDeviceCaps() & cap.Cap == cap.Cap {
+		if c.DeviceCapabilities&cap.Cap == cap.Cap {
 			result = append(result, cap)
 		}
 	}
 	return result
 }
 
-// DriverName returns a string value for the driver name
-func (c Capability) DriverName() string {
-	return toGoString(c.v4l2Cap.driver[:])
-}
-
-// CardName returns a string value for device's card
-func (c Capability) CardName() string {
-	return toGoString(c.v4l2Cap.card[:])
-}
-
-// BusInfo returns the device's bus info
-func (c Capability) BusInfo() string {
-	return toGoString(c.v4l2Cap.busInfo[:])
-}
-
-// GetVersion returns the device's version
-func (c Capability) GetVersion() uint32 {
-	return c.v4l2Cap.version
+func (c Capability) GetVersionInfo() VersionInfo {
+	return VersionInfo{value: c.Version}
 }
 
 // String returns a string value representing driver information
 func (c Capability) String() string {
-	return fmt.Sprintf("driver: %s; card: %s; bus info: %s", c.DriverName(), c.CardName(), c.BusInfo())
+	return fmt.Sprintf("driver: %s; card: %s; bus info: %s", c.Driver, c.Card, c.BusInfo)
 }

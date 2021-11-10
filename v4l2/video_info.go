@@ -1,9 +1,13 @@
 package v4l2
 
+// #include <linux/videodev2.h>
+import "C"
+
 import (
 	"fmt"
-	sys "golang.org/x/sys/unix"
 	"unsafe"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // InputStatus
@@ -11,9 +15,9 @@ import (
 type InputStatus = uint32
 
 var (
-	InputStatusNoPower  = InputStatus(0x00000001) // V4L2_IN_ST_NO_POWER
-	InputStatusNoSignal = InputStatus(0x00000002) // V4L2_IN_ST_NO_SIGNAL
-	InputStatusNoColor  = InputStatus(0x00000004) // V4L2_IN_ST_NO_COLOR
+	InputStatusNoPower  InputStatus = C.V4L2_IN_ST_NO_POWER
+	InputStatusNoSignal InputStatus = C.V4L2_IN_ST_NO_SIGNAL
+	InputStatusNoColor  InputStatus  = C.V4L2_IN_ST_NO_COLOR
 )
 
 var InputStatuses = map[InputStatus]string{
@@ -33,63 +37,50 @@ const (
 
 type StandardId = uint64
 
-type v4l2InputInfo struct {
-	index        uint32
-	name         [32]uint8
-	inputType    InputType
-	audioset     uint32
-	tuner        uint32
-	std          StandardId
-	status       InputStatus
-	capabilities uint32
-	reserved     [3]uint32
-	_            [4]uint8 // go compiler alignment adjustment for 32-bit platforms (Raspberry pi's, etc)
-}
-
 // InputInfo (v4l2_input)
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1649
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enuminput.html
 type InputInfo struct {
-	v4l2InputInfo
+	v4l2Input C.struct_v4l2_input
 }
 
 func (i InputInfo) GetIndex() uint32 {
-	return i.index
+	return uint32(i.v4l2Input.index)
 }
 
 func (i InputInfo) GetName() string {
-	return toGoString(i.name[:])
+	return C.GoString((*C.char)(&i.v4l2Input.name[0]))
 }
 
 func (i InputInfo) GetInputType() InputType {
-	return i.inputType
+	return InputType(i.v4l2Input._type)
 }
 
 func (i InputInfo) GetAudioset() uint32 {
-	return i.audioset
+	return uint32(i.v4l2Input.audioset)
 }
 
 func (i InputInfo) GetTuner() uint32 {
-	return i.tuner
+	return uint32(i.v4l2Input.tuner)
 }
 
 func (i InputInfo) GetStandardId() StandardId {
-	return i.std
+	return StandardId(i.v4l2Input.std)
 }
 
 func (i InputInfo) GetStatus() uint32 {
-	return i.status
+	return uint32(i.v4l2Input.status)
 }
 
 func (i InputInfo) GetCapabilities() uint32 {
-	return i.capabilities
+	return uint32(i.v4l2Input.capabilities)
 }
 
 // GetCurrentVideoInputIndex returns the currently selected video input index
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-input.html
 func GetCurrentVideoInputIndex(fd uintptr) (int32, error) {
 	var index int32
-	if err := Send(fd, VidiocGetVideoInput, uintptr(unsafe.Pointer(&index))); err != nil {
+	if err := send(fd, C.VIDIOC_G_INPUT, uintptr(unsafe.Pointer(&index))); err != nil {
 		return -1, fmt.Errorf("video input get: %w", err)
 	}
 	return index, nil
@@ -98,11 +89,12 @@ func GetCurrentVideoInputIndex(fd uintptr) (int32, error) {
 // GetVideoInputInfo returns specified input information for video device
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enuminput.html
 func GetVideoInputInfo(fd uintptr, index uint32) (InputInfo, error) {
-	input := v4l2InputInfo{index: index}
-	if err := Send(fd, VidiocEnumInput, uintptr(unsafe.Pointer(&input))); err != nil {
+	var input C.struct_v4l2_input
+	input.index = C.uint(index)
+	if err := send(fd, C.VIDIOC_ENUMINPUT, uintptr(unsafe.Pointer(&input))); err != nil {
 		return InputInfo{}, fmt.Errorf("video input info: index %d: %w", index, err)
 	}
-	return InputInfo{v4l2InputInfo: input}, nil
+	return InputInfo{v4l2Input: input}, nil
 }
 
 // GetAllVideoInputInfo returns all input information for device by
@@ -110,15 +102,16 @@ func GetVideoInputInfo(fd uintptr, index uint32) (InputInfo, error) {
 func GetAllVideoInputInfo(fd uintptr) (result []InputInfo, err error) {
 	index := uint32(0)
 	for {
-		input := v4l2InputInfo{index: index}
-		if err = Send(fd, VidiocEnumInput, uintptr(unsafe.Pointer(&input))); err != nil {
+		var input C.struct_v4l2_input
+		input.index = C.uint(index)
+		if err = send(fd, C.VIDIOC_ENUMINPUT, uintptr(unsafe.Pointer(&input))); err != nil {
 			errno := err.(sys.Errno)
 			if errno.Is(sys.EINVAL) && len(result) > 0 {
 				break
 			}
 			return result, fmt.Errorf("all video info: %w", err)
 		}
-		result = append(result, InputInfo{v4l2InputInfo: input})
+		result = append(result, InputInfo{v4l2Input: input})
 		index++
 	}
 	return result, err

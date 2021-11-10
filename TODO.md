@@ -7,3 +7,4 @@ A general list (of no implied order) of high level tasks for the project.
 * [ ] Support for YUYV conversion
 * [ ] Set and query device controls
 * [ ] Support for User pointer and other stream mode
+* [x] Use cgo-generated Go types to avoid alignment bugs

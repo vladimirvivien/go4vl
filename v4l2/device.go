@@ -165,7 +165,7 @@ func (d *Device) StartStream(buffSize uint32) error {
 	}
 
 	// allocate device buffers
-	bufReq, err := AllocateBuffers(d.fd, buffSize)
+	bufReq, err := InitBuffers(d.fd, buffSize)
 	if err != nil {
 		return fmt.Errorf("device: start stream: %w", err)
 	}
@@ -175,16 +175,16 @@ func (d *Device) StartStream(buffSize uint32) error {
 	bufCount := int(d.requestedBuf.Count)
 	d.buffers = make([][]byte, d.requestedBuf.Count)
 	for i := 0; i < bufCount; i++ {
-		bufInfo, err := GetBufferInfo(d.fd, uint32(i))
+		buffer, err := GetBuffer(d.fd, uint32(i))
 		if err != nil {
-			return fmt.Errorf("device: start stream: %w", err)
+			return fmt.Errorf("device start stream: %w", err)
 		}
 
-		offset := bufInfo.GetService().Offset
-		length := bufInfo.Length
+		offset := buffer.Info.Offset
+		length := buffer.Length
 		mappedBuf, err := MapMemoryBuffer(d.fd, int64(offset), int(length))
 		if err != nil {
-			return fmt.Errorf("device: start stream: %w", err)
+			return fmt.Errorf("device start stream: %w", err)
 		}
 		d.buffers[i] = mappedBuf
 	}
@@ -193,13 +193,13 @@ func (d *Device) StartStream(buffSize uint32) error {
 	for i := 0; i < bufCount; i++ {
 		_, err := QueueBuffer(d.fd, uint32(i))
 		if err != nil {
-			return fmt.Errorf("device: start stream: %w", err)
+			return fmt.Errorf("device start stream: %w", err)
 		}
 	}
 
 	// turn on device stream
 	if err := StreamOn(d.fd); err != nil {
-		return fmt.Errorf("device: start stream: %w", err)
+		return fmt.Errorf("device start stream: %w", err)
 	}
 
 	d.streaming = true

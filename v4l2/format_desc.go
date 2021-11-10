@@ -1,5 +1,10 @@
 package v4l2
 
+/*
+#include <linux/videodev2.h>
+*/
+import "C"
+
 import (
 	"errors"
 	"fmt"
@@ -12,16 +17,16 @@ import (
 type FmtDescFlag = uint32
 
 const (
-	FmtDescFlagCompressed                  FmtDescFlag = 0x0001                    // V4L2_FMT_FLAG_COMPRESSED
-	FmtDescFlagEmulated                    FmtDescFlag = 0x0002                    // V4L2_FMT_FLAG_EMULATED
-	FmtDescFlagContinuousBytestream        FmtDescFlag = 0x0004                    // V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
-	FmtDescFlagDynResolution               FmtDescFlag = 0x0008                    // V4L2_FMT_FLAG_DYN_RESOLUTION
-	FmtDescFlagEncodedCaptureFrameInterval FmtDescFlag = 0x0010                    //  V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
-	FmtDescFlagConfigColorspace            FmtDescFlag = 0x0020                    //  V4L2_FMT_FLAG_CSC_COLORSPACE
-	FmtDescFlagConfigXferFunc              FmtDescFlag = 0x0040                    // V4L2_FMT_FLAG_CSC_XFER_FUNC
-	FmtDescFlagConfigYcbcrEnc              FmtDescFlag = 0x0080                    //  V4L2_FMT_FLAG_CSC_YCBCR_ENC
-	FmtDescFlagConfigHsvEnc                FmtDescFlag = FmtDescFlagConfigYcbcrEnc // V4L2_FMT_FLAG_CSC_HSV_ENC
-	FmtDescFlagConfigQuantization          FmtDescFlag = 0x0100                    // V4L2_FMT_FLAG_CSC_QUANTIZATION
+	FmtDescFlagCompressed                  FmtDescFlag = C.V4L2_FMT_FLAG_COMPRESSED
+	FmtDescFlagEmulated                    FmtDescFlag = C.V4L2_FMT_FLAG_EMULATED
+	FmtDescFlagContinuousBytestream        FmtDescFlag = C.V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
+	FmtDescFlagDynResolution               FmtDescFlag = C.V4L2_FMT_FLAG_DYN_RESOLUTION
+	FmtDescFlagEncodedCaptureFrameInterval FmtDescFlag = C.V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
+	FmtDescFlagConfigColorspace            FmtDescFlag = C.V4L2_FMT_FLAG_CSC_COLORSPACE
+	FmtDescFlagConfigXferFunc              FmtDescFlag = C.V4L2_FMT_FLAG_CSC_XFER_FUNC
+	FmtDescFlagConfigYcbcrEnc              FmtDescFlag = C.V4L2_FMT_FLAG_CSC_YCBCR_ENC
+	FmtDescFlagConfigHsvEnc                FmtDescFlag = C.V4L2_FMT_FLAG_CSC_HSV_ENC
+	FmtDescFlagConfigQuantization          FmtDescFlag = C.V4L2_FMT_FLAG_CSC_QUANTIZATION
 )
 
 var FormatDescriptionFlags = map[FmtDescFlag]string{
@@ -36,72 +41,55 @@ var FormatDescriptionFlags = map[FmtDescFlag]string{
 	FmtDescFlagConfigQuantization:          "Quantization update supported",
 }
 
-// v4l2FormatDesc  (v4l2_fmtdesc)
+// FormatDescription  (v4l2_fmtdesc) provides access to the device format description
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L784
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-fmt.html
-type v4l2FormatDesc struct {
-	index       uint32  // format number
-	bufType     BufType // stream type BufType
-	flags       FmtDescFlag
-	description [32]uint8      // string description
-	pixelFormat FourCCEncoding // Format fourcc value
-	mbusCode    uint32         // media bus code
-	reserved    [3]uint32
-}
-
-// FormatDescription provides access to the device format description
-// See v4l2FormatDesc
 type FormatDescription struct {
-	fd uintptr
-	v4l2FormatDesc
+	// Index returns the format number
+	Index uint32
+	// StreamType type for the buffer (see v4l2_buf_type)
+	StreamType BufType
+	// Flags is the image description flags (see FmtDescFlag)
+	Flags FmtDescFlag
+	// Description is a string value for the format description
+	Description string
+	// PixelFormat stores the four character encoding for the format
+	PixelFormat FourCCType
+	// MBusCode is the media bus code for drivers that advertise v4l2_cap_io_mc
+	MBusCode uint32
 }
 
-// GetIndex returns the format number
-func (d FormatDescription) GetIndex() uint32 {
-	return d.index
+func (d FormatDescription) String() string {
+	return fmt.Sprintf(
+		"Format: %s [index: %d, flags: %s, format:%s]",
+		d.Description,
+		d.Index,
+		FormatDescriptionFlags[d.Flags],
+		PixelFormats[d.PixelFormat],
+	)
 }
-
-// GetBufType returns the type for the buffer (see v4l2_buf_type)
-func (d FormatDescription) GetBufType() BufType {
-	return d.bufType
-}
-
-// GetFlags returns image description flags (see FmtDescFlag)
-func (d FormatDescription) GetFlags() FmtDescFlag {
-	return d.flags
-}
-
-// GetDescription returns a string value for the format description
-func (d FormatDescription) GetDescription() string {
-	return toGoString(d.description[:])
-}
-
-// GetPixelFormat returns the four character encoding for the format
-func (d FormatDescription) GetPixelFormat() FourCCEncoding {
-	return d.pixelFormat
-}
-
-// GetBusCode returns the media bus code for drivers that advertise v4l2_cap_io_mc
-func (d FormatDescription) GetBusCode() uint32 {
-	return d.mbusCode
-}
-
-// GetFrameSizes return all supported frame sizes for the format description.
-func (d FormatDescription) GetFrameSizes() ([]FrameSize, error) {
-	if d.fd == 0 {
-		return nil, fmt.Errorf("invalid file descriptor")
+func makeFormatDescription(fmtDesc C.struct_v4l2_fmtdesc) FormatDescription {
+	return FormatDescription{
+		Index:       uint32(fmtDesc.index),
+		StreamType:  uint32(fmtDesc._type),
+		Flags:       uint32(fmtDesc.flags),
+		Description: C.GoString((*C.char)(&fmtDesc.description[0])),
+		PixelFormat: uint32(fmtDesc.pixelformat),
+		MBusCode:    uint32(fmtDesc.mbus_code),
 	}
-	return GetFormatFrameSizes(d.fd, d.pixelFormat)
 }
 
 // GetFormatDescription returns a device format description at index
 func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
-	desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
-	if err := Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
+	var fmtDesc C.struct_v4l2_fmtdesc
+	fmtDesc.index = C.uint(index)
+	fmtDesc._type = C.uint(BufTypeVideoCapture)
+
+	if err := send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
 
 	}
-	return FormatDescription{fd: fd, v4l2FormatDesc: desc}, nil
+	return makeFormatDescription(fmtDesc), nil
 }
 
 // GetAllFormatDescriptions attempts to retrieve all device format descriptions by
@@ -111,27 +99,30 @@ func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
 	index := uint32(0)
 	for {
-		desc := v4l2FormatDesc{index: index, bufType: BufTypeVideoCapture}
-		if err = Send(fd, VidiocEnumFmt, uintptr(unsafe.Pointer(&desc))); err != nil {
+		var fmtDesc C.struct_v4l2_fmtdesc
+		fmtDesc.index = C.uint(index)
+		fmtDesc._type = C.uint(BufTypeVideoCapture)
+
+		if err = send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break
 			}
 			return result, fmt.Errorf("format desc: all: %w", err)
 		}
-		result = append(result, FormatDescription{fd: fd, v4l2FormatDesc: desc})
+		result = append(result, makeFormatDescription(fmtDesc))
 		index++
 	}
 	return result, nil
 }
 
 // GetFormatDescriptionByEncoding returns a FormatDescription that matches the specified encoded pixel format
-func GetFormatDescriptionByEncoding(fd uintptr, enc FourCCEncoding)(FormatDescription, error) {
+func GetFormatDescriptionByEncoding(fd uintptr, enc FourCCType) (FormatDescription, error) {
 	descs, err := GetAllFormatDescriptions(fd)
 	if err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: encoding %s: %s", PixelFormats[enc], err)
 	}
 	for _, desc := range descs {
-		if desc.GetPixelFormat() == enc{
+		if desc.PixelFormat == enc {
 			return desc, nil
 		}
 	}
