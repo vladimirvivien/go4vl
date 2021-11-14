@@ -18,7 +18,7 @@ import (
 var (
 	frames <-chan []byte
 	fps    uint32 = 30
-	pixfmt v4l2.FourCCEncoding
+	pixfmt v4l2.FourCCType
 )
 
 // servePage reads templated HTML

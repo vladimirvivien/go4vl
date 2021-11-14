@@ -16,51 +16,6 @@ import (
 	sys "golang.org/x/sys/unix"
 )
 
-// ========================= V4L2 command encoding =====================
-// https://elixir.bootlin.com/linux/v5.13-rc6/source/include/uapi/asm-generic/ioctl.h
-
-const (
-	//ioctl command layout
-	iocNone  = 0 // no op
-	iocWrite = 1 // userland app is writing, kernel reading
-	iocRead  = 2 // userland app is reading, kernel writing
-
-	iocTypeBits   = 8
-	iocNumberBits = 8
-	iocSizeBits   = 14
-	iocOpBits     = 2
-
-	numberPos = 0
-	typePos   = numberPos + iocNumberBits
-	sizePos   = typePos + iocTypeBits
-	opPos     = sizePos + iocSizeBits
-)
-
-// ioctl command encoding funcs
-func ioEnc(iocMode, iocType, number, size uintptr) uintptr {
-	return (iocMode << opPos) |
-		(iocType << typePos) |
-		(number << numberPos) |
-		(size << sizePos)
-}
-
-func ioEncR(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocRead, iocType, number, size)
-}
-
-func ioEncW(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocWrite, iocType, number, size)
-}
-
-func ioEncRW(iocType, number, size uintptr) uintptr {
-	return ioEnc(iocRead|iocWrite, iocType, number, size)
-}
-
-// four character pixel format encoding
-func fourcc(a, b, c, d uint32) uint32 {
-	return (a | b<<8) | c<<16 | d<<24
-}
-
 // wrapper for ioctl system call
 func ioctl(fd, req, arg uintptr) (err error) {
 	if _, _, errno := sys.Syscall(sys.SYS_IOCTL, fd, req, arg); errno != 0 {
@@ -114,9 +69,6 @@ func setFormat(fd uintptr, pixFmt PixFormat) error {
 	var v4l2Fmt C.struct_v4l2_format
 	v4l2Fmt._type = C.uint(BufTypeVideoCapture)
 	*(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Fmt.fmt[0])) = *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&pixFmt))
-
-	// encode command to send
-	// vidiocSetFormat := ioEncRW('V', 5, uintptr(unsafe.Sizeof(v4l2Fmt)))
 
 	// send command
 	if err := ioctl(fd, C.VIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Fmt))); err != nil {

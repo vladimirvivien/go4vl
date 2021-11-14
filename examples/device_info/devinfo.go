@@ -50,20 +50,18 @@ func printDeviceDriverInfo(dev *v4l2.Device) error {
 
 	// print driver info
 	fmt.Println("Device Info:")
-	fmt.Printf(template, "Driver name", caps.DriverName())
-	fmt.Printf(template, "Card name", caps.CardName())
-	fmt.Printf(template, "Bus info", caps.BusInfo())
+	fmt.Printf(template, "Driver name", caps.Driver)
+	fmt.Printf(template, "Card name", caps.Card)
+	fmt.Printf(template, "Bus info", caps.BusInfo)
 
-	verVal := caps.GetVersion()
-	version := fmt.Sprintf("%d.%d.%d", verVal>>16, (verVal>>8)&0xff, verVal&0xff)
-	fmt.Printf(template, "Driver version", version)
+	fmt.Printf(template, "Driver version", caps.GetVersionInfo())
 
-	fmt.Printf("\t%-16s : %0x\n", "Driver capabilities", caps.GetCapabilities())
+	fmt.Printf("\t%-16s : %0x\n", "Driver capabilities", caps.Capabilities)
 	for _, desc := range caps.GetDriverCapDescriptions() {
 		fmt.Printf("\t\t%s\n", desc.Desc)
 	}
 
-	fmt.Printf("\t%-16s : %0x\n", "Device capabilities", caps.GetCapabilities())
+	fmt.Printf("\t%-16s : %0x\n", "Device capabilities", caps.Capabilities)
 	for _, desc := range caps.GetDeviceCapDescriptions() {
 		fmt.Printf("\t\t%s\n", desc.Desc)
 	}
@@ -141,7 +139,7 @@ func printFormatDesc(dev *v4l2.Device) error {
 	}
 	fmt.Println("Supported formats:")
 	for i, desc := range descs{
-		frmSizes, err := desc.GetFrameSizes()
+		frmSizes, err := v4l2.GetFormatFrameSizes(dev.GetFileDescriptor(), desc.PixelFormat)
 		if err != nil {
 			return fmt.Errorf("format desc: %w", err)
 		}
@@ -150,8 +148,7 @@ func printFormatDesc(dev *v4l2.Device) error {
 		for _, size := range frmSizes{
 			sizeStr.WriteString(fmt.Sprintf("[%dx%d] ", size.Width, size.Height))
 		}
-		fmt.Printf(template, fmt.Sprintf("[%0d] %s", i, desc.GetDescription()), sizeStr.String())
-
+		fmt.Printf(template, fmt.Sprintf("[%0d] %s", i, desc.Description), sizeStr.String())
 	}
 	return nil
 }
