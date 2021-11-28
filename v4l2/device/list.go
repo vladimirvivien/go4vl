@@ -32,7 +32,8 @@ func IsDevice(devpath string) (bool, error) {
 	return false, nil
 }
 
-func List() ([]string, error) {
+// GetAllDevicePaths return a slice of all mounted v4l2 devices
+func GetAllDevicePaths() ([]string, error) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err

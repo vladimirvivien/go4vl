@@ -5,7 +5,7 @@ import (
 )
 
 func TestList(t *testing.T){
-	devices, err := List()
+	devices, err := GetAllDevicePaths()
 	if err != nil {
 		t.Error(err)
 	}
