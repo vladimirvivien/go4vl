@@ -1,4 +1,4 @@
-package v4l2
+package device
 
 import (
 	"context"
@@ -6,17 +6,19 @@ import (
 	"os"
 	sys "syscall"
 	"time"
+
+	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
 type Device struct {
 	path         string
 	file         *os.File
 	fd           uintptr
-	cap          *Capability
-	cropCap      *CropCapability
-	pixFormat    PixFormat
+	cap          *v4l2.Capability
+	cropCap      *v4l2.CropCapability
+	pixFormat    v4l2.PixFormat
 	buffers      [][]byte
-	requestedBuf RequestBuffers
+	requestedBuf v4l2.RequestBuffers
 	streaming    bool
 }
 
@@ -48,11 +50,11 @@ func (d *Device) GetFileDescriptor() uintptr {
 
 // GetCapability retrieves device capability info and
 // caches it for future capability check.
-func (d *Device) GetCapability() (*Capability, error) {
+func (d *Device) GetCapability() (*v4l2.Capability, error) {
 	if d.cap != nil {
 		return d.cap, nil
 	}
-	cap, err := GetCapability(d.fd)
+	cap, err := v4l2.GetCapability(d.fd)
 	if err != nil {
 		return nil, fmt.Errorf("device: %w", err)
 	}
@@ -62,74 +64,74 @@ func (d *Device) GetCapability() (*Capability, error) {
 
 // GetCropCapability returns cropping info for device `d`
 // and caches it for future capability check.
-func (d *Device) GetCropCapability() (CropCapability, error) {
+func (d *Device) GetCropCapability() (v4l2.CropCapability, error) {
 	if d.cropCap != nil {
 		return *d.cropCap, nil
 	}
 	if err := d.assertVideoCaptureSupport(); err != nil {
-		return CropCapability{}, fmt.Errorf("device: %w", err)
+		return v4l2.CropCapability{}, fmt.Errorf("device: %w", err)
 	}
 
-	cropCap, err := GetCropCapability(d.fd)
+	cropCap, err := v4l2.GetCropCapability(d.fd)
 	if err != nil {
-		return CropCapability{}, fmt.Errorf("device: %w", err)
+		return v4l2.CropCapability{}, fmt.Errorf("device: %w", err)
 	}
 	d.cropCap = &cropCap
 	return cropCap, nil
 }
 
 // SetCropRect crops the video dimension for the device
-func (d *Device) SetCropRect(r Rect) error {
+func (d *Device) SetCropRect(r v4l2.Rect) error {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
-	if err := SetCropRect(d.fd, r); err != nil {
+	if err := v4l2.SetCropRect(d.fd, r); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
 	return nil
 }
 
 // GetPixFormat retrieves pixel format info for device
-func (d *Device) GetPixFormat() (PixFormat, error) {
+func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
-		return PixFormat{}, fmt.Errorf("device: %w", err)
+		return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
 	}
-	pixFmt, err := GetPixFormat(d.fd)
+	pixFmt, err := v4l2.GetPixFormat(d.fd)
 	if err != nil {
-		return PixFormat{}, fmt.Errorf("device: %w", err)
+		return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
 	}
 	return pixFmt, nil
 }
 
 // SetPixFormat sets the pixel format for the associated device.
-func (d *Device) SetPixFormat(pixFmt PixFormat) error {
+func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
 
-	if err := SetPixFormat(d.fd, pixFmt); err != nil {
+	if err := v4l2.SetPixFormat(d.fd, pixFmt); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
 	return nil
 }
 
 // GetFormatDescription returns a format description for the device at specified format index
-func (d *Device) GetFormatDescription(idx uint32) (FormatDescription, error) {
+func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
-		return FormatDescription{}, fmt.Errorf("device: %w", err)
+		return v4l2.FormatDescription{}, fmt.Errorf("device: %w", err)
 	}
 
-	return GetFormatDescription(d.fd, idx)
+	return v4l2.GetFormatDescription(d.fd, idx)
 }
 
 
 // GetFormatDescriptions returns all possible format descriptions for device
-func (d *Device) GetFormatDescriptions() ([]FormatDescription, error) {
+func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return nil, fmt.Errorf("device: %w", err)
 	}
 
-	return GetAllFormatDescriptions(d.fd)
+	return v4l2.GetAllFormatDescriptions(d.fd)
 }
 
 // GetVideoInputIndex returns current video input index for device
@@ -137,23 +139,28 @@ func (d *Device) GetVideoInputIndex()(int32, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
 		return 0, fmt.Errorf("device: %w", err)
 	}
-	return GetCurrentVideoInputIndex(d.fd)
+	return v4l2.GetCurrentVideoInputIndex(d.fd)
 }
 
 // GetVideoInputInfo returns video input info for device
-func (d *Device) GetVideoInputInfo(index uint32) (InputInfo, error) {
+func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
-		return InputInfo{}, fmt.Errorf("device: %w", err)
+		return v4l2.InputInfo{}, fmt.Errorf("device: %w", err)
 	}
-	return GetVideoInputInfo(d.fd, index)
+	return v4l2.GetVideoInputInfo(d.fd, index)
 }
 
 // GetCaptureParam returns streaming capture parameter information
-func (d *Device) GetCaptureParam() (CaptureParam, error) {
+func (d *Device) GetCaptureParam() (v4l2.CaptureParam, error) {
 	if err := d.assertVideoCaptureSupport(); err != nil {
-		return CaptureParam{}, fmt.Errorf("device: %w", err)
+		return v4l2.CaptureParam{}, fmt.Errorf("device: %w", err)
 	}
-	return GetStreamCaptureParam(d.fd)
+	return v4l2.GetStreamCaptureParam(d.fd)
+}
+
+// GetMediaInfo returns info for a device that supports the Media API
+func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
+	return v4l2.GetMediaDeviceInfo(d.fd)
 }
 
 func (d *Device) StartStream(buffSize uint32) error {
@@ -165,7 +172,7 @@ func (d *Device) StartStream(buffSize uint32) error {
 	}
 
 	// allocate device buffers
-	bufReq, err := InitBuffers(d.fd, buffSize)
+	bufReq, err := v4l2.InitBuffers(d.fd, buffSize)
 	if err != nil {
 		return fmt.Errorf("device: start stream: %w", err)
 	}
@@ -175,14 +182,14 @@ func (d *Device) StartStream(buffSize uint32) error {
 	bufCount := int(d.requestedBuf.Count)
 	d.buffers = make([][]byte, d.requestedBuf.Count)
 	for i := 0; i < bufCount; i++ {
-		buffer, err := GetBuffer(d.fd, uint32(i))
+		buffer, err := v4l2.GetBuffer(d.fd, uint32(i))
 		if err != nil {
 			return fmt.Errorf("device start stream: %w", err)
 		}
 
 		offset := buffer.Info.Offset
 		length := buffer.Length
-		mappedBuf, err := MapMemoryBuffer(d.fd, int64(offset), int(length))
+		mappedBuf, err := v4l2.MapMemoryBuffer(d.fd, int64(offset), int(length))
 		if err != nil {
 			return fmt.Errorf("device start stream: %w", err)
 		}
@@ -191,14 +198,14 @@ func (d *Device) StartStream(buffSize uint32) error {
 
 	// Initial enqueue of buffers for capture
 	for i := 0; i < bufCount; i++ {
-		_, err := QueueBuffer(d.fd, uint32(i))
+		_, err := v4l2.QueueBuffer(d.fd, uint32(i))
 		if err != nil {
 			return fmt.Errorf("device start stream: %w", err)
 		}
 	}
 
 	// turn on device stream
-	if err := StreamOn(d.fd); err != nil {
+	if err := v4l2.StreamOn(d.fd); err != nil {
 		return fmt.Errorf("device start stream: %w", err)
 	}
 
@@ -235,12 +242,12 @@ func (d *Device) Capture(ctx context.Context, fps uint32) (<-chan []byte, error)
 			// capture bufCount frames
 			for i := 0; i < bufCount; i++ {
 				//TODO add better error-handling during capture, for now just panic
-				if err := WaitForDeviceRead(d.fd, 2*time.Second); err != nil {
+				if err := v4l2.WaitForDeviceRead(d.fd, 2*time.Second); err != nil {
 					panic(fmt.Errorf("device: capture: %w", err).Error())
 				}
 
 				// dequeue the device buf
-				bufInfo, err := DequeueBuffer(d.fd)
+				bufInfo, err := v4l2.DequeueBuffer(d.fd)
 				if err != nil {
 					panic(fmt.Errorf("device: capture: %w", err).Error())
 				}
@@ -256,7 +263,7 @@ func (d *Device) Capture(ctx context.Context, fps uint32) (<-chan []byte, error)
 					return
 				}
 				// enqueu used buffer, prepare for next read
-				if _, err := QueueBuffer(d.fd, bufInfo.Index); err != nil {
+				if _, err := v4l2.QueueBuffer(d.fd, bufInfo.Index); err != nil {
 					panic(fmt.Errorf("device capture: %w", err).Error())
 				}
 
@@ -271,11 +278,11 @@ func (d *Device) Capture(ctx context.Context, fps uint32) (<-chan []byte, error)
 func (d *Device) StopStream() error{
 	d.streaming = false
 	for i := 0; i < len(d.buffers); i++ {
-		if err := UnmapMemoryBuffer(d.buffers[i]); err != nil {
+		if err := v4l2.UnmapMemoryBuffer(d.buffers[i]); err != nil {
 			return fmt.Errorf("device: stop stream: %w", err)
 		}
 	}
-	if err := StreamOff(d.fd); err != nil {
+	if err := v4l2.StreamOff(d.fd); err != nil {
 		return fmt.Errorf("device: stop stream: %w", err)
 	}
 	return nil

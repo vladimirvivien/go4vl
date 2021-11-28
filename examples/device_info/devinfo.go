@@ -4,18 +4,30 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 var template = "\t%-24s : %s\n"
 
 func main() {
 	var devName string
+	var devList bool
 	flag.StringVar(&devName, "d", "/dev/video0", "device name (path)")
+	flag.BoolVar(&devList, "l", false, "list all devices")
 	flag.Parse()
-	device, err := v4l2.Open(devName)
+
+	if devList {
+		if err := listDevices(); err != nil{
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
+	device, err := device.Open(devName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +54,53 @@ func main() {
 	}
 }
 
-func printDeviceDriverInfo(dev *v4l2.Device) error {
+func listDevices() error {
+	paths, err := device.GetAllDevicePaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		dev, err := device.Open(path)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+
+		var busInfo, card string
+		cap, err := dev.GetCapability()
+		if err != nil {
+			// is a media device?
+			if mdi, err := dev.GetMediaInfo(); err == nil {
+				if mdi.BusInfo != "" {
+					busInfo = mdi.BusInfo
+				}else{
+					busInfo = "platform: " + mdi.Driver
+				}
+				if mdi.Model != "" {
+					card = mdi.Model
+				}else{
+					card = mdi.Driver
+				}
+			}
+		}else{
+			busInfo = cap.BusInfo
+			card = cap.Card
+		}
+
+		// close device
+		if err := dev.Close(); err != nil {
+			log.Print(err)
+			continue
+		}
+
+		fmt.Printf("Device [%s]: %s: %s\n", path, card, busInfo)
+
+
+	}
+	return nil
+}
+
+func printDeviceDriverInfo(dev *device.Device) error {
 	caps, err := dev.GetCapability()
 	if err != nil {
 		return fmt.Errorf("driver info: %w", err)
@@ -69,7 +127,7 @@ func printDeviceDriverInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printVideoInputInfo(dev *v4l2.Device) error {
+func printVideoInputInfo(dev *device.Device) error {
 	// first get current input
 	index, err := dev.GetVideoInputIndex()
 	if err != nil {
@@ -90,7 +148,7 @@ func printVideoInputInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printFormatInfo(dev *v4l2.Device) error {
+func printFormatInfo(dev *device.Device) error {
 	pixFmt, err := dev.GetPixFormat()
 	if err != nil {
 		return fmt.Errorf("video capture format: %w", err)
@@ -132,7 +190,7 @@ func printFormatInfo(dev *v4l2.Device) error {
 	return printFormatDesc(dev)
 }
 
-func printFormatDesc(dev *v4l2.Device) error {
+func printFormatDesc(dev *device.Device) error {
 	descs, err := dev.GetFormatDescriptions()
 	if err != nil {
 		return fmt.Errorf("format desc: %w", err)
@@ -153,7 +211,7 @@ func printFormatDesc(dev *v4l2.Device) error {
 	return nil
 }
 
-func printCropInfo(dev *v4l2.Device) error {
+func printCropInfo(dev *device.Device) error {
 	crop, err := dev.GetCropCapability()
 	if err != nil {
 		return fmt.Errorf("crop capability: %w", err)
@@ -180,7 +238,7 @@ func printCropInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printCaptureParam(dev *v4l2.Device) error {
+func printCaptureParam(dev *device.Device) error {
 	params, err := dev.GetCaptureParam()
 	if err != nil {
 		return fmt.Errorf("streaming capture param: %w", err)
