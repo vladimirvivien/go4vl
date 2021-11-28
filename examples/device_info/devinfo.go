@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
@@ -14,8 +15,18 @@ var template = "\t%-24s : %s\n"
 
 func main() {
 	var devName string
+	var devList bool
 	flag.StringVar(&devName, "d", "/dev/video0", "device name (path)")
+	flag.BoolVar(&devList, "l", false, "list all devices")
 	flag.Parse()
+
+	if devList {
+		if err := listDevices(); err != nil{
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
 	device, err := device.Open(devName)
 	if err != nil {
 		log.Fatal(err)
@@ -41,6 +52,52 @@ func main() {
 	if err := printCaptureParam(device); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func listDevices() error {
+	paths, err := device.GetAllDevicePaths()
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		dev, err := device.Open(path)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+
+		var busInfo, card string
+		cap, err := dev.GetCapability()
+		if err != nil {
+			// is a media device?
+			if mdi, err := dev.GetMediaInfo(); err == nil {
+				if mdi.BusInfo != "" {
+					busInfo = mdi.BusInfo
+				}else{
+					busInfo = "platform: " + mdi.Driver
+				}
+				if mdi.Model != "" {
+					card = mdi.Model
+				}else{
+					card = mdi.Driver
+				}
+			}
+		}else{
+			busInfo = cap.BusInfo
+			card = cap.Card
+		}
+
+		// close device
+		if err := dev.Close(); err != nil {
+			log.Print(err)
+			continue
+		}
+
+		fmt.Printf("Device [%s]: %s: %s\n", path, card, busInfo)
+
+
+	}
+	return nil
 }
 
 func printDeviceDriverInfo(dev *device.Device) error {

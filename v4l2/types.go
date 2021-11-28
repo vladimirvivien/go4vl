@@ -20,6 +20,11 @@ func (v VersionInfo) Patch() uint32{
 	return v.value&0xff
 }
 
+// Value returns the raw numeric version value
+func (v VersionInfo) Value() uint32 {
+	return v.value
+}
+
 func (v VersionInfo) String() string {
 	return fmt.Sprintf("v%d.%d.%d", v.Major(), v.Minor(), v.Patch())
 }

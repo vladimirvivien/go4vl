@@ -158,6 +158,11 @@ func (d *Device) GetCaptureParam() (v4l2.CaptureParam, error) {
 	return v4l2.GetStreamCaptureParam(d.fd)
 }
 
+// GetMediaInfo returns info for a device that supports the Media API
+func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
+	return v4l2.GetMediaDeviceInfo(d.fd)
+}
+
 func (d *Device) StartStream(buffSize uint32) error {
 	if d.streaming {
 		return nil
