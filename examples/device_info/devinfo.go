@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 var template = "\t%-24s : %s\n"
@@ -15,7 +16,7 @@ func main() {
 	var devName string
 	flag.StringVar(&devName, "d", "/dev/video0", "device name (path)")
 	flag.Parse()
-	device, err := v4l2.Open(devName)
+	device, err := device.Open(devName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func main() {
 	}
 }
 
-func printDeviceDriverInfo(dev *v4l2.Device) error {
+func printDeviceDriverInfo(dev *device.Device) error {
 	caps, err := dev.GetCapability()
 	if err != nil {
 		return fmt.Errorf("driver info: %w", err)
@@ -69,7 +70,7 @@ func printDeviceDriverInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printVideoInputInfo(dev *v4l2.Device) error {
+func printVideoInputInfo(dev *device.Device) error {
 	// first get current input
 	index, err := dev.GetVideoInputIndex()
 	if err != nil {
@@ -90,7 +91,7 @@ func printVideoInputInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printFormatInfo(dev *v4l2.Device) error {
+func printFormatInfo(dev *device.Device) error {
 	pixFmt, err := dev.GetPixFormat()
 	if err != nil {
 		return fmt.Errorf("video capture format: %w", err)
@@ -132,7 +133,7 @@ func printFormatInfo(dev *v4l2.Device) error {
 	return printFormatDesc(dev)
 }
 
-func printFormatDesc(dev *v4l2.Device) error {
+func printFormatDesc(dev *device.Device) error {
 	descs, err := dev.GetFormatDescriptions()
 	if err != nil {
 		return fmt.Errorf("format desc: %w", err)
@@ -153,7 +154,7 @@ func printFormatDesc(dev *v4l2.Device) error {
 	return nil
 }
 
-func printCropInfo(dev *v4l2.Device) error {
+func printCropInfo(dev *device.Device) error {
 	crop, err := dev.GetCropCapability()
 	if err != nil {
 		return fmt.Errorf("crop capability: %w", err)
@@ -180,7 +181,7 @@ func printCropInfo(dev *v4l2.Device) error {
 	return nil
 }
 
-func printCaptureParam(dev *v4l2.Device) error {
+func printCaptureParam(dev *device.Device) error {
 	params, err := dev.GetCaptureParam()
 	if err != nil {
 		return fmt.Errorf("streaming capture param: %w", err)

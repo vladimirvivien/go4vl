@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 	flag.StringVar(&format, "f", format, "pixel format")
 	flag.Parse()
 
-	device, err := v4l2.Open(devName)
+	device, err := device.Open(devName)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
 	}

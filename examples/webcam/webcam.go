@@ -13,6 +13,7 @@ import (
 
 	"github.com/vladimirvivien/go4vl/imgsupport"
 	"github.com/vladimirvivien/go4vl/v4l2"
+	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 var (
@@ -87,7 +88,7 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 func main() {
 	port := ":9090"
 	devName := "/dev/video0"
-	defaultDev, err := v4l2.Open(devName)
+	defaultDev, err := device.Open(devName)
 	skipDefault := false
 	if err != nil {
 		skipDefault = true
@@ -125,7 +126,7 @@ func main() {
 	}
 
 	// open device and setup device
-	device, err := v4l2.Open(devName)
+	device, err := device.Open(devName)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
 	}
