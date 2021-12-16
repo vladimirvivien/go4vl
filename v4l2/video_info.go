@@ -49,7 +49,7 @@ func (i InputInfo) GetIndex() uint32 {
 }
 
 func (i InputInfo) GetName() string {
-	return C.GoString((*C.char)(&i.v4l2Input.name[0]))
+	return C.GoString((*C.char)(unsafe.Pointer(&i.v4l2Input.name[0])))
 }
 
 func (i InputInfo) GetInputType() InputType {

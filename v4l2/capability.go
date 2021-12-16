@@ -126,9 +126,9 @@ func GetCapability(fd uintptr) (Capability, error) {
 		return Capability{}, fmt.Errorf("capability: %w", err)
 	}
 	return Capability{
-		Driver:             C.GoString((*C.char)(&v4l2Cap.driver[0])),
-		Card:               C.GoString((*C.char)(&v4l2Cap.card[0])),
-		BusInfo:            C.GoString((*C.char)(&v4l2Cap.bus_info[0])),
+		Driver:             C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.driver[0]))),
+		Card:               C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.card[0]))),
+		BusInfo:            C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.bus_info[0]))),
 		Version:            uint32(v4l2Cap.version),
 		Capabilities:       uint32(v4l2Cap.capabilities),
 		DeviceCapabilities: uint32(v4l2Cap.device_caps),

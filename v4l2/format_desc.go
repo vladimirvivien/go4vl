@@ -73,7 +73,7 @@ func makeFormatDescription(fmtDesc C.struct_v4l2_fmtdesc) FormatDescription {
 		Index:       uint32(fmtDesc.index),
 		StreamType:  uint32(fmtDesc._type),
 		Flags:       uint32(fmtDesc.flags),
-		Description: C.GoString((*C.char)(&fmtDesc.description[0])),
+		Description: C.GoString((*C.char)(unsafe.Pointer(&fmtDesc.description[0]))),
 		PixelFormat: uint32(fmtDesc.pixelformat),
 		MBusCode:    uint32(fmtDesc.mbus_code),
 	}
