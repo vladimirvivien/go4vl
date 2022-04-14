@@ -301,7 +301,7 @@ func GetPixFormat(fd uintptr) (PixFormat, error) {
 		Priv:         uint32(v4l2PixFmt.priv),
 		Flags:        uint32(v4l2PixFmt.flags),
 		YcbcrEnc:     *(*uint32)(unsafe.Pointer(&v4l2PixFmt.anon0[0])),
-		HSVEnc:       *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2PixFmt.anon0[0])) + unsafe.Sizeof(&v4l2PixFmt.anon0[0]))),
+		HSVEnc:       *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2PixFmt.anon0[0])) + unsafe.Sizeof(C.uint(0)))),
 		Quantization: uint32(v4l2PixFmt.quantization),
 		XferFunc:     uint32(v4l2PixFmt.xfer_func),
 	}, nil

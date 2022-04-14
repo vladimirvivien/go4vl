@@ -54,29 +54,29 @@ func main() {
 		log.Fatalf("device does not support any of %#v", preferredFmts)
 	}
 	log.Printf("Found preferred fmt: %s", fmtDesc)
-	frameSizes, err := v4l2.GetFormatFrameSizes(device.GetFileDescriptor(), fmtDesc.PixelFormat)
+	frameSizes, err := v4l2.GetFormatFrameSizes(device.FileDescriptor(), fmtDesc.PixelFormat)
 	if err!=nil{
 		log.Fatalf("failed to get framesize info: %s", err)
 	}
 
 	// select size 640x480 for format
-	var frmSize v4l2.FrameSize
+	var frmSize v4l2.FrameSizeEnum
 	for _, size := range frameSizes {
-		if size.Width == 640 && size.Height == 480 {
+		if size.Size.MinWidth == 640 && size.Size.MinHeight == 480 {
 			frmSize = size
 			break
 		}
 	}
 
-	if frmSize.Width == 0 {
+	if frmSize.Size.MinWidth == 0 {
 		log.Fatalf("Size 640x480 not supported for fmt: %s", fmtDesc)
 	}
 
 	// configure device with preferred fmt
 
 	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width:       frmSize.Width,
-		Height:      frmSize.Height,
+		Width:       frmSize.Size.MinWidth,
+		Height:      frmSize.Size.MinHeight,
 		PixelFormat: fmtDesc.PixelFormat,
 		Field:       v4l2.FieldNone,
 	}); err != nil {

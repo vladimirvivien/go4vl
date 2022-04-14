@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	if devList {
-		if err := listDevices(); err != nil{
+		if err := listDevices(); err != nil {
 			log.Fatal(err)
 		}
 		os.Exit(0)
@@ -67,22 +67,21 @@ func listDevices() error {
 		}
 
 		var busInfo, card string
-		cap, err := dev.GetCapability()
-		if err != nil {
-			// is a media device?
-			if mdi, err := dev.GetMediaInfo(); err == nil {
-				if mdi.BusInfo != "" {
-					busInfo = mdi.BusInfo
-				}else{
-					busInfo = "platform: " + mdi.Driver
-				}
-				if mdi.Model != "" {
-					card = mdi.Model
-				}else{
-					card = mdi.Driver
-				}
+		cap := dev.Capability()
+
+		// is a media device?
+		if mdi, err := dev.GetMediaInfo(); err == nil {
+			if mdi.BusInfo != "" {
+				busInfo = mdi.BusInfo
+			} else {
+				busInfo = "platform: " + mdi.Driver
 			}
-		}else{
+			if mdi.Model != "" {
+				card = mdi.Model
+			} else {
+				card = mdi.Driver
+			}
+		} else {
 			busInfo = cap.BusInfo
 			card = cap.Card
 		}
@@ -95,16 +94,12 @@ func listDevices() error {
 
 		fmt.Printf("Device [%s]: %s: %s\n", path, card, busInfo)
 
-
 	}
 	return nil
 }
 
 func printDeviceDriverInfo(dev *device.Device) error {
-	caps, err := dev.GetCapability()
-	if err != nil {
-		return fmt.Errorf("driver info: %w", err)
-	}
+	caps := dev.Capability()
 
 	// print driver info
 	fmt.Println("Device Info:")
@@ -196,15 +191,15 @@ func printFormatDesc(dev *device.Device) error {
 		return fmt.Errorf("format desc: %w", err)
 	}
 	fmt.Println("Supported formats:")
-	for i, desc := range descs{
-		frmSizes, err := v4l2.GetFormatFrameSizes(dev.GetFileDescriptor(), desc.PixelFormat)
+	for i, desc := range descs {
+		frmSizes, err := v4l2.GetFormatFrameSizes(dev.FileDescriptor(), desc.PixelFormat)
 		if err != nil {
 			return fmt.Errorf("format desc: %w", err)
 		}
 		var sizeStr strings.Builder
 		sizeStr.WriteString("Sizes: ")
-		for _, size := range frmSizes{
-			sizeStr.WriteString(fmt.Sprintf("[%dx%d] ", size.Width, size.Height))
+		for _, size := range frmSizes {
+			sizeStr.WriteString(fmt.Sprintf("[%dx%d] ", size.Size.MinWidth, size.Size.MinHeight))
 		}
 		fmt.Printf(template, fmt.Sprintf("[%0d] %s", i, desc.Description), sizeStr.String())
 	}
@@ -258,6 +253,6 @@ func printCaptureParam(dev *device.Device) error {
 	fmt.Printf(template, "Capture mode", hiqual)
 
 	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.TimePerFrame.Denominator, params.TimePerFrame.Numerator))
-	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d",params.ReadBuffers))
+	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d", params.ReadBuffers))
 	return nil
 }

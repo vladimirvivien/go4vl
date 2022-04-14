@@ -54,6 +54,11 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	for frame := range frames {
+		if len(frame) == 0{
+			log.Print("skipping empty frame")
+			continue
+		}
+
 		// start boundary
 		io.WriteString(w, fmt.Sprintf("--%s\n", boundaryName))
 		io.WriteString(w, "Content-Type: image/jpeg\n")
@@ -63,7 +68,7 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 		switch pixfmt {
 		case v4l2.PixelFmtMJPEG:
 			if _, err := w.Write(frame); err != nil {
-				log.Printf("failed to write image: %s", err)
+				log.Printf("failed to write mjpeg image: %s", err)
 				return
 			}
 		case v4l2.PixelFmtYUYV:
@@ -73,7 +78,7 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 			if _, err := w.Write(data); err != nil {
-				log.Printf("failed to write image: %s", err)
+				log.Printf("failed to write yuyv image: %s", err)
 				return
 			}
 		}
@@ -88,6 +93,7 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 func main() {
 	port := ":9090"
 	devName := "/dev/video0"
+	frameRate := int(fps)
 	defaultDev, err := device.Open(devName)
 	skipDefault := false
 	if err != nil {
@@ -118,11 +124,12 @@ func main() {
 	flag.IntVar(&height, "h", height, "capture height")
 	flag.StringVar(&format, "f", format, "pixel format")
 	flag.StringVar(&port, "p", port, "webcam service port")
+	flag.IntVar(&frameRate, "r", frameRate, "frames per second (fps)")
 	flag.Parse()
 
 	// close device used for default info
 	if err := defaultDev.Close(); err != nil {
-		// default device failed to close
+		log.Fatalf("failed to close default device: %s", err)
 	}
 
 	// open device and setup device
@@ -131,10 +138,7 @@ func main() {
 		log.Fatalf("failed to open device: %s", err)
 	}
 	defer device.Close()
-	caps, err := device.GetCapability()
-	if err != nil {
-		log.Println("failed to get device capabilities:", err)
-	}
+	caps := device.Capability()
 	log.Printf("device [%s] opened\n", devName)
 	log.Printf("device info: %s", caps.String())
 
@@ -161,7 +165,7 @@ func main() {
 
 	// start capture
 	ctx, cancel := context.WithCancel(context.TODO())
-	f, err := device.Capture(ctx, fps)
+	f, err := device.Capture(ctx, uint32(frameRate))
 	if err != nil {
 		log.Fatalf("stream capture: %s", err)
 	}
