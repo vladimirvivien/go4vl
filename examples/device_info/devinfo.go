@@ -234,7 +234,7 @@ func printCropInfo(dev *device.Device) error {
 }
 
 func printCaptureParam(dev *device.Device) error {
-	params, err := dev.GetCaptureParam()
+	params, err := dev.GetStreamParam()
 	if err != nil {
 		return fmt.Errorf("streaming capture param: %w", err)
 	}

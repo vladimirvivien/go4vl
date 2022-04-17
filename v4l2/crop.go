@@ -21,9 +21,9 @@ type CropCapability struct {
 
 // GetCropCapability  retrieves cropping info for specified device
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-cropcap.html#ioctl-vidioc-cropcap
-func GetCropCapability(fd uintptr) (CropCapability, error) {
+func GetCropCapability(fd uintptr, bufType BufType) (CropCapability, error) {
 	var cap C.struct_v4l2_cropcap
-	cap._type = C.uint(BufTypeVideoCapture)
+	cap._type = C.uint(bufType)
 
 	if err := send(fd, C.VIDIOC_CROPCAP, uintptr(unsafe.Pointer(&cap))); err != nil {
 		return CropCapability{}, fmt.Errorf("crop capability: %w", err)
