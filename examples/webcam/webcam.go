@@ -54,7 +54,7 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	for frame := range frames {
-		if len(frame) == 0{
+		if len(frame) == 0 {
 			log.Print("skipping empty frame")
 			continue
 		}
@@ -133,7 +133,11 @@ func main() {
 	}
 
 	// open device and setup device
-	device, err := device.Open(devName)
+	device, err := device.Open(devName,
+		device.WithIOType(v4l2.IOTypeMMAP),
+		device.WithPixFormat(v4l2.PixFormat{PixelFormat: getFormatType(format), Width: uint32(width), Height: uint32(height)}),
+	)
+
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
 	}
@@ -148,15 +152,7 @@ func main() {
 		log.Fatalf("unable to get format: %s", err)
 	}
 	log.Printf("Current format: %s", currFmt)
-	if err := device.SetPixFormat(updateFormat(currFmt, format, width, height)); err != nil {
-		log.Fatalf("failed to set format: %s", err)
-	}
-	currFmt, err = device.GetPixFormat()
-	if err != nil {
-		log.Fatalf("unable to get format: %s", err)
-	}
 	pixfmt = currFmt.PixelFormat
-	log.Printf("Updated format: %s", currFmt)
 
 	// Setup and start stream capture
 	if err := device.StartStream(2); err != nil {
@@ -188,18 +184,14 @@ func main() {
 	}
 }
 
-func updateFormat(pix v4l2.PixFormat, fmtStr string, w, h int) v4l2.PixFormat {
-	pix.Width = uint32(w)
-	pix.Height = uint32(h)
-
+func getFormatType(fmtStr string) v4l2.FourCCType {
 	switch strings.ToLower(fmtStr) {
 	case "mjpeg", "jpeg":
-		pix.PixelFormat = v4l2.PixelFmtMJPEG
+		return v4l2.PixelFmtMJPEG
 	case "h264", "h.264":
-		pix.PixelFormat = v4l2.PixelFmtH264
+		return v4l2.PixelFmtH264
 	case "yuyv":
-		pix.PixelFormat = v4l2.PixelFmtYUYV
+		return v4l2.PixelFmtYUYV
 	}
-
-	return pix
+	return v4l2.PixelFmtMPEG
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	sys "syscall"
 	"time"
 
@@ -14,11 +15,10 @@ type Device struct {
 	path             string
 	file             *os.File
 	fd               uintptr
+	config           Config
 	bufType          v4l2.BufType
 	cap              v4l2.Capability
 	cropCap          v4l2.CropCapability
-	selectedFormat   v4l2.PixFormat
-	supportedFormats []v4l2.PixFormat
 	buffers          [][]byte
 	requestedBuf     v4l2.RequestBuffers
 	streaming        bool
@@ -26,13 +26,26 @@ type Device struct {
 
 // Open creates opens the underlying device at specified path
 // and returns a *Device or an error if unable to open device.
-func Open(path string) (*Device, error) {
+func Open(path string, options ...Option) (*Device, error) {
 	file, err := os.OpenFile(path, sys.O_RDWR|sys.O_NONBLOCK, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
-	dev := &Device{path: path, file: file, fd: file.Fd()}
+	dev := &Device{path: path, file: file, fd: file.Fd(), config: Config{}}
 
+	// apply options
+	if len(options) > 0 {
+		for _, o := range options {
+			o(&dev.config)
+		}
+	}
+
+	// ensures IOType is set
+	if reflect.ValueOf(dev.config.ioType).IsZero() {
+		dev.config.ioType = v4l2.IOTypeMMAP
+	}
+
+	// set capability
 	cap, err := v4l2.GetCapability(file.Fd())
 	if err != nil {
 		if err := file.Close(); err != nil {
@@ -54,6 +67,7 @@ func Open(path string) (*Device, error) {
 		return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
 	}
 
+	// set crop
 	cropCap, err := v4l2.GetCropCapability(file.Fd(), dev.bufType)
 	if err != nil {
 		if err := file.Close(); err != nil {
@@ -62,6 +76,15 @@ func Open(path string) (*Device, error) {
 		return nil, fmt.Errorf("device open: %s: %w", path, err)
 	}
 	dev.cropCap = cropCap
+
+	// set pix format
+	if reflect.ValueOf(dev.config.pixFormat).IsZero() {
+		pixFmt, err :=  v4l2.GetPixFormat(file.Fd())
+		if err != nil {
+			fmt.Errorf("device open: %s: set format: %w", path, err)
+		}
+		dev.config.pixFormat = pixFmt
+	}
 
 	return dev, nil
 }
@@ -116,12 +139,16 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.PixFormat{}, v4l2.ErrorUnsupportedFeature
 	}
-	pixFmt, err := v4l2.GetPixFormat(d.fd)
-	if err != nil {
-		return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
+
+	if reflect.ValueOf(d.config.pixFormat).IsZero() {
+		pixFmt, err := v4l2.GetPixFormat(d.fd)
+		if err != nil {
+			return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
+		}
+		d.config.pixFormat = pixFmt
 	}
-	d.selectedFormat = pixFmt
-	return pixFmt, nil
+
+	return d.config.pixFormat, nil
 }
 
 // SetPixFormat sets the pixel format for the associated device.
@@ -133,7 +160,7 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	if err := v4l2.SetPixFormat(d.fd, pixFmt); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
-	d.selectedFormat = pixFmt
+	d.config.pixFormat = pixFmt
 	return nil
 }
 
@@ -175,24 +202,24 @@ func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 
 // GetStreamParam returns streaming parameter information for device
 func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
-	if !d.cap.IsVideoCaptureSupported() {
+	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
 		return v4l2.StreamParam{}, v4l2.ErrorUnsupportedFeature
 	}
-	return v4l2.GetStreamParam(d.fd)
+	return v4l2.GetStreamParam(d.fd, d.bufType)
 }
 
 // SetStreamParam saves stream parameters for device
-func (d *Device) SetStreamParam() (v4l2.StreamParam, error) {
-	if !d.cap.IsVideoCaptureSupported() {
-		return v4l2.StreamParam{}, v4l2.ErrorUnsupportedFeature
+func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
+	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
+		return v4l2.ErrorUnsupportedFeature
 	}
-	return v4l2.GetStreamParam(d.fd)
+	return v4l2.SetStreamParam(d.fd, d.bufType, param)
 }
 
-// SetCaptureFramerate sets the video capture FPS value of the device
-func (d *Device) SetCaptureFramerate (fps uint32) error {
-	param := v4l2.CaptureParam{TimePerFrame: v4l2.Fract{Numerator:1,Denominator: fps}}
-	return v4l2.SetStreamParam(d.fd, v4l2.StreamParam{Capture: param})
+// SetCaptureFPS sets the video capture FPS value of the device
+func (d *Device) SetCaptureFPS(fps uint32) error {
+	capture := v4l2.CaptureParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
+	return d.SetStreamParam(v4l2.StreamParam{Capture: capture})
 }
 
 // GetMediaInfo returns info for a device that supports the Media API
@@ -206,7 +233,7 @@ func (d *Device) StartStream(buffSize uint32) error {
 	}
 
 	// allocate device buffers
-	bufReq, err := v4l2.RequestBuffersInfo(d.fd, v4l2.IOTypeMMAP, d.bufType, buffSize)
+	bufReq, err := v4l2.InitBuffers(d.fd, d.config.ioType, d.bufType, buffSize)
 	if err != nil {
 		return fmt.Errorf("device: start stream: %w", err)
 	}
@@ -216,7 +243,7 @@ func (d *Device) StartStream(buffSize uint32) error {
 	bufCount := int(d.requestedBuf.Count)
 	d.buffers = make([][]byte, d.requestedBuf.Count)
 	for i := 0; i < bufCount; i++ {
-		buffer, err := v4l2.GetBuffer(d.fd, uint32(i))
+		buffer, err := v4l2.GetBuffer(d.fd, v4l2.IOTypeMMAP, d.bufType, uint32(i))
 		if err != nil {
 			return fmt.Errorf("device start stream: %w", err)
 		}

@@ -54,9 +54,9 @@ type OutputParam struct {
 // GetStreamParam returns streaming parameters for the driver (v4l2_streamparm).
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-parm.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2362
-func GetStreamParam(fd uintptr) (StreamParam, error) {
+func GetStreamParam(fd uintptr, bufType BufType) (StreamParam, error) {
 	var v4l2Param C.struct_v4l2_streamparm
-	v4l2Param._type = C.uint(BufTypeVideoCapture)
+	v4l2Param._type = C.uint(bufType)
 
 	if err := send(fd, C.VIDIOC_G_PARM, uintptr(unsafe.Pointer(&v4l2Param))); err != nil {
 		return StreamParam{}, fmt.Errorf("stream param: %w", err)
@@ -72,9 +72,9 @@ func GetStreamParam(fd uintptr) (StreamParam, error) {
 	}, nil
 }
 
-func SetStreamParam(fd uintptr, param StreamParam) error {
+func SetStreamParam(fd uintptr, bufType BufType, param StreamParam) error {
 	var v4l2Param C.struct_v4l2_streamparm
-	v4l2Param._type = C.uint(BufTypeVideoCapture)
+	v4l2Param._type = C.uint(bufType)
 	*(*C.struct_v4l2_captureparm)(unsafe.Pointer(&v4l2Param.parm[0])) = *(*C.struct_v4l2_captureparm)(unsafe.Pointer(&param.Capture))
 	*(*C.struct_v4l2_outputparm)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Param.parm[0])) + unsafe.Sizeof(C.struct_v4l2_captureparam{}))) =
 		*(*C.struct_v4l2_outputparm)(unsafe.Pointer(&param.Output))

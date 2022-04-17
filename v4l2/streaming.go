@@ -144,10 +144,10 @@ func StreamOff(fd uintptr) error {
 	return nil
 }
 
-// RequestBuffersInfo sends buffer allocation request to initialize buffer IO
+// InitBuffers sends buffer allocation request to initialize buffer IO
 // for video capture or video output when using either mem map, user pointer, or DMA buffers.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-reqbufs.html#vidioc-reqbufs
-func RequestBuffersInfo(fd uintptr, ioType IOType, bufType BufType, buffSize uint32) (RequestBuffers, error) {
+func InitBuffers(fd uintptr, ioType IOType, bufType BufType, buffSize uint32) (RequestBuffers, error) {
 	if ioType != IOTypeMMAP && ioType != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", ErrorUnsupported)
 	}
@@ -163,12 +163,12 @@ func RequestBuffersInfo(fd uintptr, ioType IOType, bufType BufType, buffSize uin
 	return *(*RequestBuffers)(unsafe.Pointer(&req)), nil
 }
 
-// GetBuffer retrieves bunffer info for allocated buffers at provided index.
-// This call should take place after buffers are allocated (for mmap for instance).
-func GetBuffer(fd uintptr, index uint32) (Buffer, error) {
+// GetBuffer retrieves buffer info for allocated buffers at provided index.
+// This call should take place after buffers are allocated with RequestBuffers (for mmap for instance).
+func GetBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buffer, error) {
 	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoCapture)
-	v4l2Buf.memory = C.uint(IOTypeMMAP)
+	v4l2Buf._type = C.uint(bufType)
+	v4l2Buf.memory = C.uint(ioType)
 	v4l2Buf.index = C.uint(index)
 
 	if err := send(fd, C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
