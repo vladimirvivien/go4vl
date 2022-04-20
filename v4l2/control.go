@@ -15,6 +15,7 @@ type Control struct {
 	Value uint32
 }
 
+// GetControl returns control value for specified ID
 func GetControl(fd uintptr, id uint32) (Control, error) {
 	var ctrl C.struct_v4l2_control
 	ctrl.id = C.uint(id)
@@ -29,6 +30,7 @@ func GetControl(fd uintptr, id uint32) (Control, error) {
 	}, nil
 }
 
+// SetControl applies control value for specified ID
 func SetControl(fd uintptr, id, value uint32) error {
 	var ctrl C.struct_v4l2_control
 	ctrl.id = C.uint(id)

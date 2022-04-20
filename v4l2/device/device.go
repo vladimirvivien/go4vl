@@ -6,28 +6,28 @@ import (
 	"os"
 	"reflect"
 	sys "syscall"
-	"time"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
 type Device struct {
-	path             string
-	file             *os.File
-	fd               uintptr
-	config           Config
-	bufType          v4l2.BufType
-	cap              v4l2.Capability
-	cropCap          v4l2.CropCapability
-	buffers          [][]byte
-	requestedBuf     v4l2.RequestBuffers
-	streaming        bool
+	path         string
+	file         *os.File
+	fd           uintptr
+	config       Config
+	bufType      v4l2.BufType
+	cap          v4l2.Capability
+	cropCap      v4l2.CropCapability
+	buffers      [][]byte
+	requestedBuf v4l2.RequestBuffers
+	streaming    bool
 }
 
 // Open creates opens the underlying device at specified path
 // and returns a *Device or an error if unable to open device.
 func Open(path string, options ...Option) (*Device, error) {
 	file, err := os.OpenFile(path, sys.O_RDWR|sys.O_NONBLOCK, 0644)
+	//file, err := os.OpenFile(path, sys.O_RDWR, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
@@ -78,12 +78,22 @@ func Open(path string, options ...Option) (*Device, error) {
 	dev.cropCap = cropCap
 
 	// set pix format
-	if reflect.ValueOf(dev.config.pixFormat).IsZero() {
-		pixFmt, err :=  v4l2.GetPixFormat(file.Fd())
-		if err != nil {
+	if !reflect.ValueOf(dev.config.pixFormat).IsZero() {
+		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
 			fmt.Errorf("device open: %s: set format: %w", path, err)
 		}
-		dev.config.pixFormat = pixFmt
+	}
+
+	// set fps
+	if !reflect.ValueOf(dev.config.fps).IsZero() {
+		if err := dev.SetFrameRate(dev.config.fps); err != nil {
+			fmt.Errorf("device open: %s: set fps: %w", path, err)
+		}
+	}
+
+	// set preferred device buffer size
+	if reflect.ValueOf(dev.config.bufSize).IsZero() {
+		dev.config.bufSize = 2
 	}
 
 	return dev, nil
@@ -101,8 +111,8 @@ func (d *Device) Close() error {
 }
 
 // Name returns the device name (or path)
-func (d *Device) Name() uintptr {
-	return d.fd
+func (d *Device) Name() string {
+	return d.path
 }
 
 // FileDescriptor returns the file descriptor value for the device
@@ -110,9 +120,32 @@ func (d *Device) FileDescriptor() uintptr {
 	return d.fd
 }
 
+// Buffers returns the internal mapped buffers. This method should be
+// called after streaming has been started otherwise it may return nil.
+func (d *Device) Buffers() [][]byte {
+	return d.buffers
+}
+
 // Capability returns device capability info.
 func (d *Device) Capability() v4l2.Capability {
 	return d.cap
+}
+
+// BufferType this is a convenience method that returns the device mode (i.e. Capture, Output, etc)
+// Use method Capability for detail about the device.
+func (d *Device) BufferType() v4l2.BufType {
+	return d.bufType
+}
+
+// BufferCount returns configured number of buffers to be used during streaming.
+// If called after streaming start, this value could be updated by the driver.
+func (d *Device) BufferCount() v4l2.BufType {
+	return d.config.bufSize
+}
+
+// MemIOType returns the device memory input/output type (i.e. Memory mapped, DMA, user pointer, etc)
+func (d *Device) MemIOType() v4l2.IOType {
+	return d.config.ioType
 }
 
 // GetCropCapability returns cropping info for device
@@ -216,10 +249,42 @@ func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
 	return v4l2.SetStreamParam(d.fd, d.bufType, param)
 }
 
-// SetCaptureFPS sets the video capture FPS value of the device
-func (d *Device) SetCaptureFPS(fps uint32) error {
-	capture := v4l2.CaptureParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
-	return d.SetStreamParam(v4l2.StreamParam{Capture: capture})
+// SetFrameRate sets the FPS rate value of the device
+func (d *Device) SetFrameRate(fps uint32) error {
+	var param v4l2.StreamParam
+	switch {
+	case d.cap.IsVideoCaptureSupported():
+		param.Capture = v4l2.CaptureParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
+	case d.cap.IsVideoOutputSupported():
+		param.Output = v4l2.OutputParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
+	default:
+		return v4l2.ErrorUnsupportedFeature
+	}
+	if err := d.SetStreamParam(param); err != nil {
+		return fmt.Errorf("device: set fps: %w", err)
+	}
+	d.config.fps = fps
+	return nil
+}
+
+// GetFrameRate returns the FPS value for the device
+func (d *Device) GetFrameRate() (uint32, error) {
+	if reflect.ValueOf(d.config.fps).IsZero() {
+		param, err := d.GetStreamParam()
+		if err != nil {
+			return 0, fmt.Errorf("device: frame rate: %w", err)
+		}
+		switch {
+		case d.cap.IsVideoCaptureSupported():
+			d.config.fps = param.Capture.TimePerFrame.Denominator
+		case d.cap.IsVideoOutputSupported():
+			d.config.fps = param.Output.TimePerFrame.Denominator
+		default:
+			return 0, v4l2.ErrorUnsupportedFeature
+		}
+	}
+
+	return d.config.fps, nil
 }
 
 // GetMediaInfo returns info for a device that supports the Media API
@@ -227,123 +292,56 @@ func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
 	return v4l2.GetMediaDeviceInfo(d.fd)
 }
 
-func (d *Device) StartStream(buffSize uint32) error {
+func (d *Device) StartStream(ctx context.Context) (<-chan []byte, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	if !d.cap.IsStreamingSupported() {
+		return nil, fmt.Errorf("device: start stream: %s", v4l2.ErrorUnsupportedFeature)
+	}
+
 	if d.streaming {
-		return nil
+		return nil, fmt.Errorf("device: stream already started")
 	}
 
 	// allocate device buffers
-	bufReq, err := v4l2.InitBuffers(d.fd, d.config.ioType, d.bufType, buffSize)
+	bufReq, err := v4l2.InitBuffers(d)
 	if err != nil {
-		return fmt.Errorf("device: start stream: %w", err)
+		return nil, fmt.Errorf("device: init buffers: %w", err)
 	}
+	d.config.bufSize = bufReq.Count // update with granted buf size
 	d.requestedBuf = bufReq
 
-	// for each device buff allocated, prepare local mapped buffer
-	bufCount := int(d.requestedBuf.Count)
-	d.buffers = make([][]byte, d.requestedBuf.Count)
-	for i := 0; i < bufCount; i++ {
-		buffer, err := v4l2.GetBuffer(d.fd, v4l2.IOTypeMMAP, d.bufType, uint32(i))
-		if err != nil {
-			return fmt.Errorf("device start stream: %w", err)
-		}
-
-		offset := buffer.Info.Offset
-		length := buffer.Length
-		mappedBuf, err := v4l2.MapMemoryBuffer(d.fd, int64(offset), int(length))
-		if err != nil {
-			return fmt.Errorf("device start stream: %w", err)
-		}
-		d.buffers[i] = mappedBuf
+	// for each allocated device buf, map into local space
+	if d.buffers, err = v4l2.MakeMappedBuffers(d); err != nil {
+		return nil, fmt.Errorf("device: make mapped buffers: %s", err)
 	}
 
 	// Initial enqueue of buffers for capture
-	for i := 0; i < bufCount; i++ {
-		_, err := v4l2.QueueBuffer(d.fd, uint32(i))
+	for i := 0; i < int(d.config.bufSize); i++ {
+		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i))
 		if err != nil {
-			return fmt.Errorf("device start stream: %w", err)
+			return nil, fmt.Errorf("device: initial buffer queueing: %w", err)
 		}
 	}
 
-	// turn on device stream
-	if err := v4l2.StreamOn(d.fd); err != nil {
-		return fmt.Errorf("device start stream: %w", err)
+	dataChan, err := v4l2.StartStreamLoop(ctx, d)
+	if err != nil {
+		return nil, fmt.Errorf("device: start stream loop: %s", err)
 	}
 
 	d.streaming = true
-
-	return nil
-}
-
-// Capture captures video buffer from device and emit
-// each buffer on channel.
-func (d *Device) Capture(ctx context.Context, fps uint32) (<-chan []byte, error) {
-	if !d.streaming {
-		return nil, fmt.Errorf("device: capture: streaming not started")
-	}
-	if ctx == nil {
-		return nil, fmt.Errorf("device: context nil")
-	}
-
-	bufCount := int(d.requestedBuf.Count)
-	dataChan := make(chan []byte, bufCount)
-
-	if fps == 0 {
-		fps = 10
-	}
-
-	// delay duration based on frame per second
-	fpsDelay := time.Duration((float64(1) / float64(fps)) * float64(time.Second))
-
-	go func() {
-		defer close(dataChan)
-
-		// capture forever or until signaled to stop
-		for {
-			// capture bufCount frames
-			for i := 0; i < bufCount; i++ {
-				//TODO add better error-handling during capture, for now just panic
-				if err := v4l2.WaitForDeviceRead(d.fd, 2*time.Second); err != nil {
-					panic(fmt.Errorf("device: capture: %w", err).Error())
-				}
-
-				// dequeue the device buf
-				bufInfo, err := v4l2.DequeueBuffer(d.fd)
-				if err != nil {
-					panic(fmt.Errorf("device: capture: %w", err).Error())
-				}
-
-				// assert dequeued buffer is in proper range
-				if !(int(bufInfo.Index) < bufCount) {
-					panic(fmt.Errorf("device: capture: unexpected device buffer index: %d", bufInfo.Index).Error())
-				}
-
-				select {
-				case dataChan <- d.buffers[bufInfo.Index][:bufInfo.BytesUsed]:
-				case <-ctx.Done():
-					return
-				}
-				// enqueu used buffer, prepare for next read
-				if _, err := v4l2.QueueBuffer(d.fd, bufInfo.Index); err != nil {
-					panic(fmt.Errorf("device capture: %w", err).Error())
-				}
-
-				time.Sleep(fpsDelay)
-			}
-		}
-	}()
 
 	return dataChan, nil
 }
 
 func (d *Device) StopStream() error {
 	d.streaming = false
-	for i := 0; i < len(d.buffers); i++ {
-		if err := v4l2.UnmapMemoryBuffer(d.buffers[i]); err != nil {
-			return fmt.Errorf("device: stop stream: %w", err)
-		}
+	if err := v4l2.UnmapBuffers(d); err != nil {
+		return fmt.Errorf("device: stop stream: %s", err)
 	}
-	if err := v4l2.StreamOff(d.fd); err != nil {
+	if err := v4l2.StopStreamLoop(d); err != nil {
 		return fmt.Errorf("device: stop stream: %w", err)
 	}
 	return nil

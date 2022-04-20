@@ -21,7 +21,21 @@ func main() {
 	flag.StringVar(&format, "f", format, "pixel format")
 	flag.Parse()
 
-	device, err := device.Open(devName)
+	fmtEnc := v4l2.PixelFmtYUYV
+	switch strings.ToLower(format) {
+	case "mjpeg":
+		fmtEnc = v4l2.PixelFmtMJPEG
+	case "h264", "h.264":
+		fmtEnc = v4l2.PixelFmtH264
+	case "yuyv":
+		fmtEnc = v4l2.PixelFmtYUYV
+	}
+
+	device, err := device.Open(
+		devName,
+		device.WithPixFormat(v4l2.PixFormat{Width: uint32(width), Height: uint32(height), PixelFormat: fmtEnc, Field: v4l2.FieldNone}),
+		device.WithFPS(15),
+	)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
 	}
@@ -33,28 +47,21 @@ func main() {
 	}
 	log.Printf("Current format: %s", currFmt)
 
-	fmtEnc := v4l2.PixelFmtYUYV
-	switch strings.ToLower(format) {
-	case "mjpeg":
-		fmtEnc = v4l2.PixelFmtMJPEG
-	case "h264", "h.264":
-		fmtEnc = v4l2.PixelFmtH264
-	case "yuyv":
-		fmtEnc = v4l2.PixelFmtYUYV
-	}
-
-	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width: uint32(width),
-		Height: uint32(height),
-		PixelFormat: fmtEnc,
-		Field: v4l2.FieldNone,
-	}); err != nil {
-		log.Fatalf("failed to set format: %s", err)
-	}
-
-	currFmt, err = device.GetPixFormat()
+	// FPS
+	fps, err := device.GetFrameRate()
 	if err != nil {
-		log.Fatalf("unable to get format: %s", err)
+		log.Fatalf("failed to get fps: %s", err)
 	}
-	log.Printf("Updated format: %s", currFmt)
+	log.Printf("current frame rate: %d fps", fps)
+	// update fps
+	if fps < 30 {
+		if err := device.SetFrameRate(30); err != nil{
+			log.Fatalf("failed to set frame rate: %s", err)
+		}
+	}
+	fps, err = device.GetFrameRate()
+	if err != nil {
+		log.Fatalf("failed to get fps: %s", err)
+	}
+	log.Printf("updated frame rate: %d fps", fps)
 }

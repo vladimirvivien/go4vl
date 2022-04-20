@@ -23,6 +23,11 @@ func main() {
 	}
 	defer device.Close()
 
+	fps, err := device.GetFrameRate()
+	if err != nil {
+		log.Fatalf("failed to get framerate: %s", err)
+	}
+
 	// helper function to search for format descriptions
 	findPreferredFmt := func(fmts []v4l2.FormatDescription, pixEncoding v4l2.FourCCType) *v4l2.FormatDescription {
 		for _, desc := range fmts {
@@ -90,21 +95,17 @@ func main() {
 	log.Printf("Pixel format set to [%s]", pixFmt)
 
 	// start stream
-	log.Println("Start capturing...")
-	if err := device.StartStream(3); err != nil {
-		log.Fatalf("failed to start stream: %s", err)
+	ctx, cancel := context.WithCancel(context.TODO())
+	frameChan, err := device.StartStream(ctx)
+	if err != nil {
+		log.Fatalf("failed to stream: %s", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	frameChan, err := device.Capture(ctx, 15)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// process frames from capture channel
 	totalFrames := 10
 	count := 0
-	log.Println("Streaming frames from device...")
+	log.Printf("Capturing %d frames at %d fps...", totalFrames, fps)
 	for frame := range frameChan {
 		fileName := fmt.Sprintf("capture_%d.jpg", count)
 		file, err := os.Create(fileName)

@@ -73,13 +73,17 @@ func GetStreamParam(fd uintptr, bufType BufType) (StreamParam, error) {
 }
 
 func SetStreamParam(fd uintptr, bufType BufType, param StreamParam) error {
-	var v4l2Param C.struct_v4l2_streamparm
-	v4l2Param._type = C.uint(bufType)
-	*(*C.struct_v4l2_captureparm)(unsafe.Pointer(&v4l2Param.parm[0])) = *(*C.struct_v4l2_captureparm)(unsafe.Pointer(&param.Capture))
-	*(*C.struct_v4l2_outputparm)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Param.parm[0])) + unsafe.Sizeof(C.struct_v4l2_captureparam{}))) =
-		*(*C.struct_v4l2_outputparm)(unsafe.Pointer(&param.Output))
+	var v4l2Parm C.struct_v4l2_streamparm
+	v4l2Parm._type = C.uint(bufType)
+	if bufType == BufTypeVideoCapture {
+		*(*C.struct_v4l2_captureparm)(unsafe.Pointer(&v4l2Parm.parm[0])) = *(*C.struct_v4l2_captureparm)(unsafe.Pointer(&param.Capture))
+	}
+	if bufType == BufTypeVideoOutput {
+		*(*C.struct_v4l2_outputparm)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Parm.parm[0])) + unsafe.Sizeof(v4l2Parm.parm[0]))) =
+			*(*C.struct_v4l2_outputparm)(unsafe.Pointer(&param.Output))
+	}
 
-	if err := send(fd, C.VIDIOC_S_PARM, uintptr(unsafe.Pointer(&v4l2Param))); err != nil {
+	if err := send(fd, C.VIDIOC_S_PARM, uintptr(unsafe.Pointer(&v4l2Parm))); err != nil {
 		return fmt.Errorf("stream param: %w", err)
 	}
 

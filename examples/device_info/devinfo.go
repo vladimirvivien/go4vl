@@ -49,9 +49,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := printCaptureParam(device); err != nil {
-		log.Fatal(err)
+	if device.Capability().IsVideoCaptureSupported() {
+		if err := printCaptureParam(device); err != nil {
+			log.Fatal(err)
+		}
 	}
+
+	if device.Capability().IsVideoOutputSupported() {
+		if err := printOutputParam(device); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
 
 func listDevices() error {
@@ -236,23 +245,48 @@ func printCropInfo(dev *device.Device) error {
 func printCaptureParam(dev *device.Device) error {
 	params, err := dev.GetStreamParam()
 	if err != nil {
-		return fmt.Errorf("streaming capture param: %w", err)
+		return fmt.Errorf("stream capture param: %w", err)
 	}
-	fmt.Println("Streaming parameters for video capture:")
+	fmt.Println("Stream capture parameters:")
 
 	tpf := "not specified"
-	if params.Capability == v4l2.StreamParamTimePerFrame {
+	if params.Capture.Capability == v4l2.StreamParamTimePerFrame {
 		tpf = "time per frame"
 	}
 	fmt.Printf(template, "Capability", tpf)
 
 	hiqual := "not specified"
-	if params.CaptureMode == v4l2.StreamParamModeHighQuality {
+	if params.Capture.CaptureMode == v4l2.StreamParamModeHighQuality {
 		hiqual = "high quality"
 	}
 	fmt.Printf(template, "Capture mode", hiqual)
 
-	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.TimePerFrame.Denominator, params.TimePerFrame.Numerator))
-	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d", params.ReadBuffers))
+	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.Capture.TimePerFrame.Denominator, params.Capture.TimePerFrame.Numerator))
+	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d", params.Capture.ReadBuffers))
+	return nil
+}
+
+
+func printOutputParam(dev *device.Device) error {
+	params, err := dev.GetStreamParam()
+	if err != nil {
+		return fmt.Errorf("stream output param: %w", err)
+	}
+	fmt.Println("Stream output parameters:")
+
+	tpf := "not specified"
+	if params.Output.Capability == v4l2.StreamParamTimePerFrame {
+		tpf = "time per frame"
+	}
+	fmt.Printf(template, "Capability", tpf)
+
+	hiqual := "not specified"
+	if params.Output.CaptureMode == v4l2.StreamParamModeHighQuality {
+		hiqual = "high quality"
+	}
+	fmt.Printf(template, "Output mode", hiqual)
+
+	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.Output.TimePerFrame.Denominator, params.Output.TimePerFrame.Numerator))
+	fmt.Printf(template, "Write buffers", fmt.Sprintf("%d", params.Output.WriteBuffers))
 	return nil
 }

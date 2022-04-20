@@ -136,6 +136,7 @@ func main() {
 	device, err := device.Open(devName,
 		device.WithIOType(v4l2.IOTypeMMAP),
 		device.WithPixFormat(v4l2.PixFormat{PixelFormat: getFormatType(format), Width: uint32(width), Height: uint32(height)}),
+		device.WithFPS(uint32(frameRate)),
 	)
 
 	if err != nil {
@@ -154,14 +155,9 @@ func main() {
 	log.Printf("Current format: %s", currFmt)
 	pixfmt = currFmt.PixelFormat
 
-	// Setup and start stream capture
-	if err := device.StartStream(2); err != nil {
-		log.Fatalf("unable to start stream: %s", err)
-	}
-
 	// start capture
 	ctx, cancel := context.WithCancel(context.TODO())
-	f, err := device.Capture(ctx, uint32(frameRate))
+	f, err := device.StartStream(ctx)
 	if err != nil {
 		log.Fatalf("stream capture: %s", err)
 	}
