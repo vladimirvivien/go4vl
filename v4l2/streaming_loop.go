@@ -1,47 +1,13 @@
 package v4l2
 
 import (
-	"context"
 	"fmt"
 
 	sys "golang.org/x/sys/unix"
 )
 
-// StartStreamLoop issue a streaming request for the device and sets up
-// a loop to capture incoming buffers from the device.
-func StartStreamLoop(ctx context.Context, dev Device) (chan []byte, error) {
-	if err := StreamOn(dev); err != nil {
-		return nil, fmt.Errorf("stream loop: driver stream on: %w", err)
-	}
-
-	dataChan := make(chan []byte, dev.BufferCount())
-
-	go func() {
-		defer close(dataChan)
-		for {
-			select {
-			case <-WaitForRead(dev):
-				//TODO add better error-handling, for now just panic
-				frame, err  := CaptureFrame(dev)
-				if err != nil {
-					panic(fmt.Errorf("stream loop: frame capture: %s", err).Error())
-				}
-				select {
-				case dataChan <-frame:
-				case <-ctx.Done():
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return dataChan, nil
-}
-
 // StopStreamLoop unmaps allocated IO memory and signal device to stop streaming
-func StopStreamLoop(dev Device) error {
+func StopStreamLoop(dev StreamingDevice) error {
 	if dev.Buffers() == nil {
 		return fmt.Errorf("stop loop: failed to stop loop: buffers uninitialized")
 	}
@@ -55,7 +21,7 @@ func StopStreamLoop(dev Device) error {
 func WaitForRead(dev Device) <-chan struct{} {
 	sigChan := make(chan struct{})
 
-	fd := dev.FileDescriptor()
+	fd := dev.Fd()
 
 	go func() {
 		defer close(sigChan)

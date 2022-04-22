@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/imgsupport"
 	"github.com/vladimirvivien/go4vl/v4l2"
-	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 var (
-	frames <-chan []byte
+	frames chan []byte
 	fps    uint32 = 30
 	pixfmt v4l2.FourCCType
 )
@@ -157,15 +157,28 @@ func main() {
 
 	// start capture
 	ctx, cancel := context.WithCancel(context.TODO())
-	f, err := device.StartStream(ctx)
-	if err != nil {
+	if err := device.Start(ctx); err != nil {
 		log.Fatalf("stream capture: %s", err)
 	}
 	defer func() {
 		cancel()
 		device.Close()
 	}()
-	frames = f // make frames available.
+
+	// buffer captured video stream into a local channel of bytes
+	frames = make(chan []byte, 1024)
+	go func() {
+		defer close(frames)
+		for {
+			select {
+			case frame := <-device.GetOutput():
+				frames <- frame
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	log.Println("device capture started, frames available")
 
 	log.Printf("starting server on port %s", port)

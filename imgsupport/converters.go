@@ -2,6 +2,7 @@ package imgsupport
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/jpeg"
 )
@@ -9,6 +10,9 @@ import (
 // Yuyv2Jpeg attempts to convert the YUYV image using Go's built-in
 // YCbCr encoder
 func Yuyv2Jpeg(width, height int, frame []byte) ([]byte, error) {
+	if true {
+		return nil, fmt.Errorf("unsupported")
+	}
 	//size := len(frame)
 	ycbr := image.NewYCbCr(image.Rect(0, 0, width, height), image.YCbCrSubsampleRatio422)
 

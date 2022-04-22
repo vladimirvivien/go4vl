@@ -123,9 +123,9 @@ type PlaneInfo struct {
 // StreamOn requests streaming to be turned on for
 // capture (or output) that uses memory map, user ptr, or DMA buffers.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
-func StreamOn(dev Device) error {
+func StreamOn(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.FileDescriptor(), C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
@@ -134,9 +134,9 @@ func StreamOn(dev Device) error {
 // StreamOff requests streaming to be turned off for
 // capture (or output) that uses memory map, user ptr, or DMA buffers.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
-func StreamOff(dev Device) error {
+func StreamOff(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.FileDescriptor(), C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
@@ -145,7 +145,7 @@ func StreamOff(dev Device) error {
 // InitBuffers sends buffer allocation request to initialize buffer IO
 // for video capture or video output when using either mem map, user pointer, or DMA buffers.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-reqbufs.html#vidioc-reqbufs
-func InitBuffers(dev Device) (RequestBuffers, error) {
+func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", ErrorUnsupported)
 	}
@@ -154,7 +154,7 @@ func InitBuffers(dev Device) (RequestBuffers, error) {
 	req._type = C.uint(dev.BufferType())
 	req.memory = C.uint(dev.MemIOType())
 
-	if err := send(dev.FileDescriptor(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 
@@ -163,21 +163,21 @@ func InitBuffers(dev Device) (RequestBuffers, error) {
 
 // GetBuffer retrieves buffer info for allocated buffers at provided index.
 // This call should take place after buffers are allocated with RequestBuffers (for mmap for instance).
-func GetBuffer(dev Device, index uint32) (Buffer, error) {
+func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
 	var v4l2Buf C.struct_v4l2_buffer
 	v4l2Buf._type = C.uint(dev.BufferType())
 	v4l2Buf.memory = C.uint(dev.MemIOType())
 	v4l2Buf.index = C.uint(index)
 
-	if err := send(dev.FileDescriptor(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("query buffer: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil
 }
 
-// MapMemoryBuffer creates a local buffer mapped to the address space of the device specified by fd.
-func MapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
+// mapMemoryBuffer creates a local buffer mapped to the address space of the device specified by fd.
+func mapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 	data, err := sys.Mmap(int(fd), offset, len, sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("map memory buffer: %w", err)
@@ -185,8 +185,8 @@ func MapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 	return data, nil
 }
 
-// MakeMappedBuffers creates mapped memory buffers for specified buffer count of device.
-func MakeMappedBuffers(dev Device)([][]byte, error) {
+// MapMemoryBuffers creates mapped memory buffers for specified buffer count of device.
+func MapMemoryBuffers(dev StreamingDevice)([][]byte, error) {
 	bufCount := int(dev.BufferCount())
 	buffers := make([][]byte, bufCount)
 	for i := 0; i < bufCount; i++ {
@@ -195,9 +195,11 @@ func MakeMappedBuffers(dev Device)([][]byte, error) {
 			return nil, fmt.Errorf("mapped buffers: %w", err)
 		}
 
+		// TODO check buffer flags for errors etc
+
 		offset := buffer.Info.Offset
 		length := buffer.Length
-		mappedBuf, err := MapMemoryBuffer(dev.FileDescriptor(), int64(offset), int(length))
+		mappedBuf, err := mapMemoryBuffer(dev.Fd(), int64(offset), int(length))
 		if err != nil {
 			return nil, fmt.Errorf("mapped buffers: %w", err)
 		}
@@ -206,21 +208,21 @@ func MakeMappedBuffers(dev Device)([][]byte, error) {
 	return buffers, nil
 }
 
-// UnmapMemoryBuffer removes the buffer that was previously mapped.
-func UnmapMemoryBuffer(buf []byte) error {
+// unmapMemoryBuffer removes the buffer that was previously mapped.
+func unmapMemoryBuffer(buf []byte) error {
 	if err := sys.Munmap(buf); err != nil {
 		return fmt.Errorf("unmap memory buffer: %w", err)
 	}
 	return nil
 }
 
-// UnmapBuffers unmaps all mapped memory buffer for device
-func UnmapBuffers(dev Device) error {
+// UnmapMemoryBuffers unmaps all mapped memory buffer for device
+func UnmapMemoryBuffers(dev StreamingDevice) error {
 	if dev.Buffers() == nil {
 		return fmt.Errorf("unmap buffers: uninitialized buffers")
 	}
 	for i := 0; i < len(dev.Buffers()); i++ {
-		if err := UnmapMemoryBuffer(dev.Buffers()[i]); err != nil {
+		if err := unmapMemoryBuffer(dev.Buffers()[i]); err != nil {
 			return fmt.Errorf("unmap buffers: %w", err)
 		}
 	}
@@ -261,22 +263,18 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	return makeBuffer(v4l2Buf), nil
 }
 
-// CaptureFrame captures a frame buffer from the device
-func CaptureFrame(dev Device) ([]byte, error) {
-	bufInfo, err := DequeueBuffer(dev.FileDescriptor(), dev.MemIOType(), dev.BufferType())
+// CaptureBuffer captures a frame buffer from the device
+func CaptureBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
+	bufInfo, err := DequeueBuffer(fd, ioType, bufType)
 	if err != nil {
-		return nil, fmt.Errorf("capture frame: dequeue: %w", err)
-	}
-	// assert dequeued buffer is in proper range
-	if !(bufInfo.Index < dev.BufferCount()) {
-		return nil, fmt.Errorf("capture frame: buffer with unexpected index: %d (out of %d)", bufInfo.Index, dev.BufferCount())
+		return Buffer{}, fmt.Errorf("capture frame: dequeue: %w", err)
 	}
 
 	// requeue/clear used buffer, prepare for next read
-	if _, err := QueueBuffer(dev.FileDescriptor(), dev.MemIOType(), dev.BufferType(), bufInfo.Index); err != nil {
-		return nil, fmt.Errorf("capture frame: queue: %w", err)
+	if _, err := QueueBuffer(fd, ioType, bufType, bufInfo.Index); err != nil {
+		return Buffer{}, fmt.Errorf("capture frame: queue: %w", err)
 	}
 
 	// return captured buffer
-	return dev.Buffers()[bufInfo.Index][:bufInfo.BytesUsed], nil
+	return bufInfo, nil
 }

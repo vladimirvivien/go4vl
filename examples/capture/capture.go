@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
-	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 func main() {
@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("device does not support any of %#v", preferredFmts)
 	}
 	log.Printf("Found preferred fmt: %s", fmtDesc)
-	frameSizes, err := v4l2.GetFormatFrameSizes(device.FileDescriptor(), fmtDesc.PixelFormat)
+	frameSizes, err := v4l2.GetFormatFrameSizes(device.Fd(), fmtDesc.PixelFormat)
 	if err!=nil{
 		log.Fatalf("failed to get framesize info: %s", err)
 	}
@@ -96,8 +96,7 @@ func main() {
 
 	// start stream
 	ctx, cancel := context.WithCancel(context.TODO())
-	frameChan, err := device.StartStream(ctx)
-	if err != nil {
+	if err := device.Start(ctx); err != nil {
 		log.Fatalf("failed to stream: %s", err)
 	}
 
@@ -106,7 +105,7 @@ func main() {
 	totalFrames := 10
 	count := 0
 	log.Printf("Capturing %d frames at %d fps...", totalFrames, fps)
-	for frame := range frameChan {
+	for frame := range device.GetOutput() {
 		fileName := fmt.Sprintf("capture_%d.jpg", count)
 		file, err := os.Create(fileName)
 		if err != nil {
@@ -128,7 +127,7 @@ func main() {
 	}
 
 	cancel() // stop capture
-	if err := device.StopStream(); err != nil {
+	if err := device.Stop(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
