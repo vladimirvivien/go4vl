@@ -365,13 +365,16 @@ func (d *Device) Start(ctx context.Context)  error {
 }
 
 func (d *Device) Stop() error {
-	d.streaming = false
+	if !d.streaming {
+		return nil
+	}
 	if err := v4l2.UnmapMemoryBuffers(d); err != nil {
-		return fmt.Errorf("device: stop: %s", err)
+		return fmt.Errorf("device: stop: %w", err)
 	}
 	if err := v4l2.StreamOff(d); err != nil {
 		return fmt.Errorf("device: stop: %w", err)
 	}
+	d.streaming = false
 	return nil
 }
 
@@ -395,15 +398,13 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 				//TODO add better error-handling, for now just panic
 				buff, err  := v4l2.CaptureBuffer(fd, ioMemType, bufType)
 				if err != nil {
-					panic(fmt.Errorf("stream loop: buffer capture: %s", err).Error())
+					panic(fmt.Errorf("stream loop: capture buffer: %s", err).Error())
 				}
 
-				select {
-				case d.output <-d.Buffers()[buff.Index][:buff.BytesUsed]:
-				case <-ctx.Done():
-					return
-				}
+				d.output <-d.Buffers()[buff.Index][:buff.BytesUsed]
+
 			case <-ctx.Done():
+				d.Stop()
 				return
 			}
 		}

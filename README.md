@@ -11,47 +11,47 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 
 ## Features
 * Capture and control video data from your Go programs
-* Idiomatic Go API for device access and video capture
-* Use cgo-generated types for correct data representation in Go
-* Use familiar types such as channels to stream video data
+* Idiomatic Go types such as channels to access and stream video data
 * Exposes device enumeration and information
 * Provides device capture control
 * Access to video format information
-* Streaming support using memory map (other methods coming later)
+* Streaming users zero-copy IO using memory mapped buffers
 
-### Not working/supported yet
-* Inherent support for video output
-* Only support MMap memory stream (user pointers, DMA not working)
-* Device control not implemented yet
-
-## Prerequisites
+## Compilation Requirements
 * Go compiler/tools
-* Linux OS (32- or 64-bit)
 * Kernel minimum v5.10.x
 * A locally configured C compiler (i.e. gcc)
 * Header files for V4L2 (i.e. /usr/include/linux/videodev2.h)
 
-All examples have been tested using a Rasperry PI 3, running 32-bit Raspberry PI OS.
+All examples have been tested using a Raspberry PI 3, running 32-bit Raspberry PI OS.
 The package should work with no problem on your 64-bit Linux OS.
 
 ## Getting started
+
+### System upgrade
+
 To avoid issues with old header files on your machine, upgrade your system to pull down the latest OS packages
-with something similar to the following (follow directions for your system to properly upgrade):
+with something similar to the following (follow directions for your system for proper upgrade):
 
 ```shell
 sudo apt update
 sudo apt full-upgrade
 ```
 
-To include `go4vl` in your own code, pull the package
+### Using the go4vl package
+
+To include `go4vl` in your own code, `go get` the package:
 
 ```bash
 go get github.com/vladimirvivien/go4vl/v4l2
 ```
 
-## Examples
+## Video capture example
+
 The following is a simple example that captures video data from an attached camera device to
-and saves them as JPEG files. The example assumes the attached device supports JPEG (MJPEG) output format inherently.
+and saves the captured frames as JPEG files. 
+
+The example assumes the attached device supports JPEG (MJPEG) output format inherently.
 
 ```go
 package main
