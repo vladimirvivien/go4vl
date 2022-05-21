@@ -12,12 +12,11 @@ import (
 	"time"
 
 	"github.com/vladimirvivien/go4vl/device"
-	"github.com/vladimirvivien/go4vl/imgsupport"
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
 var (
-	frames chan []byte
+	frames <-chan []byte
 	fps    uint32 = 30
 	pixfmt v4l2.FourCCType
 )
@@ -71,20 +70,13 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 				log.Printf("failed to write mjpeg image: %s", err)
 				return
 			}
-		case v4l2.PixelFmtYUYV:
-			data, err := imgsupport.Yuyv2Jpeg(640, 480, frame)
-			if err != nil {
-				log.Printf("failed to convert yuyv to jpeg: %s", err)
-				continue
-			}
-			if _, err := w.Write(data); err != nil {
-				log.Printf("failed to write yuyv image: %s", err)
-				return
-			}
+		default:
+			log.Printf("selected pixel format is not supported")
 		}
+
 		// close boundary
 		if _, err := io.WriteString(w, "\n"); err != nil {
-			log.Printf("failed to write bounday: %s", err)
+			log.Printf("failed to write boundary: %s", err)
 			return
 		}
 	}
@@ -165,22 +157,10 @@ func main() {
 		device.Close()
 	}()
 
-	// buffer captured video stream into a local channel of bytes
-	frames = make(chan []byte, 1024)
-	go func() {
-		defer close(frames)
-		for {
-			select {
-			case frame := <-device.GetOutput():
-				frames <- frame
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	// video stream
+	frames = device.GetOutput()
 
 	log.Println("device capture started, frames available")
-
 	log.Printf("starting server on port %s", port)
 	log.Println("use url path /webcam")
 

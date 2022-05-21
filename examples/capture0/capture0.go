@@ -58,7 +58,7 @@ func main() {
 		}
 	}
 
-	stop() // stop capture	
+	stop() // stop capture
 	fmt.Println("Done.")
 
 }
