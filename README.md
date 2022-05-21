@@ -59,47 +59,33 @@ and saves the captured frames as JPEG files.
 The example assumes the attached device supports JPEG (MJPEG) output format inherently.
 
 ```go
-package main
-
-import (
-    ...
-    "github.com/vladimirvivien/go4vl/v4l2"
-)
-
 func main() {
+	devName := "/dev/video0"
+	flag.StringVar(&devName, "d", devName, "device name (path)")
+	flag.Parse()
+
 	// open device
-	device, err := v4l2.Open("/dev/video0")
+	device, err := device.Open(
+		devName,
+		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMPEG, Width: 640, Height: 480}),
+	)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
 	}
 	defer device.Close()
 
-	// configure device with preferred fmt
-	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width:       640,
-		Height:      480,
-		PixelFormat: v4l2.PixelFmtMJPEG,
-		Field:       v4l2.FieldNone,
-	}); err != nil {
-		log.Fatalf("failed to set format: %s", err)
-	}
-
-	// start a device stream with 3 video buffers
-	if err := device.StartStream(3); err != nil {
+	// start stream with cancellable context
+	ctx, stop := context.WithCancel(context.TODO())
+	if err := device.Start(ctx); err != nil {
 		log.Fatalf("failed to start stream: %s", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	// capture video data at 15 fps
-	frameChan, err := device.Capture(ctx, 15)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// grab 10 frames from frame channel and save them as files
+	// process frames from capture channel
 	totalFrames := 10
 	count := 0
-	for frame := range frameChan {
+	log.Printf("Capturing %d frames...", totalFrames)
+
+	for frame := range device.GetOutput() {
 		fileName := fmt.Sprintf("capture_%d.jpg", count)
 		file, err := os.Create(fileName)
 		if err != nil {
@@ -110,6 +96,7 @@ func main() {
 			log.Printf("failed to write file %s: %s", fileName, err)
 			continue
 		}
+		log.Printf("Saved file: %s", fileName)
 		if err := file.Close(); err != nil {
 			log.Printf("failed to close file %s: %s", fileName, err)
 		}
@@ -119,20 +106,18 @@ func main() {
 		}
 	}
 
-	cancel() // stop capture
-	if err := device.StopStream(); err != nil {
-		log.Fatal(err)
-	}
+	stop() // stop capture
 	fmt.Println("Done.")
 }
 ```
 
-### Other examples
-The [./examples](./examples) directory contains additional examples including:
+> Read a detail walk-through about this example [here](./examples/capture0/README.md).
 
-* [device_info](./examples/device_info) - queries and prints devince information
-* [webcam](./examples/webcam) - uses the v4l2 package to create a simple webcam that streams images from an attached camera accessible via a web page.
+### Other examples
+The [./examples](./examples/README.md) directory contains additional examples including:
+* [device_info](./examples/device_info/README.md) - queries and prints video device information
+* [webcam](./examples/webcam/README.md) - uses the v4l2 package to create a simple webcam that streams images from an attached camera accessible via a web page.
 
 ## Roadmap
-There is no defined roadmap. The main goal is to port as much functionlities as possible so that 
+The main goal is to port as many functionalities as possible so that 
 adopters can use Go to create cool video-based tools on platforms such as the Raspberry Pi.
