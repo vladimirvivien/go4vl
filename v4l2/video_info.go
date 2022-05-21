@@ -17,7 +17,7 @@ type InputStatus = uint32
 var (
 	InputStatusNoPower  InputStatus = C.V4L2_IN_ST_NO_POWER
 	InputStatusNoSignal InputStatus = C.V4L2_IN_ST_NO_SIGNAL
-	InputStatusNoColor  InputStatus  = C.V4L2_IN_ST_NO_COLOR
+	InputStatusNoColor  InputStatus = C.V4L2_IN_ST_NO_COLOR
 )
 
 var InputStatuses = map[InputStatus]string{

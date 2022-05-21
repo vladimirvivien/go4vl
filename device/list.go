@@ -10,7 +10,7 @@ var (
 	root = "/dev"
 )
 
-// devPattern is device directory name pattern on Linux
+// devPattern is device directory name pattern on Linux (i.e. video0, video10, vbi0, etc)
 var devPattern = regexp.MustCompile(fmt.Sprintf(`%s/(video|radio|vbi|swradio|v4l-subdev|v4l-touch|media)[0-9]+`, root))
 
 // IsDevice tests whether the path matches a V4L device name and is a device file
@@ -52,5 +52,5 @@ func GetAllDevicePaths() ([]string, error) {
 			result = append(result, dev)
 		}
 	}
-	return result,  nil
+	return result, nil
 }

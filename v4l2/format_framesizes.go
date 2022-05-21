@@ -17,15 +17,15 @@ const (
 	FrameSizeTypeStepwise   FrameSizeType = C.V4L2_FRMSIZE_TYPE_STEPWISE
 )
 
-// FrameSize uses v4l2_frmsizeenum to get supporeted frame size for the driver based for the pixel format.
+// FrameSizeEnum uses v4l2_frmsizeenum to get supporeted frame size for the driver based for the pixel format.
 // Use FrameSizeType to determine which sizes the driver support.
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L829
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
-type FrameSize struct {
-	FrameSizeType
-	FrameSizeDiscrete
-	FrameSizeStepwise
+type FrameSizeEnum struct {
+	Index       uint32
+	Type        FrameSizeType
 	PixelFormat FourCCType
+	Size        FrameSize
 }
 
 // FrameSizeDiscrete (v4l2_frmsize_discrete)
@@ -35,9 +35,10 @@ type FrameSizeDiscrete struct {
 	Height uint32 // height [pixel]
 }
 
-// FrameSizeStepwise (v4l2_frmsize_stepwise)
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L820
-type FrameSizeStepwise struct {
+// FrameSize stores all possible frame size information regardless of its type. It is mapped to v4l2_frmsize_stepwise.
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L820
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
+type FrameSize struct {
 	MinWidth   uint32 // Minimum frame width [pixel]
 	MaxWidth   uint32 // Maximum frame width [pixel]
 	StepWidth  uint32 // Frame width step size [pixel]
@@ -46,40 +47,45 @@ type FrameSizeStepwise struct {
 	StepHeight uint32 // Frame height step size [pixel]
 }
 
-// getFrameSize retrieves the supported frame size based on the type
-func getFrameSize(frmSizeEnum C.struct_v4l2_frmsizeenum) FrameSize {
-	frameSize := FrameSize{FrameSizeType: FrameSizeType(frmSizeEnum._type), PixelFormat: FourCCType(frmSizeEnum.pixel_format)}
-	switch frameSize.FrameSizeType {
+// getFrameSize retrieves the supported frame size info from following union based on the type:
+
+// union {
+//     struct v4l2_frmsize_discrete	discrete;
+//     struct v4l2_frmsize_stepwise	stepwise;
+// }
+
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L829
+func getFrameSize(frmSizeEnum C.struct_v4l2_frmsizeenum) FrameSizeEnum {
+	frameSize := FrameSizeEnum{Type: FrameSizeType(frmSizeEnum._type), PixelFormat: FourCCType(frmSizeEnum.pixel_format)}
+	switch frameSize.Type {
 	case FrameSizeTypeDiscrete:
-		fsDiscrete := (*FrameSizeDiscrete)(unsafe.Pointer(&frmSizeEnum.anon0[0]))
-		frameSize.FrameSizeDiscrete = *fsDiscrete
-		frameSize.FrameSizeStepwise.MinWidth = frameSize.FrameSizeDiscrete.Width
-		frameSize.FrameSizeStepwise.MinHeight = frameSize.FrameSizeDiscrete.Height
-		frameSize.FrameSizeStepwise.MaxWidth = frameSize.FrameSizeDiscrete.Width
-		frameSize.FrameSizeStepwise.MaxHeight = frameSize.FrameSizeDiscrete.Height
+		fsDiscrete := *(*FrameSizeDiscrete)(unsafe.Pointer(&frmSizeEnum.anon0[0]))
+		frameSize.Size.MinWidth = fsDiscrete.Width
+		frameSize.Size.MinHeight = fsDiscrete.Height
+		frameSize.Size.MaxWidth = fsDiscrete.Width
+		frameSize.Size.MaxHeight = fsDiscrete.Height
 	case FrameSizeTypeStepwise, FrameSizeTypeContinuous:
-		fsStepwise := (*FrameSizeStepwise)(unsafe.Pointer(&frmSizeEnum.anon0[0]))
-		frameSize.FrameSizeStepwise = *fsStepwise
-		frameSize.FrameSizeDiscrete.Width = frameSize.FrameSizeStepwise.MaxWidth
-		frameSize.FrameSizeDiscrete.Height = frameSize.FrameSizeStepwise.MaxHeight
+		// Calculate pointer to access stepwise member
+		frameSize.Size = *(*FrameSize)(unsafe.Pointer(uintptr(unsafe.Pointer(&frmSizeEnum.anon0[0])) + unsafe.Sizeof(FrameSizeDiscrete{})))
+	default:
 	}
 	return frameSize
 }
 
 // GetFormatFrameSize returns a supported device frame size for a specified encoding at index
-func GetFormatFrameSize(fd uintptr, index uint32, encoding FourCCType) (FrameSize, error) {
+func GetFormatFrameSize(fd uintptr, index uint32, encoding FourCCType) (FrameSizeEnum, error) {
 	var frmSizeEnum C.struct_v4l2_frmsizeenum
 	frmSizeEnum.index = C.uint(index)
 	frmSizeEnum.pixel_format = C.uint(encoding)
 
 	if err := send(fd, C.VIDIOC_ENUM_FRAMESIZES, uintptr(unsafe.Pointer(&frmSizeEnum))); err != nil {
-		return FrameSize{}, fmt.Errorf("frame size: index %d: %w", index, err)
+		return FrameSizeEnum{}, fmt.Errorf("frame size: index %d: %w", index, err)
 	}
 	return getFrameSize(frmSizeEnum), nil
 }
 
 // GetFormatFrameSizes returns all supported device frame sizes for a specified encoding
-func GetFormatFrameSizes(fd uintptr, encoding FourCCType) (result []FrameSize, err error) {
+func GetFormatFrameSizes(fd uintptr, encoding FourCCType) (result []FrameSizeEnum, err error) {
 	index := uint32(0)
 	for {
 		var frmSizeEnum C.struct_v4l2_frmsizeenum
@@ -107,7 +113,7 @@ func GetFormatFrameSizes(fd uintptr, encoding FourCCType) (result []FrameSize, e
 // GetAllFormatFrameSizes returns all supported frame sizes for all supported formats.
 // It iterates from format at index 0 until it encounters and error and then stops. For
 // each supported format, it retrieves all supported frame sizes.
-func GetAllFormatFrameSizes(fd uintptr) (result []FrameSize, err error) {
+func GetAllFormatFrameSizes(fd uintptr) (result []FrameSizeEnum, err error) {
 	formats, err := GetAllFormatDescriptions(fd)
 	if len(formats) == 0 && err != nil {
 		return nil, fmt.Errorf("frame sizes: %w", err)

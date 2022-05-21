@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
-	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 func main() {
@@ -23,10 +23,15 @@ func main() {
 	}
 	defer device.Close()
 
+	fps, err := device.GetFrameRate()
+	if err != nil {
+		log.Fatalf("failed to get framerate: %s", err)
+	}
+
 	// helper function to search for format descriptions
 	findPreferredFmt := func(fmts []v4l2.FormatDescription, pixEncoding v4l2.FourCCType) *v4l2.FormatDescription {
 		for _, desc := range fmts {
-			if desc.PixelFormat == pixEncoding{
+			if desc.PixelFormat == pixEncoding {
 				return &desc
 			}
 		}
@@ -35,14 +40,14 @@ func main() {
 
 	// get supported format descriptions
 	fmtDescs, err := device.GetFormatDescriptions()
-	if err != nil{
+	if err != nil {
 		log.Fatal("failed to get format desc:", err)
 	}
 
 	// search for preferred formats
 	preferredFmts := []v4l2.FourCCType{v4l2.PixelFmtMPEG, v4l2.PixelFmtMJPEG, v4l2.PixelFmtJPEG, v4l2.PixelFmtYUYV}
 	var fmtDesc *v4l2.FormatDescription
-	for _, preferredFmt := range preferredFmts{
+	for _, preferredFmt := range preferredFmts {
 		fmtDesc = findPreferredFmt(fmtDescs, preferredFmt)
 		if fmtDesc != nil {
 			break
@@ -54,29 +59,29 @@ func main() {
 		log.Fatalf("device does not support any of %#v", preferredFmts)
 	}
 	log.Printf("Found preferred fmt: %s", fmtDesc)
-	frameSizes, err := v4l2.GetFormatFrameSizes(device.GetFileDescriptor(), fmtDesc.PixelFormat)
-	if err!=nil{
+	frameSizes, err := v4l2.GetFormatFrameSizes(device.Fd(), fmtDesc.PixelFormat)
+	if err != nil {
 		log.Fatalf("failed to get framesize info: %s", err)
 	}
 
 	// select size 640x480 for format
-	var frmSize v4l2.FrameSize
+	var frmSize v4l2.FrameSizeEnum
 	for _, size := range frameSizes {
-		if size.Width == 640 && size.Height == 480 {
+		if size.Size.MinWidth == 640 && size.Size.MinHeight == 480 {
 			frmSize = size
 			break
 		}
 	}
 
-	if frmSize.Width == 0 {
+	if frmSize.Size.MinWidth == 0 {
 		log.Fatalf("Size 640x480 not supported for fmt: %s", fmtDesc)
 	}
 
 	// configure device with preferred fmt
 
 	if err := device.SetPixFormat(v4l2.PixFormat{
-		Width:       frmSize.Width,
-		Height:      frmSize.Height,
+		Width:       frmSize.Size.MinWidth,
+		Height:      frmSize.Size.MinHeight,
 		PixelFormat: fmtDesc.PixelFormat,
 		Field:       v4l2.FieldNone,
 	}); err != nil {
@@ -90,22 +95,16 @@ func main() {
 	log.Printf("Pixel format set to [%s]", pixFmt)
 
 	// start stream
-	log.Println("Start capturing...")
-	if err := device.StartStream(3); err != nil {
-		log.Fatalf("failed to start stream: %s", err)
-	}
-
 	ctx, cancel := context.WithCancel(context.TODO())
-	frameChan, err := device.Capture(ctx, 15)
-	if err != nil {
-		log.Fatal(err)
+	if err := device.Start(ctx); err != nil {
+		log.Fatalf("failed to stream: %s", err)
 	}
 
 	// process frames from capture channel
 	totalFrames := 10
 	count := 0
-	log.Println("Streaming frames from device...")
-	for frame := range frameChan {
+	log.Printf("Capturing %d frames at %d fps...", totalFrames, fps)
+	for frame := range device.GetOutput() {
 		fileName := fmt.Sprintf("capture_%d.jpg", count)
 		file, err := os.Create(fileName)
 		if err != nil {
@@ -127,7 +126,7 @@ func main() {
 	}
 
 	cancel() // stop capture
-	if err := device.StopStream(); err != nil {
+	if err := device.Stop(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

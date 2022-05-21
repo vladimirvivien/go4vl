@@ -1,30 +1,39 @@
 package v4l2
 
 import (
-	"fmt"
+	"context"
 )
 
-type VersionInfo struct {
-	value uint32
+// Device is the base interface for a v4l2 device
+type Device interface {
+	Name() string
+	Fd() uintptr
+	Capability() Capability
+	MemIOType() IOType
+	GetOutput() <-chan []byte
+	SetInput(<-chan []byte)
+	Close() error
 }
 
-func (v VersionInfo) Major() uint32{
-	return v.value >> 16
+// StreamingDevice represents device that supports streaming IO
+// via mapped buffer sharing.
+type StreamingDevice interface {
+	Device
+	Buffers() [][]byte
+	BufferType() BufType
+	BufferCount() uint32
+	Start(context.Context) error
+	Stop() error
 }
 
-func (v VersionInfo) Minor() uint32{
-	return (v.value>>8)&0xff
-}
-
-func (v VersionInfo) Patch() uint32{
-	return v.value&0xff
-}
-
-// Value returns the raw numeric version value
-func (v VersionInfo) Value() uint32 {
-	return v.value
-}
-
-func (v VersionInfo) String() string {
-	return fmt.Sprintf("v%d.%d.%d", v.Major(), v.Minor(), v.Patch())
-}
+//// CaptureDevice represents a device that captures video from an underlying device
+//type CaptureDevice interface {
+//	StreamingDevice
+//	StartCapture(context.Context) (<-chan []byte, error)
+//}
+//
+//// OutputDevice represents a device that can output video data to an underlying device driver
+//type OutputDevice interface {
+//	StreamingDevice
+//	StartOutput(context.Context, chan<- []byte) error
+//}

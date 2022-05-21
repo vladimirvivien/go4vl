@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	device2 "github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
-	"github.com/vladimirvivien/go4vl/v4l2/device"
 )
 
 var template = "\t%-24s : %s\n"
@@ -21,13 +21,13 @@ func main() {
 	flag.Parse()
 
 	if devList {
-		if err := listDevices(); err != nil{
+		if err := listDevices(); err != nil {
 			log.Fatal(err)
 		}
 		os.Exit(0)
 	}
 
-	device, err := device.Open(devName)
+	device, err := device2.Open(devName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,40 +49,48 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := printCaptureParam(device); err != nil {
-		log.Fatal(err)
+	if device.Capability().IsVideoCaptureSupported() {
+		if err := printCaptureParam(device); err != nil {
+			log.Fatal(err)
+		}
 	}
+
+	if device.Capability().IsVideoOutputSupported() {
+		if err := printOutputParam(device); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 }
 
 func listDevices() error {
-	paths, err := device.GetAllDevicePaths()
+	paths, err := device2.GetAllDevicePaths()
 	if err != nil {
 		return err
 	}
 	for _, path := range paths {
-		dev, err := device.Open(path)
+		dev, err := device2.Open(path)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
 
 		var busInfo, card string
-		cap, err := dev.GetCapability()
-		if err != nil {
-			// is a media device?
-			if mdi, err := dev.GetMediaInfo(); err == nil {
-				if mdi.BusInfo != "" {
-					busInfo = mdi.BusInfo
-				}else{
-					busInfo = "platform: " + mdi.Driver
-				}
-				if mdi.Model != "" {
-					card = mdi.Model
-				}else{
-					card = mdi.Driver
-				}
+		cap := dev.Capability()
+
+		// is a media device?
+		if mdi, err := dev.GetMediaInfo(); err == nil {
+			if mdi.BusInfo != "" {
+				busInfo = mdi.BusInfo
+			} else {
+				busInfo = "platform: " + mdi.Driver
 			}
-		}else{
+			if mdi.Model != "" {
+				card = mdi.Model
+			} else {
+				card = mdi.Driver
+			}
+		} else {
 			busInfo = cap.BusInfo
 			card = cap.Card
 		}
@@ -93,21 +101,17 @@ func listDevices() error {
 			continue
 		}
 
-		fmt.Printf("Device [%s]: %s: %s\n", path, card, busInfo)
-
+		fmt.Printf("v4l2Device [%s]: %s: %s\n", path, card, busInfo)
 
 	}
 	return nil
 }
 
-func printDeviceDriverInfo(dev *device.Device) error {
-	caps, err := dev.GetCapability()
-	if err != nil {
-		return fmt.Errorf("driver info: %w", err)
-	}
+func printDeviceDriverInfo(dev *device2.Device) error {
+	caps := dev.Capability()
 
 	// print driver info
-	fmt.Println("Device Info:")
+	fmt.Println("v4l2Device Info:")
 	fmt.Printf(template, "Driver name", caps.Driver)
 	fmt.Printf(template, "Card name", caps.Card)
 	fmt.Printf(template, "Bus info", caps.BusInfo)
@@ -119,7 +123,7 @@ func printDeviceDriverInfo(dev *device.Device) error {
 		fmt.Printf("\t\t%s\n", desc.Desc)
 	}
 
-	fmt.Printf("\t%-16s : %0x\n", "Device capabilities", caps.Capabilities)
+	fmt.Printf("\t%-16s : %0x\n", "v4l2Device capabilities", caps.Capabilities)
 	for _, desc := range caps.GetDeviceCapDescriptions() {
 		fmt.Printf("\t\t%s\n", desc.Desc)
 	}
@@ -127,7 +131,7 @@ func printDeviceDriverInfo(dev *device.Device) error {
 	return nil
 }
 
-func printVideoInputInfo(dev *device.Device) error {
+func printVideoInputInfo(dev *device2.Device) error {
 	// first get current input
 	index, err := dev.GetVideoInputIndex()
 	if err != nil {
@@ -148,7 +152,7 @@ func printVideoInputInfo(dev *device.Device) error {
 	return nil
 }
 
-func printFormatInfo(dev *device.Device) error {
+func printFormatInfo(dev *device2.Device) error {
 	pixFmt, err := dev.GetPixFormat()
 	if err != nil {
 		return fmt.Errorf("video capture format: %w", err)
@@ -190,28 +194,28 @@ func printFormatInfo(dev *device.Device) error {
 	return printFormatDesc(dev)
 }
 
-func printFormatDesc(dev *device.Device) error {
+func printFormatDesc(dev *device2.Device) error {
 	descs, err := dev.GetFormatDescriptions()
 	if err != nil {
 		return fmt.Errorf("format desc: %w", err)
 	}
 	fmt.Println("Supported formats:")
-	for i, desc := range descs{
-		frmSizes, err := v4l2.GetFormatFrameSizes(dev.GetFileDescriptor(), desc.PixelFormat)
+	for i, desc := range descs {
+		frmSizes, err := v4l2.GetFormatFrameSizes(dev.Fd(), desc.PixelFormat)
 		if err != nil {
 			return fmt.Errorf("format desc: %w", err)
 		}
 		var sizeStr strings.Builder
 		sizeStr.WriteString("Sizes: ")
-		for _, size := range frmSizes{
-			sizeStr.WriteString(fmt.Sprintf("[%dx%d] ", size.Width, size.Height))
+		for _, size := range frmSizes {
+			sizeStr.WriteString(fmt.Sprintf("[%dx%d] ", size.Size.MinWidth, size.Size.MinHeight))
 		}
 		fmt.Printf(template, fmt.Sprintf("[%0d] %s", i, desc.Description), sizeStr.String())
 	}
 	return nil
 }
 
-func printCropInfo(dev *device.Device) error {
+func printCropInfo(dev *device2.Device) error {
 	crop, err := dev.GetCropCapability()
 	if err != nil {
 		return fmt.Errorf("crop capability: %w", err)
@@ -238,26 +242,50 @@ func printCropInfo(dev *device.Device) error {
 	return nil
 }
 
-func printCaptureParam(dev *device.Device) error {
-	params, err := dev.GetCaptureParam()
+func printCaptureParam(dev *device2.Device) error {
+	params, err := dev.GetStreamParam()
 	if err != nil {
-		return fmt.Errorf("streaming capture param: %w", err)
+		return fmt.Errorf("stream capture param: %w", err)
 	}
-	fmt.Println("Streaming parameters for video capture:")
+	fmt.Println("Stream capture parameters:")
 
 	tpf := "not specified"
-	if params.Capability == v4l2.StreamParamTimePerFrame {
+	if params.Capture.Capability == v4l2.StreamParamTimePerFrame {
 		tpf = "time per frame"
 	}
 	fmt.Printf(template, "Capability", tpf)
 
 	hiqual := "not specified"
-	if params.CaptureMode == v4l2.StreamParamModeHighQuality {
+	if params.Capture.CaptureMode == v4l2.StreamParamModeHighQuality {
 		hiqual = "high quality"
 	}
 	fmt.Printf(template, "Capture mode", hiqual)
 
-	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.TimePerFrame.Denominator, params.TimePerFrame.Numerator))
-	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d",params.ReadBuffers))
+	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.Capture.TimePerFrame.Denominator, params.Capture.TimePerFrame.Numerator))
+	fmt.Printf(template, "Read buffers", fmt.Sprintf("%d", params.Capture.ReadBuffers))
+	return nil
+}
+
+func printOutputParam(dev *device2.Device) error {
+	params, err := dev.GetStreamParam()
+	if err != nil {
+		return fmt.Errorf("stream output param: %w", err)
+	}
+	fmt.Println("Stream output parameters:")
+
+	tpf := "not specified"
+	if params.Output.Capability == v4l2.StreamParamTimePerFrame {
+		tpf = "time per frame"
+	}
+	fmt.Printf(template, "Capability", tpf)
+
+	hiqual := "not specified"
+	if params.Output.CaptureMode == v4l2.StreamParamModeHighQuality {
+		hiqual = "high quality"
+	}
+	fmt.Printf(template, "Output mode", hiqual)
+
+	fmt.Printf(template, "Frames per second", fmt.Sprintf("%d/%d", params.Output.TimePerFrame.Denominator, params.Output.TimePerFrame.Numerator))
+	fmt.Printf(template, "Write buffers", fmt.Sprintf("%d", params.Output.WriteBuffers))
 	return nil
 }

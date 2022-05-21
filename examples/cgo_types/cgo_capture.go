@@ -78,7 +78,7 @@ func setFormat(fd uintptr, pixFmt PixFormat) error {
 	return nil
 }
 
-func getFormat(fd uintptr) (PixFormat, error){
+func getFormat(fd uintptr) (PixFormat, error) {
 	var v4l2Fmt C.struct_v4l2_format
 	v4l2Fmt._type = C.uint(BufTypeVideoCapture)
 
@@ -88,7 +88,7 @@ func getFormat(fd uintptr) (PixFormat, error){
 	}
 
 	var pixFmt PixFormat
-	*(*C.struct_v4l2_pix_format)(unsafe.Pointer(&pixFmt))= *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Fmt.fmt[0]))
+	*(*C.struct_v4l2_pix_format)(unsafe.Pointer(&pixFmt)) = *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Fmt.fmt[0]))
 
 	return pixFmt, nil
 
@@ -99,7 +99,7 @@ func getFormat(fd uintptr) (PixFormat, error){
 // Memory buffer types
 // https://elixir.bootlin.com/linux/v5.13-rc6/source/include/uapi/linux/videodev2.h#L188
 const (
-	StreamMemoryTypeMMAP    uint32 = C.V4L2_MEMORY_MMAP
+	StreamMemoryTypeMMAP uint32 = C.V4L2_MEMORY_MMAP
 )
 
 // reqBuffers requests that the device allocates a `count`

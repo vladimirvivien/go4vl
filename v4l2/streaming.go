@@ -4,9 +4,7 @@ package v4l2
 import "C"
 
 import (
-	"errors"
 	"fmt"
-	"time"
 	"unsafe"
 
 	sys "golang.org/x/sys/unix"
@@ -26,16 +24,16 @@ const (
 	BufTypeOverlay      BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
 )
 
-// StreamType (v4l2_memory)
+// IOType (v4l2_memory)
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/mmap.html?highlight=v4l2_memory_mmap
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L188
-type StreamType = uint32
+type IOType = uint32
 
 const (
-	StreamTypeMMAP    StreamType = C.V4L2_MEMORY_MMAP
-	StreamTypeUserPtr StreamType = C.V4L2_MEMORY_USERPTR
-	StreamTypeOverlay StreamType = C.V4L2_MEMORY_OVERLAY
-	StreamTypeDMABuf  StreamType = C.V4L2_MEMORY_DMABUF
+	IOTypeMMAP    IOType = C.V4L2_MEMORY_MMAP
+	IOTypeUserPtr IOType = C.V4L2_MEMORY_USERPTR
+	IOTypeOverlay IOType = C.V4L2_MEMORY_OVERLAY
+	IOTypeDMABuf  IOType = C.V4L2_MEMORY_DMABUF
 )
 
 // TODO implement vl42_create_buffers
@@ -58,37 +56,37 @@ type RequestBuffers struct {
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1037
 //
 type Buffer struct {
-	Index      uint32
-	StreamType uint32
-	BytesUsed  uint32
-	Flags      uint32
-	Field      uint32
-	Timestamp  sys.Timeval
-	Timecode   Timecode
-	Sequence   uint32
-	Memory     uint32
-	Info       BufferInfo // union m
-	Length     uint32
-	Reserved2  uint32
-	RequestFD  int32
+	Index     uint32
+	Type      uint32
+	BytesUsed uint32
+	Flags     uint32
+	Field     uint32
+	Timestamp sys.Timeval
+	Timecode  Timecode
+	Sequence  uint32
+	Memory    uint32
+	Info      BufferInfo // union m
+	Length    uint32
+	Reserved2 uint32
+	RequestFD int32
 }
 
 // makeBuffer makes a Buffer value from C.struct_v4l2_buffer
 func makeBuffer(v4l2Buf C.struct_v4l2_buffer) Buffer {
 	return Buffer{
-		Index:      uint32(v4l2Buf.index),
-		StreamType: uint32(v4l2Buf._type),
-		BytesUsed:  uint32(v4l2Buf.bytesused),
-		Flags:      uint32(v4l2Buf.flags),
-		Field:      uint32(v4l2Buf.field),
-		Timestamp:  *(*sys.Timeval)(unsafe.Pointer(&v4l2Buf.timestamp)),
-		Timecode:   *(*Timecode)(unsafe.Pointer(&v4l2Buf.timecode)),
-		Sequence:   uint32(v4l2Buf.sequence),
-		Memory:     uint32(v4l2Buf.memory),
-		Info:       *(*BufferInfo)(unsafe.Pointer(&v4l2Buf.m[0])),
-		Length:     uint32(v4l2Buf.length),
-		Reserved2:  uint32(v4l2Buf.reserved2),
-		RequestFD:  *(*int32)(unsafe.Pointer(&v4l2Buf.anon0[0])),
+		Index:     uint32(v4l2Buf.index),
+		Type:      uint32(v4l2Buf._type),
+		BytesUsed: uint32(v4l2Buf.bytesused),
+		Flags:     uint32(v4l2Buf.flags),
+		Field:     uint32(v4l2Buf.field),
+		Timestamp: *(*sys.Timeval)(unsafe.Pointer(&v4l2Buf.timestamp)),
+		Timecode:  *(*Timecode)(unsafe.Pointer(&v4l2Buf.timecode)),
+		Sequence:  uint32(v4l2Buf.sequence),
+		Memory:    uint32(v4l2Buf.memory),
+		Info:      *(*BufferInfo)(unsafe.Pointer(&v4l2Buf.m[0])),
+		Length:    uint32(v4l2Buf.length),
+		Reserved2: uint32(v4l2Buf.reserved2),
+		RequestFD: *(*int32)(unsafe.Pointer(&v4l2Buf.anon0[0])),
 	}
 }
 
@@ -125,9 +123,9 @@ type PlaneInfo struct {
 // StreamOn requests streaming to be turned on for
 // capture (or output) that uses memory map, user ptr, or DMA buffers.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
-func StreamOn(fd uintptr) error {
-	bufType := BufTypeVideoCapture
-	if err := send(fd, C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+func StreamOn(dev StreamingDevice) error {
+	bufType := dev.BufferType()
+	if err := send(dev.Fd(), C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
@@ -136,50 +134,50 @@ func StreamOn(fd uintptr) error {
 // StreamOff requests streaming to be turned off for
 // capture (or output) that uses memory map, user ptr, or DMA buffers.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
-func StreamOff(fd uintptr) error {
-	bufType := BufTypeVideoCapture
-	if err := send(fd, C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+func StreamOff(dev StreamingDevice) error {
+	bufType := dev.BufferType()
+	if err := send(dev.Fd(), C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
 }
 
 // InitBuffers sends buffer allocation request to initialize buffer IO
-// for video capture when using either mem map, user pointer, or DMA buffers.
+// for video capture or video output when using either mem map, user pointer, or DMA buffers.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-reqbufs.html#vidioc-reqbufs
-func InitBuffers(fd uintptr, buffSize uint32) (RequestBuffers, error) {
-	var req C.struct_v4l2_requestbuffers
-	req.count = C.uint(buffSize)
-	req._type = C.uint(BufTypeVideoCapture)
-	req.memory = C.uint(StreamTypeMMAP)
-
-	if err := send(fd, C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
-		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
+func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
+	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeDMABuf {
+		return RequestBuffers{}, fmt.Errorf("request buffers: %w", ErrorUnsupported)
 	}
-	if req.count < 2 {
-		return RequestBuffers{}, errors.New("request buffers: insufficient memory on device")
+	var req C.struct_v4l2_requestbuffers
+	req.count = C.uint(dev.BufferCount())
+	req._type = C.uint(dev.BufferType())
+	req.memory = C.uint(dev.MemIOType())
+
+	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 
 	return *(*RequestBuffers)(unsafe.Pointer(&req)), nil
 }
 
-// GetBuffer retrieves bunffer info for allocated buffers at provided index.
-// This call should take place after buffers are allocated (for mmap for instance).
-func GetBuffer(fd uintptr, index uint32) (Buffer, error) {
+// GetBuffer retrieves buffer info for allocated buffers at provided index.
+// This call should take place after buffers are allocated with RequestBuffers (for mmap for instance).
+func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
 	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoCapture)
-	v4l2Buf.memory = C.uint(StreamTypeMMAP)
+	v4l2Buf._type = C.uint(dev.BufferType())
+	v4l2Buf.memory = C.uint(dev.MemIOType())
 	v4l2Buf.index = C.uint(index)
 
-	if err := send(fd, C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("query buffer: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil
 }
 
-// MapMemoryBuffer creates a local buffer mapped to the address space of the device specified by fd.
-func MapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
+// mapMemoryBuffer creates a local buffer mapped to the address space of the device specified by fd.
+func mapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 	data, err := sys.Mmap(int(fd), offset, len, sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("map memory buffer: %w", err)
@@ -187,10 +185,46 @@ func MapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 	return data, nil
 }
 
-// UnmapMemoryBuffer removes the buffer that was previously mapped.
-func UnmapMemoryBuffer(buf []byte) error {
+// MapMemoryBuffers creates mapped memory buffers for specified buffer count of device.
+func MapMemoryBuffers(dev StreamingDevice) ([][]byte, error) {
+	bufCount := int(dev.BufferCount())
+	buffers := make([][]byte, bufCount)
+	for i := 0; i < bufCount; i++ {
+		buffer, err := GetBuffer(dev, uint32(i))
+		if err != nil {
+			return nil, fmt.Errorf("mapped buffers: %w", err)
+		}
+
+		// TODO check buffer flags for errors etc
+
+		offset := buffer.Info.Offset
+		length := buffer.Length
+		mappedBuf, err := mapMemoryBuffer(dev.Fd(), int64(offset), int(length))
+		if err != nil {
+			return nil, fmt.Errorf("mapped buffers: %w", err)
+		}
+		buffers[i] = mappedBuf
+	}
+	return buffers, nil
+}
+
+// unmapMemoryBuffer removes the buffer that was previously mapped.
+func unmapMemoryBuffer(buf []byte) error {
 	if err := sys.Munmap(buf); err != nil {
 		return fmt.Errorf("unmap memory buffer: %w", err)
+	}
+	return nil
+}
+
+// UnmapMemoryBuffers unmaps all mapped memory buffer for device
+func UnmapMemoryBuffers(dev StreamingDevice) error {
+	if dev.Buffers() == nil {
+		return fmt.Errorf("unmap buffers: uninitialized buffers")
+	}
+	for i := 0; i < len(dev.Buffers()); i++ {
+		if err := unmapMemoryBuffer(dev.Buffers()[i]); err != nil {
+			return fmt.Errorf("unmap buffers: %w", err)
+		}
 	}
 	return nil
 }
@@ -199,10 +233,10 @@ func UnmapMemoryBuffer(buf []byte) error {
 // when using either memory map, user pointer, or DMA buffers. Buffer is returned with
 // additional information about the queued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
-func QueueBuffer(fd uintptr, index uint32) (Buffer, error) {
+func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buffer, error) {
 	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoCapture)
-	v4l2Buf.memory = C.uint(StreamTypeMMAP)
+	v4l2Buf._type = C.uint(bufType)
+	v4l2Buf.memory = C.uint(ioType)
 	v4l2Buf.index = C.uint(index)
 
 	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
@@ -216,10 +250,10 @@ func QueueBuffer(fd uintptr, index uint32) (Buffer, error) {
 // when using either memory map, user pointer, or DMA buffers. Buffer is returned with
 // additional information about the dequeued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
-func DequeueBuffer(fd uintptr) (Buffer, error) {
+func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoCapture)
-	v4l2Buf.memory = C.uint(StreamTypeMMAP)
+	v4l2Buf._type = C.uint(bufType)
+	v4l2Buf.memory = C.uint(ioType)
 
 	if err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
@@ -229,24 +263,18 @@ func DequeueBuffer(fd uintptr) (Buffer, error) {
 	return makeBuffer(v4l2Buf), nil
 }
 
-// WaitForDeviceRead blocks until the specified device is
-// ready to be read or has timedout.
-func WaitForDeviceRead(fd uintptr, timeout time.Duration) error {
-	timeval := sys.NsecToTimeval(timeout.Nanoseconds())
-	var fdsRead sys.FdSet
-	fdsRead.Set(int(fd))
-	for {
-		n, err := sys.Select(int(fd+1), &fdsRead, nil, nil, &timeval)
-		switch n {
-		case -1:
-			if err == sys.EINTR {
-				continue
-			}
-			return err
-		case 0:
-			return errors.New("wait for device ready: timeout")
-		default:
-			return nil
-		}
+// CaptureBuffer captures a frame buffer from the device
+func CaptureBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
+	bufInfo, err := DequeueBuffer(fd, ioType, bufType)
+	if err != nil {
+		return Buffer{}, fmt.Errorf("capture frame: dequeue: %w", err)
 	}
+
+	// requeue/clear used buffer, prepare for next read
+	if _, err := QueueBuffer(fd, ioType, bufType, bufInfo.Index); err != nil {
+		return Buffer{}, fmt.Errorf("capture frame: queue: %w", err)
+	}
+
+	// return captured buffer
+	return bufInfo, nil
 }
