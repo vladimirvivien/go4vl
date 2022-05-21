@@ -24,7 +24,7 @@ const (
 type StreamParam struct {
 	Type    IOType
 	Capture CaptureParam
-	Output OutputParam
+	Output  OutputParam
 }
 
 // CaptureParam (v4l2_captureparm)
@@ -47,7 +47,7 @@ type OutputParam struct {
 	CaptureMode  StreamParamFlag
 	TimePerFrame Fract
 	ExtendedMode uint32
-	WriteBuffers  uint32
+	WriteBuffers uint32
 	_            [4]uint32
 }
 

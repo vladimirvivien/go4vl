@@ -52,5 +52,5 @@ func GetAllDevicePaths() ([]string, error) {
 			result = append(result, dev)
 		}
 	}
-	return result,  nil
+	return result, nil
 }

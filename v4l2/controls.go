@@ -64,7 +64,7 @@ func GetExtControls(fd uintptr, controls []ExtControl) (ExtControls, error) {
 
 	// prepare control requests
 	var Cctrls []C.struct_v4l2_ext_control
-	for _, control := range controls{
+	for _, control := range controls {
 		var Cctrl C.struct_v4l2_ext_control
 		Cctrl.id = C.uint(control.ID)
 		Cctrl.size = C.uint(control.Size)
@@ -86,7 +86,7 @@ func GetExtControls(fd uintptr, controls []ExtControl) (ExtControls, error) {
 	Cctrls = *(*[]C.struct_v4l2_ext_control)(unsafe.Pointer(&ctrls.controls))
 	for _, Cctrl := range Cctrls {
 		extCtrl := ExtControl{
-			ID: uint32(Cctrl.id),
+			ID:   uint32(Cctrl.id),
 			Size: uint32(Cctrl.size),
 			Ctrl: *(*ExtControlUnion)(unsafe.Pointer(&Cctrl.anon0[0])),
 		}

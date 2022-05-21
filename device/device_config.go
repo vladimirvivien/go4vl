@@ -5,11 +5,11 @@ import (
 )
 
 type config struct {
-	ioType v4l2.IOType
+	ioType    v4l2.IOType
 	pixFormat v4l2.PixFormat
-	bufSize uint32
-	fps uint32
-	bufType uint32
+	bufSize   uint32
+	fps       uint32
+	bufType   uint32
 }
 
 type Option func(*config)

@@ -107,7 +107,7 @@ type Capability struct {
 	Card string
 
 	// BusInfo is the name of the device bus
-	BusInfo string 
+	BusInfo string
 
 	// Version is the kernel version
 	Version uint32
@@ -116,7 +116,7 @@ type Capability struct {
 	Capabilities uint32
 
 	// DeviceCapabilities is the capability for this particular (opened) device or node
-	DeviceCapabilities uint32 
+	DeviceCapabilities uint32
 }
 
 // GetCapability retrieves capability info for device
@@ -145,42 +145,42 @@ func (c Capability) GetCapabilities() uint32 {
 
 // IsVideoCaptureSupported returns caps & CapVideoCapture
 func (c Capability) IsVideoCaptureSupported() bool {
-	return c.Capabilities & CapVideoCapture != 0
+	return c.Capabilities&CapVideoCapture != 0
 }
 
 // IsVideoOutputSupported returns caps & CapVideoOutput
 func (c Capability) IsVideoOutputSupported() bool {
-	return c.Capabilities & CapVideoOutput != 0
+	return c.Capabilities&CapVideoOutput != 0
 }
 
 // IsVideoOverlaySupported returns caps & CapVideoOverlay
 func (c Capability) IsVideoOverlaySupported() bool {
-	return c.Capabilities & CapVideoOverlay != 0
+	return c.Capabilities&CapVideoOverlay != 0
 }
 
 // IsVideoOutputOverlaySupported returns caps & CapVideoOutputOverlay
 func (c Capability) IsVideoOutputOverlaySupported() bool {
-	return c.Capabilities & CapVideoOutputOverlay != 0
+	return c.Capabilities&CapVideoOutputOverlay != 0
 }
 
 // IsVideoCaptureMultiplanarSupported returns caps & CapVideoCaptureMPlane
 func (c Capability) IsVideoCaptureMultiplanarSupported() bool {
-	return c.Capabilities & CapVideoCaptureMPlane != 0
+	return c.Capabilities&CapVideoCaptureMPlane != 0
 }
 
 // IsVideoOutputMultiplanerSupported returns caps & CapVideoOutputMPlane
 func (c Capability) IsVideoOutputMultiplanerSupported() bool {
-	return c.Capabilities & CapVideoOutputMPlane != 0
+	return c.Capabilities&CapVideoOutputMPlane != 0
 }
 
 // IsReadWriteSupported returns caps & CapReadWrite
 func (c Capability) IsReadWriteSupported() bool {
-	return c.Capabilities & CapReadWrite != 0
+	return c.Capabilities&CapReadWrite != 0
 }
 
 // IsStreamingSupported returns caps & CapStreaming
 func (c Capability) IsStreamingSupported() bool {
-	return c.Capabilities & CapStreaming != 0
+	return c.Capabilities&CapStreaming != 0
 }
 
 // IsDeviceCapabilitiesProvided returns true if the device returns
@@ -188,7 +188,7 @@ func (c Capability) IsStreamingSupported() bool {
 // See notes on VL42_CAP_DEVICE_CAPS:
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-querycap.html?highlight=v4l2_cap_device_caps
 func (c Capability) IsDeviceCapabilitiesProvided() bool {
-	return c.Capabilities & CapDeviceCapabilities != 0
+	return c.Capabilities&CapDeviceCapabilities != 0
 }
 
 // GetDriverCapDescriptions return textual descriptions of driver capabilities

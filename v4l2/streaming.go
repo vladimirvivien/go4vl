@@ -186,7 +186,7 @@ func mapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 }
 
 // MapMemoryBuffers creates mapped memory buffers for specified buffer count of device.
-func MapMemoryBuffers(dev StreamingDevice)([][]byte, error) {
+func MapMemoryBuffers(dev StreamingDevice) ([][]byte, error) {
 	bufCount := int(dev.BufferCount())
 	buffers := make([][]byte, bufCount)
 	for i := 0; i < bufCount; i++ {

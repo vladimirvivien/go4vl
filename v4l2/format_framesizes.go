@@ -22,10 +22,10 @@ const (
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L829
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
 type FrameSizeEnum struct {
-	Index     uint32
-	Type      FrameSizeType
+	Index       uint32
+	Type        FrameSizeType
 	PixelFormat FourCCType
-	Size      FrameSize
+	Size        FrameSize
 }
 
 // FrameSizeDiscrete (v4l2_frmsize_discrete)
@@ -66,7 +66,7 @@ func getFrameSize(frmSizeEnum C.struct_v4l2_frmsizeenum) FrameSizeEnum {
 		frameSize.Size.MaxHeight = fsDiscrete.Height
 	case FrameSizeTypeStepwise, FrameSizeTypeContinuous:
 		// Calculate pointer to access stepwise member
-		frameSize.Size = *(*FrameSize)(unsafe.Pointer(uintptr(unsafe.Pointer(&frmSizeEnum.anon0[0]))+unsafe.Sizeof(FrameSizeDiscrete{})))
+		frameSize.Size = *(*FrameSize)(unsafe.Pointer(uintptr(unsafe.Pointer(&frmSizeEnum.anon0[0])) + unsafe.Sizeof(FrameSizeDiscrete{})))
 	default:
 	}
 	return frameSize

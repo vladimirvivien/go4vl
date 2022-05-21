@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl)
+
 # go4vl
 A Go library for the `Video for Linux 2`  (v4l2) user API.
 

@@ -21,7 +21,7 @@ type Device struct {
 	buffers      [][]byte
 	requestedBuf v4l2.RequestBuffers
 	streaming    bool
-	output chan []byte
+	output       chan []byte
 }
 
 // Open creates opens the underlying device at specified path for streaming.
@@ -107,7 +107,6 @@ func Open(path string, options ...Option) (*Device, error) {
 			fmt.Errorf("device open: %s: get fps: %w", path, err)
 		}
 	}
-
 
 	return dev, nil
 }
@@ -321,7 +320,7 @@ func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
 	return v4l2.GetMediaDeviceInfo(d.fd)
 }
 
-func (d *Device) Start(ctx context.Context)  error {
+func (d *Device) Start(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -383,7 +382,6 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 		return fmt.Errorf("stream loop: stream on: %w", err)
 	}
 
-
 	go func() {
 		defer close(d.output)
 
@@ -396,12 +394,12 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 			// handle stream capture (read from driver)
 			case <-v4l2.WaitForRead(d):
 				//TODO add better error-handling, for now just panic
-				buff, err  := v4l2.CaptureBuffer(fd, ioMemType, bufType)
+				buff, err := v4l2.CaptureBuffer(fd, ioMemType, bufType)
 				if err != nil {
 					panic(fmt.Errorf("stream loop: capture buffer: %s", err).Error())
 				}
 
-				d.output <-d.Buffers()[buff.Index][:buff.BytesUsed]
+				d.output <- d.Buffers()[buff.Index][:buff.BytesUsed]
 
 			case <-ctx.Done():
 				d.Stop()

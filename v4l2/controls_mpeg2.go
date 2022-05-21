@@ -27,8 +27,8 @@ type ControlMPEG2Picture struct {
 // ControlMPEG2Quantization (v4l2_ctrl_mpeg2_quantisation)
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L1972
 type ControlMPEG2Quantization struct {
-	IntraQuantizerMatrix [64]uint8
-	NonIntraQuantizerMatrix [64]uint8
-	ChromaIntraQuantizerMatrix [64]uint8
+	IntraQuantizerMatrix          [64]uint8
+	NonIntraQuantizerMatrix       [64]uint8
+	ChromaIntraQuantizerMatrix    [64]uint8
 	ChromaNonIntraQuantizerMatrix [64]uint8
 }

@@ -55,7 +55,7 @@ func main() {
 	log.Printf("current frame rate: %d fps", fps)
 	// update fps
 	if fps < 30 {
-		if err := device.SetFrameRate(30); err != nil{
+		if err := device.SetFrameRate(30); err != nil {
 			log.Fatalf("failed to set frame rate: %s", err)
 		}
 	}

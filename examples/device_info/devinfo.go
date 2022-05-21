@@ -266,7 +266,6 @@ func printCaptureParam(dev *device2.Device) error {
 	return nil
 }
 
-
 func printOutputParam(dev *device2.Device) error {
 	params, err := dev.GetStreamParam()
 	if err != nil {

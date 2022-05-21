@@ -3,7 +3,7 @@ package v4l2
 // Area (v4l2_area)
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L424
 type Area struct {
-	Width uint32
+	Width  uint32
 	Height uint32
 }
 
@@ -24,4 +24,3 @@ type Rect struct {
 	Width  uint32
 	Height uint32
 }
-

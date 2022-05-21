@@ -46,7 +46,7 @@ type FrameInterval struct {
 //	}
 
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-frameintervals.html
-func getFrameInterval(interval C.struct_v4l2_frmivalenum) (FrameIntervalEnum,error) {
+func getFrameInterval(interval C.struct_v4l2_frmivalenum) (FrameIntervalEnum, error) {
 	frmInterval := FrameIntervalEnum{
 		Index:       uint32(interval.index),
 		Type:        FrameIntervalType(interval._type),
