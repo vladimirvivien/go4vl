@@ -45,7 +45,10 @@ Once built, you can start the webcam with the following command (and output as s
 2022/05/21 09:04:31 use url path /webcam
 ```
 
-Next, point your browser to your machine's address and shown port (i.e. `http://198.162.100.20:9090`). You should see a webpage with the streaming image in the middle (see below.)
+Next, point your browser to your machine's address and shown port (i.e. `http://198.162.100.20:9090`). 
+You should see a webpage with the streaming video (see below.)
+
+![](./screenshot.png)
 
 The webcam program offers several CLI arguments that you can use to configure the webcam:
 
