@@ -1,6 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl)
 
 # go4vl
+
 A Go library for the `Video for Linux 2`  (v4l2) user API.
 
 ----
@@ -12,6 +13,7 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 > It is *NOT* meant to be a portable/cross-platform capable package for real-time video processing.
 
 ## Features
+
 * Capture and control video data from your Go programs
 * Idiomatic Go types such as channels to access and stream video data
 * Exposes device enumeration and information
@@ -20,6 +22,7 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 * Streaming users zero-copy IO using memory mapped buffers
 
 ## Compilation Requirements
+
 * Go compiler/tools
 * Kernel minimum v5.10.x
 * A locally configured C compiler (i.e. gcc)
