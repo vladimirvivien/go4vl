@@ -2,6 +2,8 @@
 
 # go4vl
 
+![](./docs/go4vl-logo-small.png)
+
 A Go library for the `Video for Linux 2`  (v4l2) user API.
 
 ----
