@@ -1,6 +1,7 @@
 package main
 
 /*
+#cgo linux CFLAGS: -I ${SRCDIR}/../../include/
 #include <linux/videodev2.h>
 */
 import "C"

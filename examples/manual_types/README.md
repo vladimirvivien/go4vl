@@ -8,7 +8,7 @@ cgo-generated types (see v4l2 package) for stability.
 Do not use it. 
 
 If you want to play around with image capture, use the 
-[examples/capture](../capture).
+[capture0](../capture0) or [capture1](../capture1) examples.
 
 :warning:
 

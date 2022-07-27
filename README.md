@@ -28,7 +28,6 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 * Go compiler/tools
 * Kernel minimum v5.10.x
 * A locally configured C compiler (i.e. gcc)
-* Header files for V4L2 (i.e. /usr/include/linux/videodev2.h)
 
 All examples have been tested using a Raspberry PI 3, running 32-bit Raspberry PI OS.
 The package should work with no problem on your 64-bit Linux OS.
@@ -43,6 +42,11 @@ with something similar to the following (follow directions for your system for p
 ```shell
 sudo apt update
 sudo apt full-upgrade
+```
+
+Install the `build-essential` package to install required C compilers:
+```shell
+sudo apt install build-essential
 ```
 
 ### Using the go4vl package

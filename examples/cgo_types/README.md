@@ -6,8 +6,8 @@ to communicate to device using cgo-generated types.
 
 ## Do not use it ## 
 
-Use package `v4l2` to do realtime image capture, as shown in example
-[examples/capture](../capture).
+Use package `v4l2` to do realtime image capture, as shown in examples
+[capture0](../capture0) and [capture1](../capture1).
 
 :warning:
 
