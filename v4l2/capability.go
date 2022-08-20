@@ -1,6 +1,9 @@
 package v4l2
 
-// #include <linux/videodev2.h>
+/*
+#cgo linux CFLAGS: -I ${SRCDIR}/../include/
+#include <linux/videodev2.h>
+*/
 import "C"
 
 import (
