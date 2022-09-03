@@ -1,18 +1,17 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vladimirvivien/go4vl.svg)](https://pkg.go.dev/github.com/vladimirvivien/go4vl) [![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl)
 
 # go4vl
 
 ![](./docs/go4vl-logo-small.png)
 
-A Go library for the `Video for Linux 2`  (v4l2) user API.
+A Go centric abstraction of the library for  `Video for Linux 2`  (v4l2) user API.
 
 ----
 
 The `go4vl` project is for working with the Video for Linux 2 API for real-time video. 
 It hides all the complexities of working with V4L2 and provides idiomatic Go types, like channels, to consume and process captured video frames.
 
-> This project is designed to work with Linux and the Linux Video API.  
-> It is *NOT* meant to be a portable/cross-platform capable package for real-time video processing.
+> This project is designed to work with Linux and the Linux Video API only.  It is *NOT* meant to be a portable/cross-platform package.
 
 ## Features
 

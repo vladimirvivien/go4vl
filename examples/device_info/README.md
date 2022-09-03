@@ -1,7 +1,6 @@
 # Device info example
 
-The example in this directory showcases `go4vl` support for device information. For instance, the following function 
-prints driver information
+The example in this directory showcases `go4vl` support for device information. For instance, the following function prints driver information
 
 ```go
 func main() {

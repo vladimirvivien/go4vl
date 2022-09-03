@@ -8,8 +8,8 @@ type ControlFWHTParams struct {
 	Width                uint32
 	Height               uint32
 	Flags                uint32
-	Colorspace           ColorspaceType
-	XFerFunc             XferFunctionType
-	YCbCrEncoding        YCbCrEncodingType
-	Quantization         QuantizationType
+	// Colorspace           ColorspaceType
+	// XFerFunc             XferFunctionType
+	// YCbCrEncoding        YCbCrEncodingType
+	// Quantization         QuantizationType
 }

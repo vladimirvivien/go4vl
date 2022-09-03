@@ -25,15 +25,3 @@ type StreamingDevice interface {
 	Start(context.Context) error
 	Stop() error
 }
-
-//// CaptureDevice represents a device that captures video from an underlying device
-//type CaptureDevice interface {
-//	StreamingDevice
-//	StartCapture(context.Context) (<-chan []byte, error)
-//}
-//
-//// OutputDevice represents a device that can output video data to an underlying device driver
-//type OutputDevice interface {
-//	StreamingDevice
-//	StartOutput(context.Context, chan<- []byte) error
-//}

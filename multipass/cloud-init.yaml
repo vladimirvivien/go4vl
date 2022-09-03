@@ -1,0 +1,16 @@
+# cloud-config
+
+ssh_authorized_key:
+ - ${SSH_PUBLIC_KEY} 
+
+package_update: true
+package_upgrade: true
+packages:
+ - v4l2loopback-dkms
+
+runcmd:
+  - 'sudo apt -y install linux-modules-extra-$(uname -r)'
+  - 'sudo apt -y install dkms'
+  - 'sudo modprobe v4l2loopback exclusive_caps=1 video_nr=1,2'
+  - 'curl -sL https://go.dev/dl/go1.19.linux-amd64.tar.gz | tar -C /usr/local -xz'
+  - 'export PATH="${PATH}:/usr/local/go/bin'

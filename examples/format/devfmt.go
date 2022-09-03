@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	device2 "github.com/vladimirvivien/go4vl/device"
+	dev "github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
@@ -31,10 +31,10 @@ func main() {
 		fmtEnc = v4l2.PixelFmtYUYV
 	}
 
-	device, err := device2.Open(
+	device, err := dev.Open(
 		devName,
-		device2.WithPixFormat(v4l2.PixFormat{Width: uint32(width), Height: uint32(height), PixelFormat: fmtEnc, Field: v4l2.FieldNone}),
-		device2.WithFPS(15),
+		dev.WithPixFormat(v4l2.PixFormat{Width: uint32(width), Height: uint32(height), PixelFormat: fmtEnc, Field: v4l2.FieldNone}),
+		dev.WithFPS(15),
 	)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
