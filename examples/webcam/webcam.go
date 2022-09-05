@@ -52,7 +52,8 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", fmt.Sprintf("multipart/x-mixed-replace; boundary=%s", boundaryName))
 	w.WriteHeader(http.StatusOK)
 
-	for frame := range frames {
+	var frame []byte
+	for frame = range frames {
 		if len(frame) == 0 {
 			log.Print("skipping empty frame")
 			continue

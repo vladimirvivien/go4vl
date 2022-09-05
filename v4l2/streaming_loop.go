@@ -4,12 +4,12 @@ import (
 	sys "golang.org/x/sys/unix"
 )
 
+// WaitForRead returns a channel that can be used to be notified when
+// a device's is ready to be read.
 func WaitForRead(dev Device) <-chan struct{} {
 	sigChan := make(chan struct{})
 
-	fd := dev.Fd()
-
-	go func() {
+	go func(fd uintptr) {
 		defer close(sigChan)
 		var fdsRead sys.FdSet
 		fdsRead.Set(int(fd))
@@ -22,7 +22,7 @@ func WaitForRead(dev Device) <-chan struct{} {
 			}
 			sigChan <- struct{}{}
 		}
-	}()
+	}(dev.Fd())
 
 	return sigChan
 }

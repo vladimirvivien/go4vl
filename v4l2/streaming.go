@@ -54,7 +54,6 @@ type RequestBuffers struct {
 // after streaming IO has been initialized.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html#c.V4L.v4l2_buffer
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1037
-//
 type Buffer struct {
 	Index     uint32
 	Type      uint32
@@ -103,7 +102,6 @@ type BufferInfo struct {
 // Plane (see struct v4l2_plane) represents a plane in a multi-planar buffers
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html#c.V4L.v4l2_plane
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L990
-//
 type Plane struct {
 	BytesUsed  uint32
 	Length     uint32
@@ -261,20 +259,4 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	}
 
 	return makeBuffer(v4l2Buf), nil
-}
-
-// CaptureBuffer captures a frame buffer from the device
-func CaptureBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
-	bufInfo, err := DequeueBuffer(fd, ioType, bufType)
-	if err != nil {
-		return Buffer{}, fmt.Errorf("capture frame: dequeue: %w", err)
-	}
-
-	// requeue/clear used buffer, prepare for next read
-	if _, err := QueueBuffer(fd, ioType, bufType, bufInfo.Index); err != nil {
-		return Buffer{}, fmt.Errorf("capture frame: queue: %w", err)
-	}
-
-	// return captured buffer
-	return bufInfo, nil
 }

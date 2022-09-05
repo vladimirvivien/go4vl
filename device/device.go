@@ -388,13 +388,14 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 		fd := d.Fd()
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
+		waitForRead := v4l2.WaitForRead(d)
 
 		for {
 			select {
 			// handle stream capture (read from driver)
-			case <-v4l2.WaitForRead(d):
+			case <-waitForRead:
 				//TODO add better error-handling, for now just panic
-				buff, err := v4l2.CaptureBuffer(fd, ioMemType, bufType)
+				buff, err := d.prepareCaptureBuffer(fd, ioMemType, bufType)
 				if err != nil {
 					panic(fmt.Errorf("stream loop: capture buffer: %s", err).Error())
 				}
@@ -409,4 +410,20 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// prepareCaptureBuffer prepares a frame buffer for stream capture
+func (d *Device) prepareCaptureBuffer(fd uintptr, ioType v4l2.IOType, bufType v4l2.BufType) (v4l2.Buffer, error) {
+	bufInfo, err := v4l2.DequeueBuffer(fd, ioType, bufType)
+	if err != nil {
+		return v4l2.Buffer{}, fmt.Errorf("capture buffer info: dequeue: %w", err)
+	}
+
+	// requeue/clear used buffer, prepare for next read
+	if _, err := v4l2.QueueBuffer(fd, ioType, bufType, bufInfo.Index); err != nil {
+		return v4l2.Buffer{}, fmt.Errorf("capture buffer info: queue: %w", err)
+	}
+
+	// return captured buffer info
+	return bufInfo, nil
 }
