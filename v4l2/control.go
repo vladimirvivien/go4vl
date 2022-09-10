@@ -141,12 +141,12 @@ func GetControl(fd uintptr, id CtrlID) (Control, error) {
 }
 
 // QueryAllControls loop through all available user controls and returns information for
-// all enabled controls and their values.
+// all controls without their current values (use GetControlValue to get current values).
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/control.html
 func QueryAllControls(fd uintptr) (result []Control, err error) {
 	cid := uint32(C.V4L2_CTRL_FLAG_NEXT_CTRL)
 	for {
-		control, err := GetControl(fd, cid)
+		control, err := QueryControlInfo(fd, cid)
 		if err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break

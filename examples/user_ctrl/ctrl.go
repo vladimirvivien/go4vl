@@ -93,7 +93,7 @@ func printUserControl(ctrl v4l2.Control) {
 		}
 
 		for _, m := range menus {
-			fmt.Printf("\tMenu items for %s: %#v", ctrl.Name, m)
+			fmt.Printf("\tMenu items for %s: %#v\n", ctrl.Name, m)
 		}
 	}
 
