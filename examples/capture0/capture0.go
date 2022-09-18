@@ -19,7 +19,7 @@ func main() {
 	// open device
 	device, err := device.Open(
 		devName,
-		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMPEG, Width: 640, Height: 480}),
+		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMJPEG, Width: 640, Height: 480, Field: v4l2.FieldInterlaced}),
 	)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
