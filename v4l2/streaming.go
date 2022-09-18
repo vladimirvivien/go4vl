@@ -140,7 +140,7 @@ func StreamOff(dev StreamingDevice) error {
 	return nil
 }
 
-// InitBuffers sends buffer allocation request to initialize buffer IO
+// InitBuffers sends buffer allocation request (VIDIOC_REQBUFS) to initialize buffer IO
 // for video capture or video output when using either mem map, user pointer, or DMA buffers.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-reqbufs.html#vidioc-reqbufs
 func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
@@ -153,7 +153,26 @@ func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	req.memory = C.uint(dev.MemIOType())
 
 	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
-		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
+		return RequestBuffers{}, fmt.Errorf("request buffers: %w: type not supported", err)
+	}
+
+	return *(*RequestBuffers)(unsafe.Pointer(&req)), nil
+}
+
+// ResetBuffers allocates a buffer of size 0 VIDIOC_REQBUFS(0) to free (or orphan) all
+// buffers. Useful when shuttingdown the stream.
+// See https://linuxtv.org/downloads/v4l-dvb-apis-new/userspace-api/v4l/vidioc-reqbufs.html
+func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
+	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeDMABuf {
+		return RequestBuffers{}, fmt.Errorf("reset buffers: %w", ErrorUnsupported)
+	}
+	var req C.struct_v4l2_requestbuffers
+	req.count = C.uint(0)
+	req._type = C.uint(dev.BufferType())
+	req.memory = C.uint(dev.MemIOType())
+
+	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+		return RequestBuffers{}, fmt.Errorf("reset buffers VIDIOC_REQBUFS(0): %w", err)
 	}
 
 	return *(*RequestBuffers)(unsafe.Pointer(&req)), nil
@@ -168,7 +187,7 @@ func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
 	v4l2Buf.index = C.uint(index)
 
 	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-		return Buffer{}, fmt.Errorf("query buffer: %w", err)
+		return Buffer{}, fmt.Errorf("query buffer: type not supported: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil
@@ -253,9 +272,9 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	v4l2Buf._type = C.uint(bufType)
 	v4l2Buf.memory = C.uint(ioType)
 
-	if err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
-
+	err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
+	if err != nil {
+		return Buffer{}, fmt.Errorf("buffer dequeue: EGAIN: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil
