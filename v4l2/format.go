@@ -15,8 +15,8 @@ type FourCCType = uint32
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/pixfmt.html
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L518
 var (
-	PixFmtRGB24   FourCCType = C.V4L2_PIX_FMT_RGB24
-	PixFmtGrey    FourCCType = C.V4L2_PIX_FMT_GREY
+	PixelFmtRGB24 FourCCType = C.V4L2_PIX_FMT_RGB24
+	PixelFmtGrey  FourCCType = C.V4L2_PIX_FMT_GREY
 	PixelFmtYUYV  FourCCType = C.V4L2_PIX_FMT_YUYV
 	PixelFmtYYUV  FourCCType = C.V4L2_PIX_FMT_YYUV
 	PixelFmtYVYU  FourCCType = C.V4L2_PIX_FMT_YVYU
@@ -31,8 +31,8 @@ var (
 
 // PixelFormats provides a map of FourCCType encoding description
 var PixelFormats = map[FourCCType]string{
-	PixFmtRGB24:   "24-bit RGB 8-8-8",
-	PixFmtGrey:    "8-bit Greyscale",
+	PixelFmtRGB24: "24-bit RGB 8-8-8",
+	PixelFmtGrey:  "8-bit Greyscale",
 	PixelFmtYUYV:  "YUYV 4:2:2",
 	PixelFmtMJPEG: "Motion-JPEG",
 	PixelFmtJPEG:  "JFIF JPEG",

@@ -1,6 +1,6 @@
 # V4L2 video capture example in C
 
-This an example in C showing a minimally required steps to capture video using V4L2. This is can be used to run tests on devices and compare results with the Go4VL code.
+This an example in C showing the minimally required steps to capture video using the V4L2 framework. This can be used as a test tool to compare results between C and the Go4VL Go code.
 
 ## Build and run
 On a Linux machine, run the following:
