@@ -11,7 +11,9 @@ func main() {
 	// open device
 	device, err := device.Open(
 		devName,
-		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMPEG, Width: 640, Height: 480}),
+		device.WithPixFormat(
+			v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMPEG, Width: 640, Height: 480},
+		),
 	)
 ...
 }

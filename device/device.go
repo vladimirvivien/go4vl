@@ -341,9 +341,7 @@ func (d *Device) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("device: requested buffer type not be supported: %w", err)
 	}
-	if bufReq.Count < 2 {
-		return fmt.Errorf("device: %s: issuficient buffer memory", d.path)
-	}
+
 	d.config.bufSize = bufReq.Count
 	d.requestedBuf = bufReq
 
@@ -395,10 +393,10 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 		defer close(d.output)
 
 		fd := d.Fd()
+		var frame []byte
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
 		waitForRead := v4l2.WaitForRead(d)
-
 		for {
 			select {
 			// handle stream capture (read from driver)
@@ -411,12 +409,21 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 					panic(fmt.Sprintf("device: stream loop dequeue: %s", err))
 				}
 
+				// copy mapped buffer (copying avoids polluted data from subsequent dequeue ops)
+				if buff.Flags&v4l2.BufFlagMapped != 0 && buff.Flags&v4l2.BufFlagError == 0 {
+					frame = make([]byte, buff.BytesUsed)
+					if n := copy(frame, d.buffers[buff.Index][:buff.BytesUsed]); n == 0 {
+						d.output <- []byte{}
+					}
+					d.output <- frame
+					frame = nil
+				} else {
+					d.output <- []byte{}
+				}
+
 				if _, err := v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index); err != nil {
 					panic(fmt.Sprintf("device: stream loop queue: %s: buff: %#v", err, buff))
 				}
-
-				d.output <- d.Buffers()[buff.Index][:buff.BytesUsed]
-
 			case <-ctx.Done():
 				d.Stop()
 				return

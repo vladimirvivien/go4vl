@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
@@ -19,7 +20,7 @@ func main() {
 	// open device
 	device, err := device.Open(
 		devName,
-		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMJPEG, Width: 640, Height: 480, Field: v4l2.FieldInterlaced}),
+		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMJPEG, Width: 640, Height: 480}),
 	)
 	if err != nil {
 		log.Fatalf("failed to open device: %s", err)
@@ -56,6 +57,7 @@ func main() {
 		if count >= totalFrames {
 			break
 		}
+		time.Sleep(1 * time.Second)
 	}
 
 	stop() // stop capture

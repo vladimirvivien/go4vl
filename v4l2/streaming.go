@@ -36,6 +36,33 @@ const (
 	IOTypeDMABuf  IOType = C.V4L2_MEMORY_DMABUF
 )
 
+type BufFlag = uint32
+
+const (
+	BufFlagMapped              BufFlag = C.V4L2_BUF_FLAG_MAPPED
+	BufFlagQueued              BufFlag = C.V4L2_BUF_FLAG_QUEUED
+	BufFlagDone                BufFlag = C.V4L2_BUF_FLAG_DONE
+	BufFlagKeyFrame            BufFlag = C.V4L2_BUF_FLAG_KEYFRAME
+	BufFlagPFrame              BufFlag = C.V4L2_BUF_FLAG_PFRAME
+	BufFlagBFrame              BufFlag = C.V4L2_BUF_FLAG_BFRAME
+	BufFlagError               BufFlag = C.V4L2_BUF_FLAG_ERROR
+	BufFlagInRequest           BufFlag = C.V4L2_BUF_FLAG_IN_REQUEST
+	BufFlagTimeCode            BufFlag = C.V4L2_BUF_FLAG_TIMECODE
+	BufFlagM2MHoldCaptureBuf   BufFlag = C.V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
+	BufFlagPrepared            BufFlag = C.V4L2_BUF_FLAG_PREPARED
+	BufFlagNoCacheInvalidate   BufFlag = C.V4L2_BUF_FLAG_NO_CACHE_INVALIDATE
+	BufFlagNoCacheClean        BufFlag = C.V4L2_BUF_FLAG_NO_CACHE_CLEAN
+	BufFlagTimestampMask       BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_MASK
+	BufFlagTimestampUnknown    BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_UNKNOWN
+	BufFlagTimestampMonotonic  BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
+	BufFlagTimestampCopy       BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_COPY
+	BufFlagTimestampSourceMask BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_MASK
+	BufFlagTimestampSourceEOF  BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_EOF
+	BufFlagTimestampSourceSOE  BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_SOE
+	BufFlagLast                BufFlag = C.V4L2_BUF_FLAG_LAST
+	BufFlagRequestFD           BufFlag = C.V4L2_BUF_FLAG_REQUEST_FD
+)
+
 // TODO implement vl42_create_buffers
 
 // RequestBuffers (v4l2_requestbuffers) is used to request buffer allocation initializing
@@ -274,7 +301,7 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 
 	err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
 	if err != nil {
-		return Buffer{}, fmt.Errorf("buffer dequeue: EGAIN: %w", err)
+		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil

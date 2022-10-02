@@ -3,7 +3,7 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
-    <title>Go WebCam</title>
+    <title>📸 GoCam</title>
 
     <!-- CSS  -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -11,39 +11,94 @@
 </head>
 <body>
 
-<div class="section no-pad-bot" id="index-banner">
-    <div class="container">
-        <div class="row center">
-            <img src="/gologo.png" height="75"/>
+    
+    <div class="row red accent-2" style="padding: 0px; border:0px; margin: 0px;">
+        <div class="col s12 m12 l12">
+            <h1 class="center-align white-text">📸 GoCam</h1>
         </div>
-        <br><br>
-        <h1 class="header center blue-text">WebCam</h1>
-        <div class="row center">
-            <h3 class="header col s12 light">Realtime video capture using the Go programming language</h3>
-        </div>
+    </div>
+    <div class="row" style="padding: 0px; border:0px; margin: 0px;">
+        <div class="col s12 m4 l3 blue-grey darken-3"> 
+            <div style="height:100vh ;">
+                <form class="container" action="#">
+                    <div class="card blue-grey darken-1">
+                        <div class="card-content white-text hoverable">
+                            <span class="card-title">Brightness</span>
+                            <p class="range-field" style="margin:0px;">
+                               <input type="range" id="brightness" min="-64" max="64" onclick="setCtrl('brightness', this.value)" />
+                            </p>
+                        </div>
+                    </div>
+                    <div class="card blue-grey darken-1 hoverable">
+                        <div class="card-content white-text">
+                            <span class="card-title">Contrast</span>
+                            <p class="range-field">
+                               <input type="range" id="contrast" min="0" max="64"  onclick="setCtrl('contrast', this.value)"/>
+                            </p>
+                        </div>
+                    </div>
 
-        <div class="center">
-            <div class="col s12 m7">
+                    <div class="card blue-grey darken-1 hoverable">
+                        <div class="card-content white-text">
+                            <span class="card-title">Saturation</span>
+                            <p class="range-field">
+                               <input type="range" id="saturation" min="0" max="128"  onclick="setCtrl('saturation', this.value)"/>
+                            </p>
+                        </div>
+                    </div>
+
+                    {{if .FaceEnabled}}
+                    <div class="card blue-grey darken-1 hoverable">
+                        <div class="card-content white-text">
+                            <span class="card-title">Face Detect</span>
+                            <div class="switch">
+                                <label>
+                                    Off
+                                    <input type="checkbox" onclick="setFace(this.value)">
+                                    <span class="lever"></span>
+                                    On
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                  </form>
+            </div>
+        </div>
+        <div class="col s12 m8 l9">
+            <div class="container center-align">
                 <div class="card">
                     <div class="card-image">
-                        <img id="img" src="{{.streamPath}}"/>
-                        <span class="card-title">Go WebCam (at {{.fps}})</span>
-                    </div>
-                    <div class="card-content">
-                        <p class="flow-text">Images are captured using the Video for Linux API (V4L2) and are streamed as JPEG using
-                            multipart/x-mixed-replace header with boundaries.</p>
-                    </div>
-                    <div class="card-action">
-                        <a href="#"></a>
+                        <img id="img" src="{{.StreamPath}}"/>
+                        <span class="card-title">GoCam ({{.StreamInfo}})</span>
                     </div>
                 </div>
             </div>
         </div>
-
-</div>
+    </div>
 
 <!--  Scripts-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
+<script>
+    let faceDetect = "off"
+    function setCtrl(ctrl, val) {
+        let xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "{{.ControlPath}}", true);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+        var data = JSON.stringify({ "name": ctrl, "value": val });
+        xhttp.send(data)
+    }
+
+    function setFace(val) {
+        faceDetect = (faceDetect === "off") ? "on" : "off"
+
+        let xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "{{.FaceDetectPath}}", true);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+        var data = JSON.stringify({ "mode": faceDetect });
+        xhttp.send(data)  
+    }
+</script>
 </body>
 </html>
