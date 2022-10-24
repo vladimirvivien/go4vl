@@ -155,10 +155,42 @@ const (
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/ext-ctrls-camera.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L897
 const (
-	CtrlCameraClass        CtrlID = C.V4L2_CID_CAMERA_CLASS
-	CtrlCameraExposureAuto CtrlID = C.V4L2_CID_EXPOSURE_AUTO
-
-	// TODO add all camera control values
+	CtrlCameraClass                   CtrlID = C.V4L2_CID_CAMERA_CLASS
+	CtrlCameraExposureAuto            CtrlID = C.V4L2_CID_EXPOSURE_AUTO
+	CtrlCameraExposureAbsolute        CtrlID = C.V4L2_CID_EXPOSURE_ABSOLUTE
+	CtrlCameraExposureAutoPriority    CtrlID = C.V4L2_CID_EXPOSURE_AUTO_PRIORITY
+	CtrlCameraPanRelative             CtrlID = C.V4L2_CID_PAN_RELATIVE
+	CtrlCameraTiltRelative            CtrlID = C.V4L2_CID_TILT_RELATIVE
+	CtrlCameraPanReset                CtrlID = C.V4L2_CID_PAN_RESET
+	CtrlCameraTiltReset               CtrlID = C.V4L2_CID_TILT_RESET
+	CtrlCameraPanAbsolute             CtrlID = C.V4L2_CID_PAN_ABSOLUTE
+	CtrlCameraTiltAbsolute            CtrlID = C.V4L2_CID_TILT_ABSOLUTE
+	CtrlCameraFocusAbsolute           CtrlID = C.V4L2_CID_FOCUS_ABSOLUTE
+	CtrlCameraFocusRelative           CtrlID = C.V4L2_CID_FOCUS_RELATIVE
+	CtrlCameraFocusAuto               CtrlID = C.V4L2_CID_FOCUS_AUTO
+	CtrlCameraZoomAbsolute            CtrlID = C.V4L2_CID_ZOOM_ABSOLUTE
+	CtrlCameraZoomRelative            CtrlID = C.V4L2_CID_ZOOM_RELATIVE
+	CtrlCameraZoomContinuous          CtrlID = C.V4L2_CID_ZOOM_CONTINUOUS
+	CtrlCameraPrivacy                 CtrlID = C.V4L2_CID_PRIVACY
+	CtrlCameraIrisAbsolute            CtrlID = C.V4L2_CID_IRIS_ABSOLUTE
+	CtrlCameraIrisRelative            CtrlID = C.V4L2_CID_IRIS_RELATIVE
+	CtrlCameraAutoExposureBias        CtrlID = C.V4L2_CID_AUTO_EXPOSURE_BIAS
+	CtrlCameraAutoNPresetWhiteBalance CtrlID = C.V4L2_CID_AUTO_N_PRESET_WHITE_BALANCE
+	CtrlCameraWideDynamicRange        CtrlID = C.V4L2_CID_WIDE_DYNAMIC_RANGE
+	CtrlCameraImageStabilization      CtrlID = C.V4L2_CID_IMAGE_STABILIZATION
+	CtrlCameraIsoSensitivity          CtrlID = C.V4L2_CID_ISO_SENSITIVITY
+	CtrlCameraIsoSensitivityAuto      CtrlID = C.V4L2_CID_ISO_SENSITIVITY_AUTO
+	CtrlCameraExposureMetering        CtrlID = C.V4L2_CID_EXPOSURE_METERING
+	CtrlCameraSceneMode               CtrlID = C.V4L2_CID_SCENE_MODE
+	CtrlCamera3ALock                  CtrlID = C.V4L2_CID_3A_LOCK
+	CtrlCameraAutoFocusStart          CtrlID = C.V4L2_CID_AUTO_FOCUS_START
+	CtrlCameraAutoFocusStop           CtrlID = C.V4L2_CID_AUTO_FOCUS_STOP
+	CtrlCameraAutoFocusStatus         CtrlID = C.V4L2_CID_AUTO_FOCUS_STATUS
+	CtrlCameraAutoFocusRange          CtrlID = C.V4L2_CID_AUTO_FOCUS_RANGE
+	CtrlCameraPanSpeed                CtrlID = C.V4L2_CID_PAN_SPEED
+	CtrlCameraTiltSpeed               CtrlID = C.V4L2_CID_TILT_SPEED
+	CtrlCameraCameraOrientation       CtrlID = C.V4L2_CID_CAMERA_ORIENTATION
+	CtrlCameraCameraSensorRotation    CtrlID = C.V4L2_CID_CAMERA_SENSOR_ROTATION
 )
 
 // Flash control values
