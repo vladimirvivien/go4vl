@@ -36,7 +36,7 @@ func openDev(path string, flags int, mode uint32) (uintptr, error) {
 		}
 
 		if errors.Is(err, ErrorInterrupted) {
-			continue //retry
+			continue // retry
 		}
 
 		return 0, &os.PathError{Op: "open", Path: path, Err: err}
@@ -88,8 +88,8 @@ func send(fd, req, arg uintptr) error {
 
 // WaitForRead returns a channel that can be used to be notified when
 // a device's is ready to be read.
-func WaitForRead(dev Device) <-chan struct{} {
-	sigChan := make(chan struct{})
+func WaitForRead(dev Device, doneChan chan struct{}) <-chan struct{} {
+	sigChan := make(chan struct{}, 1)
 
 	go func(fd uintptr) {
 		defer close(sigChan)
@@ -102,7 +102,11 @@ func WaitForRead(dev Device) <-chan struct{} {
 				continue
 			}
 
-			sigChan <- struct{}{}
+			select {
+			case sigChan <- struct{}{}:
+			case <-doneChan:
+				return
+			}
 		}
 	}(dev.Fd())
 

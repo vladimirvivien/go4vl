@@ -350,11 +350,11 @@ func (d *Device) Start(ctx context.Context) error {
 		return fmt.Errorf("device: make mapped buffers: %s", err)
 	}
 
+	d.streaming = true
+
 	if err := d.startStreamLoop(ctx); err != nil {
 		return fmt.Errorf("device: start stream loop: %s", err)
 	}
-
-	d.streaming = true
 
 	return nil
 }
@@ -396,8 +396,11 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 		var frame []byte
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
-		waitForRead := v4l2.WaitForRead(d)
-		for {
+		doneChan := make(chan struct{})
+		waitForRead := v4l2.WaitForRead(d, doneChan)
+
+		defer close(doneChan)
+		for d.streaming {
 			select {
 			// handle stream capture (read from driver)
 			case <-waitForRead:
