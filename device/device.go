@@ -12,17 +12,19 @@ import (
 )
 
 type Device struct {
-	path         string
-	file         *os.File
-	fd           uintptr
-	config       config
-	bufType      v4l2.BufType
-	cap          v4l2.Capability
-	cropCap      v4l2.CropCapability
-	buffers      [][]byte
-	requestedBuf v4l2.RequestBuffers
-	streaming    bool
-	output       chan []byte
+	path          string
+	file          *os.File
+	fd            uintptr
+	config        config
+	bufType       v4l2.BufType
+	cap           v4l2.Capability
+	cropCap       v4l2.CropCapability
+	buffers       [][]byte
+	requestedBuf  v4l2.RequestBuffers
+	streaming     bool
+	output        chan []byte
+	context       context.Context
+	cancelContext context.CancelFunc
 }
 
 // Open creates opens the underlying device at specified path for streaming.
@@ -328,6 +330,8 @@ func (d *Device) Start(ctx context.Context) error {
 		return ctx.Err()
 	}
 
+	d.context, d.cancelContext = context.WithCancel(ctx)
+
 	if !d.cap.IsStreamingSupported() {
 		return fmt.Errorf("device: start stream: %s", v4l2.ErrorUnsupportedFeature)
 	}
@@ -352,7 +356,7 @@ func (d *Device) Start(ctx context.Context) error {
 
 	d.streaming = true
 
-	if err := d.startStreamLoop(ctx); err != nil {
+	if err := d.startStreamLoop(d.context); err != nil {
 		return fmt.Errorf("device: start stream loop: %s", err)
 	}
 
@@ -370,6 +374,7 @@ func (d *Device) Stop() error {
 		return fmt.Errorf("device: stop: %w", err)
 	}
 	d.streaming = false
+	d.cancelContext()
 	return nil
 }
 
@@ -396,11 +401,8 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 		var frame []byte
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
-		doneChan := make(chan struct{})
-		waitForRead := v4l2.WaitForRead(d, doneChan)
-
-		defer close(doneChan)
-		for d.streaming {
+		waitForRead := v4l2.WaitForRead(d)
+		for {
 			select {
 			// handle stream capture (read from driver)
 			case <-waitForRead:
