@@ -278,6 +278,10 @@ func (f PixFormat) String() string {
 	)
 }
 
+func (f PixFormat) IsZero() bool {
+	return f == PixFormat{}
+}
+
 // GetPixFormat retrieves pixel information for the specified driver (via v4l2_format and v4l2_pix_format)
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
 // and https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
