@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-// ControlValue represents the value for a user control.
+// CtrlValue represents the value for a user control.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/control.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1740
 type CtrlValue = int32
@@ -121,7 +121,7 @@ func QueryControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	return control, nil
 }
 
-// GetControl retrieves the value and information for the user control witht he specified id.
+// GetControl retrieves the value and information for the user control with the specified id.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/control.html
 func GetControl(fd uintptr, id CtrlID) (Control, error) {
 	control, err := QueryControlInfo(fd, id)

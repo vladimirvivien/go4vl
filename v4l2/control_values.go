@@ -7,7 +7,7 @@ package v4l2
 */
 import "C"
 
-// ControlClass
+// CtrlClass
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L56
 type CtrlClass = uint32
 
@@ -80,7 +80,7 @@ const (
 // CtrlID type for control values
 type CtrlID = uint32
 
-// Powerline frequency control enums
+// PowerlineFrequency control enums
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L100
 type PowerlineFrequency = uint32
 
@@ -91,7 +91,7 @@ const (
 	PowerlineFrequencyAuto     PowerlineFrequency = C.V4L2_CID_POWER_LINE_FREQUENCY_AUTO
 )
 
-// Color FX control enums
+// ColorFX control enums
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L114
 type ColorFX = uint32
 

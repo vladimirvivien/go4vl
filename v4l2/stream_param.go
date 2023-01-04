@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-// Flags for capability and capture mode fields
+// StreamParamFlag is for capability and capture mode fields
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-parm.html#parm-flags
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1214
 type StreamParamFlag = uint32
