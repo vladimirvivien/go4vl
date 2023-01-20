@@ -47,7 +47,7 @@ func SetExtControlValue(fd uintptr, id CtrlID, val CtrlValue) error {
 	return nil
 }
 
-// SetExtControls implements code to save one or more extended controls at once using the
+// SetExtControlValues implements code to save one or more extended controls at once using the
 // v4l2_ext_controls structure.
 // https://linuxtv.org/downloads/v4l-dvb-apis-new/userspace-api/v4l/extended-controls.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1774
@@ -109,7 +109,7 @@ func QueryExtControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	return control, nil
 }
 
-// QueryExtAllControls loop through all available ext controls and query the information for
+// QueryAllExtControls loop through all available ext controls and query the information for
 // all controls without their current values (use GetExtControlValue to get current values).
 func QueryAllExtControls(fd uintptr) (result []Control, err error) {
 

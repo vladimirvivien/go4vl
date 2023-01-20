@@ -15,7 +15,7 @@ import (
 // https://elixir.bootlin.com/linux/v5.13-rc6/source/include/uapi/asm-generic/ioctl.h
 
 const (
-	//ioctl command layout
+	// ioctl command layout
 	iocNone  = 0 // no op
 	iocWrite = 1 // userland app is writing, kernel reading
 	iocRead  = 2 // userland app is reading, kernel writing
@@ -91,7 +91,7 @@ const (
 // https://elixir.bootlin.com/linux/v5.13-rc6/source/include/uapi/linux/videodev2.h#L2324
 type Format struct {
 	StreamType uint32
-	fmt        [200]byte // max uinion size
+	fmt        [200]byte // max union size
 }
 
 // PixFormat represents v4l2_pix_format
@@ -187,7 +187,7 @@ type BufferInfo struct {
 	RequestFD  int32
 }
 
-// buffer service is embedded uion m
+// BufferService is embedded union m
 // in v4l2_buffer C type.
 type BufferService struct {
 	Offset  uint32
@@ -208,7 +208,7 @@ type Timecode struct {
 	Userbits [4]uint8
 }
 
-// mamapBuffer first queries the status of the device buffer at idx
+// mmapBuffer first queries the status of the device buffer at idx
 // by retrieving BufferInfo which returns the length of the buffer and
 // the current offset of the allocated buffers.  That information is
 // used to map the device's buffer unto the application's address space.
@@ -252,7 +252,7 @@ func startStreaming(fd uintptr) error {
 
 // ======================== Queue/Dequeue device buffer =======================
 
-// queueBuffer requests that an emptty buffer is enqueued into the device's
+// queueBuffer requests that an empty buffer is enqueued into the device's
 // incoming queue at the specified index (so that it can be filled later).
 func queueBuffer(fd uintptr, idx uint32) error {
 	buf := BufferInfo{
@@ -368,7 +368,7 @@ func main() {
 		log.Fatalf("failed during device read-wait: %s", err)
 	}
 
-	// deqeue the device buffer so that the local mapped byte slice
+	// dequeue the device buffer so that the local mapped byte slice
 	// is filled.
 	bufSize, err := dequeueBuffer(fd)
 	if err != nil {

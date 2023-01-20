@@ -136,8 +136,8 @@ type Plane struct {
 	DataOffset uint32
 }
 
-// PlaneInfo representes the combination of type
-// of type of memory stream that can be serviced for the
+// PlaneInfo represents the combination of type
+// of memory stream that can be serviced for the
 // associated plane.
 type PlaneInfo struct {
 	MemOffset uint32

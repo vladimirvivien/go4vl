@@ -15,7 +15,7 @@ func (d *Device) GetControl(ctrlID v4l2.CtrlID) (v4l2.Control, error) {
 	return ctlr, nil
 }
 
-// SetControl updates the value of the specified control id.
+// SetControlValue updates the value of the specified control id.
 func (d *Device) SetControlValue(ctrlID v4l2.CtrlID, val v4l2.CtrlValue) error {
 	err := v4l2.SetControlValue(d.fd, ctrlID, val)
 	if err != nil {

@@ -20,7 +20,7 @@ const (
 	FrameSizeTypeStepwise   FrameSizeType = C.V4L2_FRMSIZE_TYPE_STEPWISE
 )
 
-// FrameSizeEnum uses v4l2_frmsizeenum to get supporeted frame size for the driver based for the pixel format.
+// FrameSizeEnum uses v4l2_frmsizeenum to get supported frame size for the driver based for the pixel format.
 // Use FrameSizeType to determine which sizes the driver support.
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L829
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
