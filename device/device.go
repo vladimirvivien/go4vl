@@ -89,7 +89,7 @@ func Open(path string, options ...Option) (*Device, error) {
 	}
 
 	// set pix format
-	if !dev.config.pixFormat.IsZero() {
+	if dev.config.pixFormat != (v4l2.PixFormat{}) {
 		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
 			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
 		}
@@ -199,7 +199,7 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 		return v4l2.PixFormat{}, v4l2.ErrorUnsupportedFeature
 	}
 
-	if d.config.pixFormat.IsZero() {
+	if d.config.pixFormat == (v4l2.PixFormat{}) {
 		pixFmt, err := v4l2.GetPixFormat(d.fd)
 		if err != nil {
 			return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
