@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	sys "syscall"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
@@ -52,7 +51,7 @@ func Open(path string, options ...Option) (*Device, error) {
 	dev.cap = cap
 
 	// set preferred device buffer size
-	if reflect.ValueOf(dev.config.bufSize).IsZero() {
+	if dev.config.bufSize == 0 {
 		dev.config.bufSize = 2
 	}
 
@@ -75,7 +74,7 @@ func Open(path string, options ...Option) (*Device, error) {
 		return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
 	}
 
-	if !reflect.ValueOf(dev.config.bufType).IsZero() && dev.config.bufType != dev.bufType {
+	if dev.config.bufType != 0 && dev.config.bufType != dev.bufType {
 		return nil, fmt.Errorf("device open: does not support buffer stream type")
 	}
 
@@ -90,7 +89,7 @@ func Open(path string, options ...Option) (*Device, error) {
 	}
 
 	// set pix format
-	if !reflect.ValueOf(dev.config.pixFormat).IsZero() {
+	if dev.config.pixFormat != (v4l2.PixFormat{}) {
 		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
 			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
 		}
@@ -102,7 +101,7 @@ func Open(path string, options ...Option) (*Device, error) {
 	}
 
 	// set fps
-	if !reflect.ValueOf(dev.config.fps).IsZero() {
+	if dev.config.fps != 0 {
 		if err := dev.SetFrameRate(dev.config.fps); err != nil {
 			return nil, fmt.Errorf("device open: %s: set fps: %w", path, err)
 		}
@@ -200,7 +199,7 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 		return v4l2.PixFormat{}, v4l2.ErrorUnsupportedFeature
 	}
 
-	if reflect.ValueOf(d.config.pixFormat).IsZero() {
+	if d.config.pixFormat == (v4l2.PixFormat{}) {
 		pixFmt, err := v4l2.GetPixFormat(d.fd)
 		if err != nil {
 			return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
@@ -300,7 +299,7 @@ func (d *Device) SetFrameRate(fps uint32) error {
 
 // GetFrameRate returns the FPS value for the device
 func (d *Device) GetFrameRate() (uint32, error) {
-	if reflect.ValueOf(d.config.fps).IsZero() {
+	if d.config.fps == 0 {
 		param, err := d.GetStreamParam()
 		if err != nil {
 			return 0, fmt.Errorf("device: frame rate: %w", err)
