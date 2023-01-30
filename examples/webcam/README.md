@@ -11,10 +11,11 @@ Before you can build and run the code, you must satisfy the following prerequisi
 * Go compiler/tools
 * Linux OS (32- or 64-bit)
 * Kernel minimum v5.10.x or higher
-* A locally configured C compiler (i.e. gcc)
-* Header files for V4L2 (i.e. /usr/include/linux/videodev2.h)
+* A locally configured C compiler (or cross-compiler if building off-device)
 * A video camera (with support for Video for Linux API)
 
+
+### On-device preparation
 If you are running a system that has not been upgraded in a while, ensure to issue the following commands:
 
 ```
@@ -22,17 +23,29 @@ sudo apt update
 sudo apt full-upgrade
 ```
 
-This example has been tested using a Raspberry Pi 3 running 32-bit Linux, with kernel version 5.14, with cheap USB video camera attached.
+This example has been tested using a Raspberry Pi 3 running 32-bit Linux, with kernel version 5.14, with an attached USB video camera.
 
-### Build and run
+### On-device build 
 
-From within this directory, build with the following command:
+Copy (or use git) the code on the device. From within the webcam directory, run the helper script:
 
 ```
-go build -o webcam webcam.go
+./build-on-device.sh
 ```
 
-Once built, you can start the webcam with the following command (and output as shown):
+This will build the webcam binary.
+
+### Cross-compile build
+If you are building off-device, on a platform different then Linux/Arm/v7, use the cross-build helper script to compile the binary:
+
+```
+./cross-build.sh
+```
+This will create a binary for the Linux/Arm/v7 using the Zig compiler as a cross compiler (see examples/simplecam for detail about Zig).
+
+### Run
+
+Once built, run the binary on a target machine (a Raspberry Pi for instance) that has a camera capture device attached:
 
 ```
  ./webcam

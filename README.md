@@ -26,7 +26,9 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 
 * Go compiler/tools
 * Kernel minimum v5.10.x
-* A locally configured C compiler (i.e. gcc)
+* A locally configured C compiler (or a cross-compiler if building off-device)
+
+See [example/simplecam](./examples/simplecam/README.md) for further example of building projects that uses go4vl including cross-compilation instructions.
 
 All examples have been tested using a Raspberry PI 3, running 32-bit Raspberry PI OS.
 The package should work with no problem on your 64-bit Linux OS.

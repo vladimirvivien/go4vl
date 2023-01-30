@@ -6,4 +6,4 @@ go get github.com/fogleman/gg@8febc0f526adecda6f8ae80f3869b7cd77e52984
 
 go mod tidy
 
-go build .
+go build -o webcam .
