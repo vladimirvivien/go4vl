@@ -1,6 +1,6 @@
 # Capture example
 
-This example shows how to use the `go4vl` API to create a simple program that captures a video frames from an attached input (camera) device.
+This example shows how to use the `go4vl` API to create a simple program that captures several video frames, from an attached input (camera) device, and save them to  files.
 
 Firstly, the source code opens a device, `devName`, with a hard-coded pixel format (MPEG) and size. If the device does not support 
 the specified format, the open operation will fail, returning an error.
@@ -34,8 +34,7 @@ func main() {
 }
 ```
 
-Once the device starts, the code sets up a loop capture incoming video frame buffer from the input device and save each 
-frame to a local file.
+Once the device starts, the code sets up a loop to capture incoming video frame buffers from the input device and save each frame to a local file.
 
 ```go
 func main() {

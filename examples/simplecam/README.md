@@ -3,25 +3,69 @@
 This is a simple example shows how easy it is to use go4vl to 
 create a simple web application to stream camera images.
 
-## Build
-There are three ways to build the example.
+### Setup the server
 
-### On device
-You can always setup Go on your device and build your source code directly on the device.
+First, the code sets up a channel where the captured frames will be sent.
 
-### Cross-compile with Zig
-The Zig language is (itself) full C/C++ cross-compiler. With flag compatibility with gcc and clang, 
-Zig can be used as a drop-in replacement for those compilers allowing easy cross-compilation of source code.
+```go
 
-It turns out that Zig can be used as the cross-compiler for building Go code with CGo enabled. Assuming you have
-the Zig build tools installed, you can cross-compile the source code to target Linux/Arm/v7 as shown below:;
-
-```
-CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 CC="zig cc -target arm-linux-musleabihf" CXX="zig c++ -target arm-linux-musleabihf" go build -o simple-cam .
+var (
+	frames <-chan []byte
+)
 ```
 
-The previous build command will create a staticly linked binary that can run on Linux for the Arm/v7 architecture:
+The `main` function then sets up the device with a hard-coded JPEG image format. The function also creates a simple HTTP server that will handle incoming resource request on (default) port ":9090".
 
+```go
+func main() {
+	port := ":9090"
+	devName := "/dev/video0"
+	flag.StringVar(&devName, "d", devName, "device name (path)")
+	flag.StringVar(&port, "p", port, "webcam service port")
+
+	camera, err := device.Open(
+		devName,
+		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMJPEG, Width: 640, Height: 480}),
+	)
+	if err != nil {
+		log.Fatalf("failed to open device: %s", err)
+	}
+	defer camera.Close()
+
+	if err := camera.Start(context.TODO()); err != nil {
+		log.Fatalf("camera start: %s", err)
+	}
+
+	frames = camera.GetOutput()
+
+	log.Printf("Serving images: [%s/stream]", port)
+	http.HandleFunc("/stream", imageServ)
+	log.Fatal(http.ListenAndServe(port, nil))
+}
 ```
-simple-cam: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), static-pie linked, Go BuildID=WYa4l3EGlIvd9EErrWkc/5Aa4CZdUXG8bERpToUcN/jjwKBQqSAfDbNfJGzSou/27sOKN7B1e0dtPc7PqmR, with debug_info, not stripped
+
+Lastly, the code defines the HTTP handler that will send the frames, in the channel, back to the browser as a multi-part mime stream.
+
+```go
+func imageServ(w http.ResponseWriter, req *http.Request) {
+	mimeWriter := multipart.NewWriter(w)
+	w.Header().Set("Content-Type", fmt.Sprintf("multipart/x-mixed-replace; boundary=%s", mimeWriter.Boundary()))
+	partHeader := make(textproto.MIMEHeader)
+	partHeader.Add("Content-Type", "image/jpeg")
+
+	var frame []byte
+	for frame = range frames {
+		partWriter, err := mimeWriter.CreatePart(partHeader)
+		if err != nil {
+			log.Printf("failed to create multi-part writer: %s", err)
+			return
+		}
+
+		if _, err := partWriter.Write(frame); err != nil {
+			log.Printf("failed to write image: %s", err)
+		}
+	}
+}
 ```
+
+> See complete source code [here](./simplecam.go).

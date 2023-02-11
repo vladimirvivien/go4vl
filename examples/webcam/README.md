@@ -1,47 +1,22 @@
 # Webcam example
 
-The webcam examples shows how the `go4vl` API can be used to create a webcam that streams incoming video frames from an attached camera to a web page. The code sets up a web server that returns a web page with an image element that continuously stream the captured video from the camera.
+The webcam examples shows how the `go4vl` API can be used to create a webcam that streams incoming video frames, from an attached camera, to a web page. This program showcases the followings:
 
-## Running the example
-Keep in mind that this code can only run on systems with the Linux operating system.
-Before you can build and run the code, you must satisfy the following prerequisites.
+* go4vl device control API
+* go4vl format description API
+* go4vl capture API
 
-### Pre-requisites
+The example also includes code that shows how to do face detection using the captured image.
 
-* Go compiler/tools
-* Linux OS (32- or 64-bit)
-* Kernel minimum v5.10.x or higher
-* A locally configured C compiler (or cross-compiler if building off-device)
-* A video camera (with support for Video for Linux API)
+The code sets up a web server that returns a web page with an image element that continuously stream the captured video from the camera.
 
+## Building the source code
 
-### On-device preparation
-If you are running a system that has not been upgraded in a while, ensure to issue the following commands:
+### Fix face detection modules 
+The project uses an external package for face detection. For it to build properly, some Go modules must be specically pulled. This is done by running shell script file [./fix-mods.sh](./fix-mods.sh).
 
-```
-sudo apt update
-sudo apt full-upgrade
-```
-
-This example has been tested using a Raspberry Pi 3 running 32-bit Linux, with kernel version 5.14, with an attached USB video camera.
-
-### On-device build 
-
-Copy (or use git) the code on the device. From within the webcam directory, run the helper script:
-
-```
-./build-on-device.sh
-```
-
-This will build the webcam binary.
-
-### Cross-compile build
-If you are building off-device, on a platform different then Linux/Arm/v7, use the cross-build helper script to compile the binary:
-
-```
-./cross-build.sh
-```
-This will create a binary for the Linux/Arm/v7 using the Zig compiler as a cross compiler (see examples/simplecam for detail about Zig).
+### Compile the code
+See instructions for on-device compilation or off-device cross-compilation [here](../README.md).
 
 ### Run
 

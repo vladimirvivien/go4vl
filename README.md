@@ -28,27 +28,12 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 * Kernel minimum v5.10.x
 * A locally configured C compiler (or a cross-compiler if building off-device)
 
-See [example/simplecam](./examples/simplecam/README.md) for further example of building projects that uses go4vl including cross-compilation instructions.
+See [example/README.md](./examples/README.md) for further example of how to build projects that uses go4vl, including cross-compilation.
 
 All examples have been tested using a Raspberry PI 3, running 32-bit Raspberry PI OS.
 The package should work with no problem on your 64-bit Linux OS.
 
 ## Getting started
-
-### System upgrade
-
-To avoid issues with old header files on your machine, upgrade your system to pull down the latest OS packages
-with something similar to the following (follow directions for your system for proper upgrade):
-
-```shell
-sudo apt update
-sudo apt full-upgrade
-```
-
-Install the `build-essential` package to install required C compilers:
-```shell
-sudo apt install build-essential
-```
 
 ### Using the go4vl package
 
@@ -60,70 +45,43 @@ go get github.com/vladimirvivien/go4vl/v4l2
 
 ## Video capture example
 
-The following is a simple example that captures video data from an attached camera device to
-and saves the captured frames as JPEG files. 
+The following is a simple example that shows how to capture a single frame from an attached camera device
+and save the image to a file. 
 
 The example assumes the attached device supports JPEG (MJPEG) output format inherently.
 
 ```go
 func main() {
-	devName := "/dev/video0"
-	flag.StringVar(&devName, "d", devName, "device name (path)")
-	flag.Parse()
-
-	// open device
-	device, err := device.Open(
-		devName,
-		device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMPEG, Width: 640, Height: 480}),
-	)
+	dev, err := device.Open("/dev/video0", device.WithBufferSize(1))
 	if err != nil {
-		log.Fatalf("failed to open device: %s", err)
+		log.Fatal(err)
 	}
-	defer device.Close()
+	defer dev.Close()
 
-	// start stream with cancellable context
-	ctx, stop := context.WithCancel(context.TODO())
-	if err := device.Start(ctx); err != nil {
-		log.Fatalf("failed to start stream: %s", err)
+	if err := dev.Start(context.TODO()); err != nil {
+		log.Fatal(err)
 	}
 
-	// process frames from capture channel
-	totalFrames := 10
-	count := 0
-	log.Printf("Capturing %d frames...", totalFrames)
+	// capture frame
+	frame := <-dev.GetOutput()
 
-	for frame := range device.GetOutput() {
-		fileName := fmt.Sprintf("capture_%d.jpg", count)
-		file, err := os.Create(fileName)
-		if err != nil {
-			log.Printf("failed to create file %s: %s", fileName, err)
-			continue
-		}
-		if _, err := file.Write(frame); err != nil {
-			log.Printf("failed to write file %s: %s", fileName, err)
-			continue
-		}
-		log.Printf("Saved file: %s", fileName)
-		if err := file.Close(); err != nil {
-			log.Printf("failed to close file %s: %s", fileName, err)
-		}
-		count++
-		if count >= totalFrames {
-			break
-		}
+	file, err := os.Create("pic.jpg")
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer file.Close()
 
-	stop() // stop capture
-	fmt.Println("Done.")
+	if _, err := file.Write(frame); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
-> Read a detail walk-through about this example [here](./examples/capture0/README.md).
+> See complete example [here](./examples/snapshot/snap.go).
 
-### Other examples
-The [./examples](./examples/README.md) directory contains additional examples including:
-* [device_info](./examples/device_info/README.md) - queries and prints video device information
-* [webcam](./examples/webcam/README.md) - uses the v4l2 package to create a simple webcam that streams images from an attached camera accessible via a web page.
+## Examples
+This repository comes with several examples that show how to use the API to build Go programs that can capture images from Linux.
+> See list of [examples](./examples/README.md)
 
 ## Roadmap
 The main goal is to port as many functionalities as possible so that 

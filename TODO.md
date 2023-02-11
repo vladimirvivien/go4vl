@@ -5,8 +5,9 @@ A general list (of no implied order) of high level tasks for the project.
 * [x] Create device package
 * [x] List/query device available
 * [x] Add repo documentation
-* [ ] Document examples 
+* [x] Document examples 
 * [ ] Support for YUYV conversion
-* [ ] Set and query device controls
+* [x] Set and query device controls
 * [ ] Support for User pointer and other stream mode
 * [x] Use cgo-generated Go types to avoid alignment bugs
+* [ ] Pre-generate cgo code
