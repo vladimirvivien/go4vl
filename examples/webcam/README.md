@@ -14,7 +14,10 @@ Follow these instructions if you want to build the code for your device.
 The project uses an external package for face detection. For it to build properly, some Go modules must be specically pulled. This is done by running shell script file [./fix-mods.sh](./fix-mods.sh).
 
 ### 2. Compile the code
-See instructions for on-device compilation or off-device cross-compilation [here](../README.md). Once you have compiled the code, return here to find out how to run the example.
+See instructions for on-device compilation or off-device cross-compilation [here](../README.md).
+If you have the Zig tool chain installed, you can run [./cross-build.sh](./cross-build.sh) to cross-compile the source code.
+
+Once you have compiled the code, return here to find out how to run the example.
 
 ## Run
 
