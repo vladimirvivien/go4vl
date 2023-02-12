@@ -1,38 +1,27 @@
 # Webcam example
 
-The webcam examples shows how the `go4vl` API can be used to create a webcam that streams incoming video frames from an attached camera to a web page. The code sets up a web server that returns a web page with an image element that continuously stream the captured video from the camera.
+The webcam examples shows how the `go4vl` API can be used to create a webcam that streams incoming video frames, from an attached camera, to a web page. This program showcases the followings:
 
-## Running the example
-Keep in mind that this code can only run on systems with the Linux operating system.
-Before you can build and run the code, you must satisfy the following prerequisites.
+* go4vl device control API
+* go4vl format description API
+* go4vl capture API
+* Using (third-party) package for face detection
 
-### Pre-requisites
+## Building the source code
+Follow these instructions if you want to build the code for your device.
 
-* Go compiler/tools
-* Linux OS (32- or 64-bit)
-* Kernel minimum v5.10.x or higher
-* A locally configured C compiler (i.e. gcc)
-* Header files for V4L2 (i.e. /usr/include/linux/videodev2.h)
-* A video camera (with support for Video for Linux API)
+### 1. Fix face detection modules 
+The project uses an external package for face detection. For it to build properly, some Go modules must be specically pulled. This is done by running shell script file [./fix-mods.sh](./fix-mods.sh).
 
-If you are running a system that has not been upgraded in a while, ensure to issue the following commands:
+### 2. Compile the code
+See instructions for on-device compilation or off-device cross-compilation [here](../README.md).
+If you have the Zig tool chain installed, you can run [./cross-build.sh](./cross-build.sh) to cross-compile the source code.
 
-```
-sudo apt update
-sudo apt full-upgrade
-```
+Once you have compiled the code, return here to find out how to run the example.
 
-This example has been tested using a Raspberry Pi 3 running 32-bit Linux, with kernel version 5.14, with cheap USB video camera attached.
+## Run
 
-### Build and run
-
-From within this directory, build with the following command:
-
-```
-go build -o webcam webcam.go
-```
-
-Once built, you can start the webcam with the following command (and output as shown):
+Run the binary on a target machine (a Raspberry Pi for instance) that has a camera device attached:
 
 ```
  ./webcam
@@ -45,11 +34,15 @@ Once built, you can start the webcam with the following command (and output as s
 2022/05/21 09:04:31 use url path /webcam
 ```
 
-Next, point your browser to your machine's address and shown port (i.e. `http://198.162.100.20:9090`). 
+By default, the program will attempt to  use format `Motion-JPEG` (or related format). If your camera does not support that format, the example will not work properly.
+
+### View the webcam stream
+Next, point your browser to your device's IP address and port (i.e. `http://198.162.100.20:9090`). 
 You should see a webpage with the streaming video (see below.)
 
 ![](./screenshot.png)
 
+### CLI options
 The webcam program offers several CLI arguments that you can use to configure the webcam:
 
 ```
