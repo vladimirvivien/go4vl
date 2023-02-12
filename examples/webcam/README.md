@@ -5,22 +5,20 @@ The webcam examples shows how the `go4vl` API can be used to create a webcam tha
 * go4vl device control API
 * go4vl format description API
 * go4vl capture API
-
-The example also includes code that shows how to do face detection using the captured image.
-
-The code sets up a web server that returns a web page with an image element that continuously stream the captured video from the camera.
+* Using (third-party) package for face detection
 
 ## Building the source code
+Follow these instructions if you want to build the code for your device.
 
-### Fix face detection modules 
+### 1. Fix face detection modules 
 The project uses an external package for face detection. For it to build properly, some Go modules must be specically pulled. This is done by running shell script file [./fix-mods.sh](./fix-mods.sh).
 
-### Compile the code
-See instructions for on-device compilation or off-device cross-compilation [here](../README.md).
+### 2. Compile the code
+See instructions for on-device compilation or off-device cross-compilation [here](../README.md). Once you have compiled the code, return here to find out how to run the example.
 
-### Run
+## Run
 
-Once built, run the binary on a target machine (a Raspberry Pi for instance) that has a camera capture device attached:
+Run the binary on a target machine (a Raspberry Pi for instance) that has a camera device attached:
 
 ```
  ./webcam
@@ -33,11 +31,15 @@ Once built, run the binary on a target machine (a Raspberry Pi for instance) tha
 2022/05/21 09:04:31 use url path /webcam
 ```
 
-Next, point your browser to your machine's address and shown port (i.e. `http://198.162.100.20:9090`). 
+By default, the program will attempt to  use format `Motion-JPEG` (or related format). If your camera does not support that format, the example will not work properly.
+
+### View the webcam stream
+Next, point your browser to your device's IP address and port (i.e. `http://198.162.100.20:9090`). 
 You should see a webpage with the streaming video (see below.)
 
 ![](./screenshot.png)
 
+### CLI options
 The webcam program offers several CLI arguments that you can use to configure the webcam:
 
 ```
