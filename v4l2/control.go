@@ -6,8 +6,10 @@ package v4l2
 */
 import "C"
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"unsafe"
 )
 
@@ -63,7 +65,7 @@ func (c Control) GetMenuItems() (result []ControlMenuItem, err error) {
 		if err = send(c.fd, C.VIDIOC_QUERYMENU, uintptr(unsafe.Pointer(&qryMenu))); err != nil {
 			continue
 		}
-		result = append(result, makeCtrlMenu(qryMenu))
+		result = append(result, makeCtrlMenu(c.Type, qryMenu))
 	}
 
 	return result, nil
@@ -173,10 +175,17 @@ func makeControl(qryCtrl C.struct_v4l2_queryctrl) Control {
 	}
 }
 
-func makeCtrlMenu(qryMenu C.struct_v4l2_querymenu) ControlMenuItem {
-	return ControlMenuItem{
+func makeCtrlMenu(cType CtrlType, qryMenu C.struct_v4l2_querymenu) ControlMenuItem {
+	item := ControlMenuItem{
 		ID:    uint32(qryMenu.id),
 		Index: uint32(qryMenu.index),
-		Name:  C.GoString((*C.char)(unsafe.Pointer(&qryMenu.anon0[0]))),
 	}
+	if cType == CtrlTypeIntegerMenu {
+		val := binary.LittleEndian.Uint64((*[8]byte)(unsafe.Pointer(&qryMenu.anon0[0]))[:])
+		item.Name = strconv.FormatInt(int64(val), 10)
+	} else {
+		item.Name = C.GoString((*C.char)(unsafe.Pointer(&qryMenu.anon0[0])))
+	}
+
+	return item
 }
