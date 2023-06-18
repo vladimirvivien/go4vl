@@ -376,6 +376,8 @@ func (d *Device) Stop() error {
 // and report any errors. The loop runs in a separate goroutine and uses the sys.Select to trigger
 // capture events.
 func (d *Device) startStreamLoop(ctx context.Context) error {
+	d.output = make(chan []byte, d.config.bufSize)
+
 	// Initial enqueue of buffers for capture
 	for i := 0; i < int(d.config.bufSize); i++ {
 		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i))
