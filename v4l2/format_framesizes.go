@@ -69,7 +69,7 @@ func getFrameSize(frmSizeEnum C.struct_v4l2_frmsizeenum) FrameSizeEnum {
 		frameSize.Size.MaxHeight = fsDiscrete.Height
 	case FrameSizeTypeStepwise, FrameSizeTypeContinuous:
 		// Calculate pointer to access stepwise member
-		frameSize.Size = *(*FrameSize)(unsafe.Pointer(uintptr(unsafe.Pointer(&frmSizeEnum.anon0[0])) + unsafe.Sizeof(FrameSizeDiscrete{})))
+		frameSize.Size = *(*FrameSize)(unsafe.Pointer(&frmSizeEnum.anon0[0]))
 	default:
 	}
 	return frameSize
