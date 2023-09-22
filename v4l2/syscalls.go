@@ -36,7 +36,7 @@ func openDev(path string, flags int, mode uint32) (uintptr, error) {
 		}
 
 		if errors.Is(err, ErrorInterrupted) {
-			continue //retry
+			continue // retry
 		}
 
 		return 0, &os.PathError{Op: "open", Path: path, Err: err}

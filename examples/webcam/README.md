@@ -63,7 +63,7 @@ Usage of ./webcam:
 ```
 
 ## The source code
-The following code walkthrough illustrates how simple it is to create programs that can stream video using the `go4vl` project.
+The following code walk-through illustrates how simple it is to create programs that can stream video using the `go4vl` project.
 
 Firstly, the `main` function opens the video device with a set of specified configurations (from CLI flags):
 
@@ -155,4 +155,4 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 }
 ```
 
-> See the full source code [here](./webcam.go)
+>See the full source code [here](./webcam.go)
