@@ -86,3 +86,6 @@ This repository comes with several examples that show how to use the API to buil
 ## Roadmap
 The main goal is to port as many functionalities as possible so that 
 adopters can use Go to create cool video-based tools on platforms such as the Raspberry Pi.
+
+## Changes on fork
+This repository has been forked. Setting fps in the `device` constructor has been removed, since `tc358743` driver does not support the syscall `VIDIOC_G_PARM` and `VIDIOC_S_PARM`. Additonally, methods for querying the detected and getting the configured DV timings have been added.
