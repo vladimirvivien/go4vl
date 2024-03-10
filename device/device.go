@@ -24,6 +24,12 @@ type Device struct {
 	output       chan []byte
 }
 
+type DvTimings struct {
+	Width  int
+	Height int
+	Fps    int
+}
+
 // Open creates opens the underlying device at specified path for streaming.
 // It returns a *Device or an error if unable to open device.
 func Open(path string, options ...Option) (*Device, error) {
@@ -246,6 +252,34 @@ func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 	}
 
 	return v4l2.GetVideoInputInfo(d.fd, index)
+}
+
+// GetDetectedDvTimings returns detected signal resolution
+func (d *Device) GetDetectedDvTimings() (DvTimings, error) {
+	width, height, fps, err := v4l2.QueryDvTimings(d.fd)
+	if err != nil {
+		return DvTimings{}, fmt.Errorf("device: get detected dv timings: %w", err)
+	}
+
+	return DvTimings{
+		Width:  int(width),
+		Height: int(height),
+		Fps:    int(fps),
+	}, nil
+}
+
+// GetConfiguredDvTimings returns configured signal resolution
+func (d *Device) GetConfiguredDvTimings() (DvTimings, error) {
+	width, height, fps, err := v4l2.GetDvTimings(d.fd)
+	if err != nil {
+		return DvTimings{}, fmt.Errorf("device: get configured dv timings: %w", err)
+	}
+
+	return DvTimings{
+		Width:  int(width),
+		Height: int(height),
+		Fps:    int(fps),
+	}, nil
 }
 
 // GetStreamParam returns streaming parameter information for device

@@ -1,6 +1,42 @@
 package v4l2
 
-// #include <linux/videodev2.h>
+/*
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/videodev2.h>
+
+int query_dv_timings(int fd, int* width, int* height, int* fps) {
+    struct v4l2_dv_timings timings;
+    if (ioctl(fd, VIDIOC_QUERY_DV_TIMINGS, &timings) == -1) {
+		return -1;
+    } else {
+        int total_width = timings.bt.width + timings.bt.hfrontporch + timings.bt.hsync + timings.bt.hbackporch;
+        int total_height = timings.bt.height + timings.bt.vfrontporch + timings.bt.vsync + timings.bt.vbackporch;
+
+        *width = timings.bt.width;
+		*height = timings.bt.height;
+		*fps = timings.bt.pixelclock/(total_width*total_height);
+		return 0;
+    }
+}
+
+int get_dv_timings(int fd, int* width, int* height, int* fps) {
+	struct v4l2_dv_timings timings;
+    if (ioctl(fd, VIDIOC_G_DV_TIMINGS, &timings) == -1) {
+		return -1;
+    } else {
+        int total_width = timings.bt.width + timings.bt.hfrontporch + timings.bt.hsync + timings.bt.hbackporch;
+        int total_height = timings.bt.height + timings.bt.vfrontporch + timings.bt.vsync + timings.bt.vbackporch;
+
+		*width = timings.bt.width;
+		*height = timings.bt.height;
+		*fps = timings.bt.pixelclock/(total_width*total_height);
+		return 0;
+	}
+}
+*/
 import "C"
 
 import (
@@ -318,4 +354,20 @@ func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
 		return fmt.Errorf("pix format failed: %w", err)
 	}
 	return nil
+}
+
+func QueryDvTimings(fd uintptr) (int, int, int, error) {
+	var width, height, fps C.int
+	if C.query_dv_timings(C.int(fd), &width, &height, &fps) == -1 {
+		return 0, 0, 0, fmt.Errorf("error querying DV timings")
+	}
+	return int(width), int(height), int(fps), nil
+}
+
+func GetDvTimings(fd uintptr) (int, int, int, error) {
+	var width, height, fps C.int
+	if C.get_dv_timings(C.int(fd), &width, &height, &fps) == -1 {
+		return 0, 0, 0, fmt.Errorf("error getting DV timings")
+	}
+	return int(width), int(height), int(fps), nil
 }
