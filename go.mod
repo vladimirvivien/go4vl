@@ -1,4 +1,4 @@
-module github.com/vladimirvivien/go4vl
+module github.com/roclub/go-4vl2
 
 go 1.16
 
