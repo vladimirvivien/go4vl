@@ -25,9 +25,9 @@ type Device struct {
 }
 
 type DvTimings struct {
-	Width  int
-	Height int
-	Fps    int
+	Width  uint32
+	Height uint32
+	FPS    uint32
 }
 
 // Open creates opens the underlying device at specified path for streaming.
@@ -262,9 +262,9 @@ func (d *Device) GetDetectedDvTimings() (DvTimings, error) {
 	}
 
 	return DvTimings{
-		Width:  int(width),
-		Height: int(height),
-		Fps:    int(fps),
+		Width:  uint32(width),
+		Height: uint32(height),
+		FPS:    uint32(fps),
 	}, nil
 }
 
@@ -276,9 +276,9 @@ func (d *Device) GetConfiguredDvTimings() (DvTimings, error) {
 	}
 
 	return DvTimings{
-		Width:  int(width),
-		Height: int(height),
-		Fps:    int(fps),
+		Width:  uint32(width),
+		Height: uint32(height),
+		FPS:    uint32(fps),
 	}, nil
 }
 
