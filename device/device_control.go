@@ -3,7 +3,7 @@ package device
 import (
 	"fmt"
 
-	"github.com/vladimirvivien/go4vl/v4l2"
+	"github.com/roclub/go-4vl2/v4l2"
 )
 
 // GetControl queries the device for information about the specified control id.

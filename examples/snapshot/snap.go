@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vladimirvivien/go4vl/device"
+	"github.com/roclub/go-4vl2/device"
 )
 
 func main() {

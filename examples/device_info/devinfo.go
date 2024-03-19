@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	device2 "github.com/vladimirvivien/go4vl/device"
-	"github.com/vladimirvivien/go4vl/v4l2"
+	device2 "github.com/roclub/go-4vl2/device"
+	"github.com/roclub/go-4vl2/v4l2"
 )
 
 var template = "\t%-24s : %s\n"
