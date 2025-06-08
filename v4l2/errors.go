@@ -5,14 +5,27 @@ import (
 	sys "syscall"
 )
 
+// Predefined error variables for common V4L2 issues.
 var (
-	ErrorSystem             = errors.New("system error")
-	ErrorBadArgument        = errors.New("bad argument error")
-	ErrorTemporary          = errors.New("temporary error")
-	ErrorTimeout            = errors.New("timeout error")
-	ErrorUnsupported        = errors.New("unsupported error")
+	// ErrorSystem indicates a general system error occurred, often related to device access or memory.
+	// Corresponds to syscall errors like EBADF, ENOMEM, ENODEV, EIO, ENXIO, EFAULT.
+	ErrorSystem = errors.New("system error")
+	// ErrorBadArgument indicates that an invalid argument was passed to a V4L2 ioctl.
+	// Corresponds to syscall.EINVAL.
+	ErrorBadArgument = errors.New("bad argument error")
+	// ErrorTemporary indicates that a temporary condition prevented the operation from completing.
+	// Retrying the operation may succeed.
+	ErrorTemporary = errors.New("temporary error")
+	// ErrorTimeout indicates that an operation timed out.
+	ErrorTimeout = errors.New("timeout error")
+	// ErrorUnsupported indicates that a requested operation or feature is not supported by the driver or device.
+	// Corresponds to syscall.ENOTTY when an ioctl is not supported.
+	ErrorUnsupported = errors.New("unsupported error")
+	// ErrorUnsupportedFeature indicates that a specific feature within a supported operation is not available.
 	ErrorUnsupportedFeature = errors.New("feature unsupported error")
-	ErrorInterrupted        = errors.New("interrupted")
+	// ErrorInterrupted indicates that a blocking operation was interrupted by a signal.
+	// Corresponds to syscall.EINTR.
+	ErrorInterrupted = errors.New("interrupted")
 )
 
 func parseErrorType(errno sys.Errno) error {
