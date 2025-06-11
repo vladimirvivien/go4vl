@@ -94,9 +94,10 @@ func WaitForRead(dev Device) <-chan struct{} {
 	go func(fd uintptr) {
 		defer close(sigChan)
 		var fdsRead sys.FdSet
-		fdsRead.Set(int(fd))
-		tv := sys.Timeval{Sec: 2, Usec: 0}
 		for {
+			fdsRead.Zero()
+			fdsRead.Set(int(fd))
+			tv := sys.Timeval{Sec: 2, Usec: 0}
 			_, errno := sys.Select(int(fd+1), &fdsRead, nil, nil, &tv)
 			if errno == sys.EINTR {
 				continue
