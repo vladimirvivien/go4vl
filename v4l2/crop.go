@@ -34,9 +34,9 @@ func GetCropCapability(fd uintptr, bufType BufType) (CropCapability, error) {
 
 // SetCropRect sets the cropping dimension for specified device
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html#ioctl-vidioc-g-crop-vidioc-s-crop
-func SetCropRect(fd uintptr, r Rect) error {
+func SetCropRect(fd uintptr, r Rect, bufType uint32) error {
 	var crop C.struct_v4l2_crop
-	crop._type = C.uint(BufTypeVideoCapture)
+	crop._type = C.uint(bufType)
 	crop.c = *(*C.struct_v4l2_rect)(unsafe.Pointer(&r))
 
 	if err := send(fd, C.VIDIOC_S_CROP, uintptr(unsafe.Pointer(&crop))); err != nil {

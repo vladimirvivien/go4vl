@@ -19,9 +19,11 @@ import (
 type BufType = uint32
 
 const (
-	BufTypeVideoCapture BufType = C.V4L2_BUF_TYPE_VIDEO_CAPTURE
-	BufTypeVideoOutput  BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT
-	BufTypeOverlay      BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
+	BufTypeVideoCapture       BufType = C.V4L2_BUF_TYPE_VIDEO_CAPTURE
+	BufTypeVideoOutput        BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT
+	BufTypeVideoOutputMPlane  BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE
+	BufTypeVideoCaptureMPlane BufType = C.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+	BufTypeOverlay            BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
 )
 
 // IOType (v4l2_memory)
@@ -98,8 +100,8 @@ type Buffer struct {
 }
 
 // makeBuffer makes a Buffer value from C.struct_v4l2_buffer
-func makeBuffer(v4l2Buf C.struct_v4l2_buffer) Buffer {
-	return Buffer{
+func makeBuffer(v4l2Buf C.struct_v4l2_buffer) *Buffer {
+	return &Buffer{
 		Index:     uint32(v4l2Buf.index),
 		Type:      uint32(v4l2Buf._type),
 		BytesUsed: uint32(v4l2Buf.bytesused),
@@ -122,7 +124,7 @@ func makeBuffer(v4l2Buf C.struct_v4l2_buffer) Buffer {
 type BufferInfo struct {
 	Offset  uint32
 	UserPtr uintptr
-	Planes  *Plane
+	Planes  []*Plane
 	FD      int32
 }
 
@@ -207,17 +209,51 @@ func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
 
 // GetBuffer retrieves buffer info for allocated buffers at provided index.
 // This call should take place after buffers are allocated with RequestBuffers (for mmap for instance).
-func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
+func GetBuffer(dev StreamingDevice, index uint32) (*Buffer, error) {
+	bufType := dev.BufferType()
+	bufCount := dev.BufferCount()
+
 	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(dev.BufferType())
+	v4l2Buf._type = C.uint(bufType)
 	v4l2Buf.memory = C.uint(dev.MemIOType())
 	v4l2Buf.index = C.uint(index)
 
-	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-		return Buffer{}, fmt.Errorf("query buffer: type not supported: %w", err)
+	v4l2Plane := make([]C.struct_v4l2_plane, bufCount)
+	if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+		v4l2Buf.length = C.uint(bufCount)
+
+		ptr := unsafe.Pointer(&v4l2Plane[0])
+		ptrSize := unsafe.Sizeof(ptr)
+
+		if len(v4l2Buf.m) < int(ptrSize) {
+			panic("v4l2Buf.m is too small to hold a pointer")
+		}
+
+		const sizeofPointer = unsafe.Sizeof(unsafe.Pointer(nil))
+		copy(v4l2Buf.m[:ptrSize], (*[sizeofPointer]byte)(unsafe.Pointer(&ptr))[:ptrSize])
 	}
 
-	return makeBuffer(v4l2Buf), nil
+	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return &Buffer{}, fmt.Errorf("query buffer: type not supported: %w", err)
+	}
+
+	resBuf := makeBuffer(v4l2Buf)
+
+	if dev.BufferType() == BufTypeVideoCaptureMPlane || dev.BufferType() == BufTypeVideoOutputMPlane {
+		resBuf.Info.Planes = make([]*Plane, bufCount)
+
+		for i := range resBuf.Info.Planes {
+			resBuf.Info.Planes[i] = &Plane{
+				BytesUsed: uint32(v4l2Plane[i].bytesused),
+				Length:    uint32(v4l2Plane[i].length),
+				Info: PlaneInfo{
+					MemOffset: *(*uint32)(unsafe.Pointer(&v4l2Plane[i].m[0])),
+				},
+			}
+		}
+	}
+
+	return resBuf, nil
 }
 
 // mapMemoryBuffer creates a local buffer mapped to the address space of the device specified by fd.
@@ -231,9 +267,12 @@ func mapMemoryBuffer(fd uintptr, offset int64, len int) ([]byte, error) {
 
 // MapMemoryBuffers creates mapped memory buffers for specified buffer count of device.
 func MapMemoryBuffers(dev StreamingDevice) ([][]byte, error) {
-	bufCount := int(dev.BufferCount())
+	bufType := dev.BufferType()
+	bufCount := dev.BufferCount()
 	buffers := make([][]byte, bufCount)
-	for i := 0; i < bufCount; i++ {
+
+	var i uint32
+	for i = 0; i < bufCount; i++ {
 		buffer, err := GetBuffer(dev, uint32(i))
 		if err != nil {
 			return nil, fmt.Errorf("mapped buffers: %w", err)
@@ -243,6 +282,12 @@ func MapMemoryBuffers(dev StreamingDevice) ([][]byte, error) {
 
 		offset := buffer.Info.Offset
 		length := buffer.Length
+
+		if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+			offset = buffer.Info.Planes[i].Info.MemOffset
+			length = buffer.Info.Planes[i].Length
+		}
+
 		mappedBuf, err := mapMemoryBuffer(dev.Fd(), int64(offset), int(length))
 		if err != nil {
 			return nil, fmt.Errorf("mapped buffers: %w", err)
@@ -277,32 +322,101 @@ func UnmapMemoryBuffers(dev StreamingDevice) error {
 // when using either memory map, user pointer, or DMA buffers. Buffer is returned with
 // additional information about the queued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
-func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buffer, error) {
+func QueueBuffer(dev StreamingDevice, index uint32, bytesUsed uint32) (*Buffer, error) {
+	bufType := dev.BufferType()
+	bufCount := dev.BufferCount()
+
 	var v4l2Buf C.struct_v4l2_buffer
 	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(ioType)
+	v4l2Buf.memory = C.uint(dev.MemIOType())
 	v4l2Buf.index = C.uint(index)
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+	var v4l2Plane C.struct_v4l2_plane
+	if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+		v4l2Buf.length = C.uint(bufCount)
+
+		if bufType == BufTypeVideoOutputMPlane {
+			v4l2Plane.bytesused = C.uint(bytesUsed)
+		}
+
+		ptr := unsafe.Pointer(&v4l2Plane)
+		ptrSize := unsafe.Sizeof(ptr)
+
+		if len(v4l2Buf.m) < int(ptrSize) {
+			panic("v4l2Buf.m is too small to hold a pointer")
+		}
+
+		const sizeofPointer = unsafe.Sizeof(unsafe.Pointer(nil))
+		copy(v4l2Buf.m[:ptrSize], (*[sizeofPointer]byte)(unsafe.Pointer(&ptr))[:ptrSize])
 	}
 
-	return makeBuffer(v4l2Buf), nil
+	if err := send(dev.Fd(), C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return &Buffer{}, fmt.Errorf("buffer queue: %w", err)
+	}
+
+	resBuf := makeBuffer(v4l2Buf)
+
+	if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+		resBuf.Info.Planes = make([]*Plane, bufCount)
+		resBuf.Info.Planes[index] = &Plane{
+			BytesUsed: uint32(v4l2Plane.bytesused),
+			Length:    uint32(v4l2Plane.length),
+			Info: PlaneInfo{
+				MemOffset: *(*uint32)(unsafe.Pointer(&v4l2Plane.m[0])),
+			},
+		}
+	}
+
+	return resBuf, nil
 }
 
 // DequeueBuffer dequeues a buffer in the device driver, marking it as consumed by the application,
 // when using either memory map, user pointer, or DMA buffers. Buffer is returned with
 // additional information about the dequeued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
-func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
+func DequeueBuffer(dev StreamingDevice) (*Buffer, error) {
+	bufType := dev.BufferType()
+	bufCount := dev.BufferCount()
+
 	var v4l2Buf C.struct_v4l2_buffer
 	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(ioType)
+	v4l2Buf.memory = C.uint(dev.MemIOType())
 
-	err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
-	if err != nil {
-		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
+	v4l2Plane := make([]C.struct_v4l2_plane, bufCount)
+	if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+		v4l2Buf.length = C.uint(bufCount)
+
+		ptr := unsafe.Pointer(&v4l2Plane[0])
+		ptrSize := unsafe.Sizeof(ptr)
+
+		if len(v4l2Buf.m) < int(ptrSize) {
+			panic("v4l2Buf.m is too small to hold a pointer")
+		}
+
+		const sizeofPointer = unsafe.Sizeof(unsafe.Pointer(nil))
+		copy(v4l2Buf.m[:ptrSize], (*[sizeofPointer]byte)(unsafe.Pointer(&ptr))[:ptrSize])
 	}
 
-	return makeBuffer(v4l2Buf), nil
+	err := send(dev.Fd(), C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
+	if err != nil {
+		return &Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
+	}
+
+	resBuf := makeBuffer(v4l2Buf)
+
+	if bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane {
+		resBuf.Info.Planes = make([]*Plane, bufCount)
+
+		for i := range resBuf.Info.Planes {
+			resBuf.Info.Planes[i] = &Plane{
+				BytesUsed: uint32(v4l2Plane[i].bytesused),
+				Length:    uint32(v4l2Plane[i].length),
+				Info: PlaneInfo{
+					MemOffset: *(*uint32)(unsafe.Pointer(&v4l2Plane[i].m[0])),
+				},
+			}
+		}
+	}
+
+	return resBuf, nil
 }

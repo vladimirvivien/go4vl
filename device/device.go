@@ -83,7 +83,7 @@ func Open(path string, options ...Option) (*Device, error) {
 
 	// reset crop, only if cropping supported
 	if cropcap, err := v4l2.GetCropCapability(dev.fd, dev.bufType); err == nil {
-		if err := v4l2.SetCropRect(dev.fd, cropcap.DefaultRect); err != nil {
+		if err := v4l2.SetCropRect(dev.fd, cropcap.DefaultRect, v4l2.BufTypeVideoCapture); err != nil {
 			// ignore errors
 		}
 	}
@@ -94,7 +94,7 @@ func Open(path string, options ...Option) (*Device, error) {
 			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
 		}
 	} else {
-		dev.config.pixFormat, err = v4l2.GetPixFormat(dev.fd)
+		dev.config.pixFormat, err = v4l2.GetPixFormat(dev.fd, v4l2.BufTypeVideoCapture)
 		if err != nil {
 			return nil, fmt.Errorf("device open: %s: get default format: %w", path, err)
 		}
@@ -187,7 +187,7 @@ func (d *Device) SetCropRect(r v4l2.Rect) error {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.ErrorUnsupportedFeature
 	}
-	if err := v4l2.SetCropRect(d.fd, r); err != nil {
+	if err := v4l2.SetCropRect(d.fd, r, v4l2.BufTypeVideoCapture); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
 	return nil
@@ -200,7 +200,7 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	}
 
 	if d.config.pixFormat == (v4l2.PixFormat{}) {
-		pixFmt, err := v4l2.GetPixFormat(d.fd)
+		pixFmt, err := v4l2.GetPixFormat(d.fd, v4l2.BufTypeVideoCapture)
 		if err != nil {
 			return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
 		}
@@ -216,7 +216,7 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 		return v4l2.ErrorUnsupportedFeature
 	}
 
-	if err := v4l2.SetPixFormat(d.fd, pixFmt); err != nil {
+	if err := v4l2.SetPixFormat(d.fd, pixFmt, v4l2.BufTypeVideoCapture); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
 	d.config.pixFormat = pixFmt
@@ -224,21 +224,21 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 }
 
 // GetFormatDescription returns a format description for the device at specified format index
-func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error) {
+func (d *Device) GetFormatDescription(idx uint32, bufType uint32) (v4l2.FormatDescription, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.FormatDescription{}, v4l2.ErrorUnsupportedFeature
 	}
 
-	return v4l2.GetFormatDescription(d.fd, idx)
+	return v4l2.GetFormatDescription(d.fd, idx, bufType)
 }
 
 // GetFormatDescriptions returns all possible format descriptions for device
-func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
+func (d *Device) GetFormatDescriptions(bufType uint32) ([]v4l2.FormatDescription, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return nil, v4l2.ErrorUnsupportedFeature
 	}
 
-	return v4l2.GetAllFormatDescriptions(d.fd)
+	return v4l2.GetAllFormatDescriptions(d.fd, bufType)
 }
 
 // GetVideoInputIndex returns current video input index for device
@@ -380,7 +380,7 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 
 	// Initial enqueue of buffers for capture
 	for i := 0; i < int(d.config.bufSize); i++ {
-		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i))
+		_, err := v4l2.QueueBuffer(d, uint32(i), 0)
 		if err != nil {
 			return fmt.Errorf("device: buffer queueing: %w", err)
 		}
@@ -393,16 +393,13 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 	go func() {
 		defer close(d.output)
 
-		fd := d.Fd()
 		var frame []byte
-		ioMemType := d.MemIOType()
-		bufType := d.BufferType()
 		waitForRead := v4l2.WaitForRead(d)
 		for {
 			select {
 			// handle stream capture (read from driver)
 			case <-waitForRead:
-				buff, err := v4l2.DequeueBuffer(fd, ioMemType, bufType)
+				buff, err := v4l2.DequeueBuffer(d)
 				if err != nil {
 					if errors.Is(err, sys.EAGAIN) {
 						continue
@@ -422,7 +419,7 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 					d.output <- []byte{}
 				}
 
-				if _, err := v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index); err != nil {
+				if _, err := v4l2.QueueBuffer(d, buff.Index, 0); err != nil {
 					panic(fmt.Sprintf("device: stream loop queue: %s: buff: %#v", err, buff))
 				}
 			case <-ctx.Done():
