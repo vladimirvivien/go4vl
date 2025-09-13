@@ -63,10 +63,18 @@ func Open(path string, options ...Option) (*Device, error) {
 	switch {
 	case cap.IsVideoCaptureSupported():
 		// setup capture parameters and chan for captured data
-		dev.bufType = v4l2.BufTypeVideoCapture
+		if dev.config.useMPlane {
+			dev.bufType = v4l2.BufTypeVideoCaptureMPlane
+		} else {
+			dev.bufType = v4l2.BufTypeVideoCapture
+		}
 		dev.output = make(chan []byte, dev.config.bufSize)
 	case cap.IsVideoOutputSupported():
-		dev.bufType = v4l2.BufTypeVideoOutput
+		if dev.config.useMPlane {
+			dev.bufType = v4l2.BufTypeVideoOutputMPlane
+		} else {
+			dev.bufType = v4l2.BufTypeVideoOutput
+		}
 	default:
 		if err := v4l2.CloseDevice(dev.fd); err != nil {
 			return nil, fmt.Errorf("device open: %s: closing after failure: %s", path, err)
@@ -83,15 +91,28 @@ func Open(path string, options ...Option) (*Device, error) {
 
 	// reset crop, only if cropping supported
 	if cropcap, err := v4l2.GetCropCapability(dev.fd, dev.bufType); err == nil {
-		if err := v4l2.SetCropRect(dev.fd, cropcap.DefaultRect, v4l2.BufTypeVideoCapture); err != nil {
+		bufType := v4l2.BufTypeVideoCapture
+		if dev.config.useMPlane {
+			bufType = v4l2.BufTypeVideoCaptureMPlane
+		}
+		if err := v4l2.SetCropRect(dev.fd, cropcap.DefaultRect, bufType); err != nil {
 			// ignore errors
 		}
 	}
 
 	// set pix format
-	if dev.config.pixFormat != (v4l2.PixFormat{}) {
+	if dev.config.pixFormat != (v4l2.PixFormat{}) && !dev.config.useMPlane {
 		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
 			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
+		}
+	} else if dev.config.pixFormatMPlane != (v4l2.PixFormatMPlane{}) && dev.config.useMPlane {
+		if err := dev.SetPixFormatMPlane(dev.config.pixFormatMPlane); err != nil {
+			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
+		}
+	} else if dev.config.useMPlane {
+		dev.config.pixFormatMPlane, err = v4l2.GetPixFormatMPlane(dev.fd, v4l2.BufTypeVideoCaptureMPlane)
+		if err != nil {
+			return nil, fmt.Errorf("device open: %s: get default mplane format: %w", path, err)
 		}
 	} else {
 		dev.config.pixFormat, err = v4l2.GetPixFormat(dev.fd, v4l2.BufTypeVideoCapture)
@@ -187,8 +208,14 @@ func (d *Device) SetCropRect(r v4l2.Rect) error {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.ErrorUnsupportedFeature
 	}
-	if err := v4l2.SetCropRect(d.fd, r, v4l2.BufTypeVideoCapture); err != nil {
-		return fmt.Errorf("device: %w", err)
+	if d.config.useMPlane {
+		if err := v4l2.SetCropRect(d.fd, r, v4l2.BufTypeVideoCaptureMPlane); err != nil {
+			return fmt.Errorf("device: %w", err)
+		}
+	} else {
+		if err := v4l2.SetCropRect(d.fd, r, v4l2.BufTypeVideoCapture); err != nil {
+			return fmt.Errorf("device: %w", err)
+		}
 	}
 	return nil
 }
@@ -210,6 +237,23 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	return d.config.pixFormat, nil
 }
 
+// GetPixFormatMPlane retrieves mplane pixel format info for device
+func (d *Device) GetPixFormatMPlane() (v4l2.PixFormatMPlane, error) {
+	if !d.cap.IsVideoCaptureSupported() {
+		return v4l2.PixFormatMPlane{}, v4l2.ErrorUnsupportedFeature
+	}
+
+	if d.config.pixFormatMPlane == (v4l2.PixFormatMPlane{}) {
+		pixFmtMp, err := v4l2.GetPixFormatMPlane(d.fd, v4l2.BufTypeVideoCaptureMPlane)
+		if err != nil {
+			return v4l2.PixFormatMPlane{}, fmt.Errorf("device: %w", err)
+		}
+		d.config.pixFormatMPlane = pixFmtMp
+	}
+
+	return d.config.pixFormatMPlane, nil
+}
+
 // SetPixFormat sets the pixel format for the associated device.
 func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	if !d.cap.IsVideoCaptureSupported() {
@@ -220,6 +264,19 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 		return fmt.Errorf("device: %w", err)
 	}
 	d.config.pixFormat = pixFmt
+	return nil
+}
+
+// SetPixFormatMPlane sets the mplane pixel format for the associated device.
+func (d *Device) SetPixFormatMPlane(pixFmtMp v4l2.PixFormatMPlane) error {
+	if !d.cap.IsVideoCaptureSupported() {
+		return v4l2.ErrorUnsupportedFeature
+	}
+
+	if err := v4l2.SetPixFormatMPlane(d.fd, pixFmtMp, v4l2.BufTypeVideoCaptureMPlane); err != nil {
+		return fmt.Errorf("device: %w", err)
+	}
+	d.config.pixFormatMPlane = pixFmtMp
 	return nil
 }
 
