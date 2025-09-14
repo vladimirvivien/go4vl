@@ -122,11 +122,11 @@ func Open(path string, options ...Option) (*Device, error) {
 	}
 
 	// set fps
-	if dev.config.fps != 0 {
+	if cap.IsStreamingSupported() && dev.config.fps != 0 {
 		if err := dev.SetFrameRate(dev.config.fps); err != nil {
 			return nil, fmt.Errorf("device open: %s: set fps: %w", path, err)
 		}
-	} else {
+	} else if !cap.IsVideoCaptureSupported() && cap.IsVideoOutputSupported() {
 		if dev.config.fps, err = dev.GetFrameRate(); err != nil {
 			return nil, fmt.Errorf("device open: %s: get fps: %w", path, err)
 		}
