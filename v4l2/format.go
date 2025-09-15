@@ -15,42 +15,50 @@ type FourCCType = uint32
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/pixfmt.html
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L518
 var (
-	PixelFmtYUV410  FourCCType = C.V4L2_PIX_FMT_YUV410
-	PixelFmtYVU410  FourCCType = C.V4L2_PIX_FMT_YVU410
-	PixelFmtYUV411P FourCCType = C.V4L2_PIX_FMT_YUV411P
-	PixelFmtYUV420  FourCCType = C.V4L2_PIX_FMT_YUV420
-	PixelFmtYVU420  FourCCType = C.V4L2_PIX_FMT_YVU420
-	PixelFmtYUV422P FourCCType = C.V4L2_PIX_FMT_YUV422P
-	PixelFmtRGB24   FourCCType = C.V4L2_PIX_FMT_RGB24
-	PixelFmtGrey    FourCCType = C.V4L2_PIX_FMT_GREY
-	PixelFmtYUYV    FourCCType = C.V4L2_PIX_FMT_YUYV
-	PixelFmtYYUV    FourCCType = C.V4L2_PIX_FMT_YYUV
-	PixelFmtYVYU    FourCCType = C.V4L2_PIX_FMT_YVYU
-	PixelFmtUYVY    FourCCType = C.V4L2_PIX_FMT_UYVY
-	PixelFmtVYUY    FourCCType = C.V4L2_PIX_FMT_VYUY
-	PixelFmtMJPEG   FourCCType = C.V4L2_PIX_FMT_MJPEG
-	PixelFmtJPEG    FourCCType = C.V4L2_PIX_FMT_JPEG
-	PixelFmtMPEG    FourCCType = C.V4L2_PIX_FMT_MPEG
-	PixelFmtH264    FourCCType = C.V4L2_PIX_FMT_H264
-	PixelFmtMPEG4   FourCCType = C.V4L2_PIX_FMT_MPEG4
+	PixelFmtSRGGB10  FourCCType = C.V4L2_PIX_FMT_SRGGB10
+	PixelFmtSRGGB10P FourCCType = C.V4L2_PIX_FMT_SRGGB10P
+	PixelFmtSRGGB12  FourCCType = C.V4L2_PIX_FMT_SRGGB12
+	PixelFmtSRGGB12P FourCCType = C.V4L2_PIX_FMT_SRGGB12P
+	PixelFmtYUV410   FourCCType = C.V4L2_PIX_FMT_YUV410
+	PixelFmtYVU410   FourCCType = C.V4L2_PIX_FMT_YVU410
+	PixelFmtYUV411P  FourCCType = C.V4L2_PIX_FMT_YUV411P
+	PixelFmtYUV420   FourCCType = C.V4L2_PIX_FMT_YUV420
+	PixelFmtYVU420   FourCCType = C.V4L2_PIX_FMT_YVU420
+	PixelFmtYUV422P  FourCCType = C.V4L2_PIX_FMT_YUV422P
+	PixelFmtRGB24    FourCCType = C.V4L2_PIX_FMT_RGB24
+	PixelFmtGrey     FourCCType = C.V4L2_PIX_FMT_GREY
+	PixelFmtYUYV     FourCCType = C.V4L2_PIX_FMT_YUYV
+	PixelFmtYYUV     FourCCType = C.V4L2_PIX_FMT_YYUV
+	PixelFmtYVYU     FourCCType = C.V4L2_PIX_FMT_YVYU
+	PixelFmtUYVY     FourCCType = C.V4L2_PIX_FMT_UYVY
+	PixelFmtVYUY     FourCCType = C.V4L2_PIX_FMT_VYUY
+	PixelFmtMJPEG    FourCCType = C.V4L2_PIX_FMT_MJPEG
+	PixelFmtJPEG     FourCCType = C.V4L2_PIX_FMT_JPEG
+	PixelFmtMPEG     FourCCType = C.V4L2_PIX_FMT_MPEG
+	PixelFmtH264     FourCCType = C.V4L2_PIX_FMT_H264
+	PixelFmtMPEG4    FourCCType = C.V4L2_PIX_FMT_MPEG4
 )
 
 // PixelFormats provides a map of FourCCType encoding description
 var PixelFormats = map[FourCCType]string{
-	PixelFmtYUV410:  "YUV410 YCbCr",
-	PixelFmtYVU410:  "YVU410 YCbCr",
-	PixelFmtYUV411P: "YVU411 YCbCr",
-	PixelFmtYUV420:  "YUV420 YCbCr",
-	PixelFmtYVU420:  "YVU420 YCbCr",
-	PixelFmtYUV422P: "YVU422 YCbCr",
-	PixelFmtRGB24:   "24-bit RGB 8-8-8",
-	PixelFmtGrey:    "8-bit Greyscale",
-	PixelFmtYUYV:    "YUYV 4:2:2",
-	PixelFmtMJPEG:   "Motion-JPEG",
-	PixelFmtJPEG:    "JFIF JPEG",
-	PixelFmtMPEG:    "MPEG-1/2/4",
-	PixelFmtH264:    "H.264",
-	PixelFmtMPEG4:   "MPEG-4 Part 2 ES",
+	PixelFmtSRGGB10:  "10-bit RGRG GBGB",
+	PixelFmtSRGGB10P: "10-bit RGGB packaed",
+	PixelFmtSRGGB12:  "10-bit RGRG",
+	PixelFmtSRGGB12P: "12-bit RGGB packed",
+	PixelFmtYUV410:   "YUV410 YCbCr",
+	PixelFmtYVU410:   "YVU410 YCbCr",
+	PixelFmtYUV411P:  "YVU411 YCbCr",
+	PixelFmtYUV420:   "YUV420 YCbCr",
+	PixelFmtYVU420:   "YVU420 YCbCr",
+	PixelFmtYUV422P:  "YVU422 YCbCr",
+	PixelFmtRGB24:    "24-bit RGB 8-8-8",
+	PixelFmtGrey:     "8-bit Greyscale",
+	PixelFmtYUYV:     "YUYV 4:2:2",
+	PixelFmtMJPEG:    "Motion-JPEG",
+	PixelFmtJPEG:     "JFIF JPEG",
+	PixelFmtMPEG:     "MPEG-1/2/4",
+	PixelFmtH264:     "H.264",
+	PixelFmtMPEG4:    "MPEG-4 Part 2 ES",
 }
 
 // IsPixYUVEncoded returns true if the pixel format is a chrome+luminance YUV format
