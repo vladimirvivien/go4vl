@@ -80,10 +80,10 @@ func makeFormatDescription(fmtDesc C.struct_v4l2_fmtdesc) FormatDescription {
 }
 
 // GetFormatDescription returns a device format description at index
-func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
+func GetFormatDescription(fd uintptr, index uint32, bufType uint32) (FormatDescription, error) {
 	var fmtDesc C.struct_v4l2_fmtdesc
 	fmtDesc.index = C.uint(index)
-	fmtDesc._type = C.uint(BufTypeVideoCapture)
+	fmtDesc._type = C.uint(bufType)
 
 	if err := send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
@@ -96,12 +96,12 @@ func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 // iterating from 0 up to an index that returns an error. At that point, the function
 // will return the collected descriptions and the error.
 // So if len(result) > 0, then error could be ignored.
-func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
+func GetAllFormatDescriptions(fd uintptr, bufType uint32) (result []FormatDescription, err error) {
 	index := uint32(0)
 	for {
 		var fmtDesc C.struct_v4l2_fmtdesc
 		fmtDesc.index = C.uint(index)
-		fmtDesc._type = C.uint(BufTypeVideoCapture)
+		fmtDesc._type = C.uint(bufType)
 
 		if err = send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
@@ -116,8 +116,8 @@ func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error
 }
 
 // GetFormatDescriptionByEncoding returns a FormatDescription that matches the specified encoded pixel format
-func GetFormatDescriptionByEncoding(fd uintptr, enc FourCCType) (FormatDescription, error) {
-	descs, err := GetAllFormatDescriptions(fd)
+func GetFormatDescriptionByEncoding(fd uintptr, bufType uint32, enc FourCCType) (FormatDescription, error) {
+	descs, err := GetAllFormatDescriptions(fd, bufType)
 	if err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: encoding %s: %s", PixelFormats[enc], err)
 	}

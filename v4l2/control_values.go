@@ -229,3 +229,24 @@ const (
 
 // TODO add code for the following controls
 // Stateless codec controls (h264, vp8, fwht, mpeg2, etc)
+
+// MPEG video controls
+// See https://github.com/torvalds/linux/blob/471b25a2fcbb25dccd7c9bece30313f2440a554e/include/uapi/linux/v4l2-controls.h#L440
+const (
+	CtrlMpegVbvSize                CtrlID = C.V4L2_CID_MPEG_VIDEO_VBV_SIZE
+	CtrlMpegDecPts                 CtrlID = C.V4L2_CID_MPEG_VIDEO_DEC_PTS
+	CtrlMpegDecFrame               CtrlID = C.V4L2_CID_MPEG_VIDEO_DEC_FRAME
+	CtrlMpegVbvDelay               CtrlID = C.V4L2_CID_MPEG_VIDEO_VBV_DELAY
+	CtrlMpegRepeatSeqHeader        CtrlID = C.V4L2_CID_MPEG_VIDEO_REPEAT_SEQ_HEADER
+	CtrlMpegMvHSearchRange         CtrlID = C.V4L2_CID_MPEG_VIDEO_MV_H_SEARCH_RANGE
+	CtrlMpegMvVSearchRange         CtrlID = C.V4L2_CID_MPEG_VIDEO_MV_V_SEARCH_RANGE
+	CtrlMpegForceKeyFrame          CtrlID = C.V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME
+	CtrlMpegBaseLayerPriorityID    CtrlID = C.V4L2_CID_MPEG_VIDEO_BASELAYER_PRIORITY_ID
+	CtrlMpegAuDelimiter            CtrlID = C.V4L2_CID_MPEG_VIDEO_AU_DELIMITER
+	CtrlMpegLtrCount               CtrlID = C.V4L2_CID_MPEG_VIDEO_LTR_COUNT
+	CtrlMpegFrameLtrIndex          CtrlID = C.V4L2_CID_MPEG_VIDEO_FRAME_LTR_INDEX
+	CtrlMpegUseLtrFrames           CtrlID = C.V4L2_CID_MPEG_VIDEO_USE_LTR_FRAMES
+	CtrlMpegDecConcealColor        CtrlID = C.V4L2_CID_MPEG_VIDEO_DEC_CONCEAL_COLOR
+	CtrlMpegIntraRefreshPeriod     CtrlID = C.V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_PERIOD
+	CtrlMpegIntraRefreshPeriodType CtrlID = C.V4L2_CID_MPEG_VIDEO_INTRA_REFRESH_PERIOD_TYPE
+)

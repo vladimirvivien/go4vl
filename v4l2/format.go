@@ -15,30 +15,50 @@ type FourCCType = uint32
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/pixfmt.html
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L518
 var (
-	PixelFmtRGB24 FourCCType = C.V4L2_PIX_FMT_RGB24
-	PixelFmtGrey  FourCCType = C.V4L2_PIX_FMT_GREY
-	PixelFmtYUYV  FourCCType = C.V4L2_PIX_FMT_YUYV
-	PixelFmtYYUV  FourCCType = C.V4L2_PIX_FMT_YYUV
-	PixelFmtYVYU  FourCCType = C.V4L2_PIX_FMT_YVYU
-	PixelFmtUYVY  FourCCType = C.V4L2_PIX_FMT_UYVY
-	PixelFmtVYUY  FourCCType = C.V4L2_PIX_FMT_VYUY
-	PixelFmtMJPEG FourCCType = C.V4L2_PIX_FMT_MJPEG
-	PixelFmtJPEG  FourCCType = C.V4L2_PIX_FMT_JPEG
-	PixelFmtMPEG  FourCCType = C.V4L2_PIX_FMT_MPEG
-	PixelFmtH264  FourCCType = C.V4L2_PIX_FMT_H264
-	PixelFmtMPEG4 FourCCType = C.V4L2_PIX_FMT_MPEG4
+	PixelFmtSRGGB10  FourCCType = C.V4L2_PIX_FMT_SRGGB10
+	PixelFmtSRGGB10P FourCCType = C.V4L2_PIX_FMT_SRGGB10P
+	PixelFmtSRGGB12  FourCCType = C.V4L2_PIX_FMT_SRGGB12
+	PixelFmtSRGGB12P FourCCType = C.V4L2_PIX_FMT_SRGGB12P
+	PixelFmtYUV410   FourCCType = C.V4L2_PIX_FMT_YUV410
+	PixelFmtYVU410   FourCCType = C.V4L2_PIX_FMT_YVU410
+	PixelFmtYUV411P  FourCCType = C.V4L2_PIX_FMT_YUV411P
+	PixelFmtYUV420   FourCCType = C.V4L2_PIX_FMT_YUV420
+	PixelFmtYVU420   FourCCType = C.V4L2_PIX_FMT_YVU420
+	PixelFmtYUV422P  FourCCType = C.V4L2_PIX_FMT_YUV422P
+	PixelFmtRGB24    FourCCType = C.V4L2_PIX_FMT_RGB24
+	PixelFmtGrey     FourCCType = C.V4L2_PIX_FMT_GREY
+	PixelFmtYUYV     FourCCType = C.V4L2_PIX_FMT_YUYV
+	PixelFmtYYUV     FourCCType = C.V4L2_PIX_FMT_YYUV
+	PixelFmtYVYU     FourCCType = C.V4L2_PIX_FMT_YVYU
+	PixelFmtUYVY     FourCCType = C.V4L2_PIX_FMT_UYVY
+	PixelFmtVYUY     FourCCType = C.V4L2_PIX_FMT_VYUY
+	PixelFmtMJPEG    FourCCType = C.V4L2_PIX_FMT_MJPEG
+	PixelFmtJPEG     FourCCType = C.V4L2_PIX_FMT_JPEG
+	PixelFmtMPEG     FourCCType = C.V4L2_PIX_FMT_MPEG
+	PixelFmtH264     FourCCType = C.V4L2_PIX_FMT_H264
+	PixelFmtMPEG4    FourCCType = C.V4L2_PIX_FMT_MPEG4
 )
 
 // PixelFormats provides a map of FourCCType encoding description
 var PixelFormats = map[FourCCType]string{
-	PixelFmtRGB24: "24-bit RGB 8-8-8",
-	PixelFmtGrey:  "8-bit Greyscale",
-	PixelFmtYUYV:  "YUYV 4:2:2",
-	PixelFmtMJPEG: "Motion-JPEG",
-	PixelFmtJPEG:  "JFIF JPEG",
-	PixelFmtMPEG:  "MPEG-1/2/4",
-	PixelFmtH264:  "H.264",
-	PixelFmtMPEG4: "MPEG-4 Part 2 ES",
+	PixelFmtSRGGB10:  "10-bit RGRG GBGB",
+	PixelFmtSRGGB10P: "10-bit RGGB packaed",
+	PixelFmtSRGGB12:  "10-bit RGRG",
+	PixelFmtSRGGB12P: "12-bit RGGB packed",
+	PixelFmtYUV410:   "YUV410 YCbCr",
+	PixelFmtYVU410:   "YVU410 YCbCr",
+	PixelFmtYUV411P:  "YVU411 YCbCr",
+	PixelFmtYUV420:   "YUV420 YCbCr",
+	PixelFmtYVU420:   "YVU420 YCbCr",
+	PixelFmtYUV422P:  "YVU422 YCbCr",
+	PixelFmtRGB24:    "24-bit RGB 8-8-8",
+	PixelFmtGrey:     "8-bit Greyscale",
+	PixelFmtYUYV:     "YUYV 4:2:2",
+	PixelFmtMJPEG:    "Motion-JPEG",
+	PixelFmtJPEG:     "JFIF JPEG",
+	PixelFmtMPEG:     "MPEG-1/2/4",
+	PixelFmtH264:     "H.264",
+	PixelFmtMPEG4:    "MPEG-4 Part 2 ES",
 }
 
 // IsPixYUVEncoded returns true if the pixel format is a chrome+luminance YUV format
@@ -278,12 +298,91 @@ func (f PixFormat) String() string {
 	)
 }
 
+type PixFmtFlag_8 = uint8
+
+const (
+	PixFmtFlagPremulAlpha PixFmtFlag_8 = C.V4L2_PIX_FMT_FLAG_PREMUL_ALPHA
+	PixFmtFlagSetCsc      PixFmtFlag_8 = C.V4L2_PIX_FMT_FLAG_SET_CSC
+)
+
+// YCbCrEncodingType (v4l2_ycbcr_encoding)
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_ycbcr_encoding
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L300
+type YCbCrEncodingType_8 = uint8
+
+const (
+	YCbCrEncodingDefault_8        YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_DEFAULT
+	YCbCrEncoding601_8            YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_601
+	YCbCrEncoding709_8            YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_709
+	YCbCrEncodingXV601_8          YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_XV601
+	YCbCrEncodingXV709_8          YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_XV709
+	__8                           YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_SYCC //(absolete)
+	YCbCrEncodingBT2020_8         YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_BT2020
+	YCbCrEncodingBT2020ConstLum_8 YCbCrEncodingType_8 = C.V4L2_YCBCR_ENC_BT2020_CONST_LUM
+)
+
+type HSVEncodingType_8 = uint8
+
+const (
+	HSVEncoding180_8 HSVEncodingType_8 = C.V4L2_HSV_ENC_180
+	HSVEncoding256_8 HSVEncodingType_8 = C.V4L2_HSV_ENC_256
+)
+
+type QuantizationType_8 = uint8
+
+const (
+	QuantizationDefault_8      QuantizationType_8 = C.V4L2_QUANTIZATION_DEFAULT
+	QuantizationFullRange_8    QuantizationType_8 = C.V4L2_QUANTIZATION_FULL_RANGE
+	QuantizationLimitedRange_8 QuantizationType_8 = C.V4L2_QUANTIZATION_LIM_RANGE
+)
+
+type XferFunctionType_8 = uint8
+
+const (
+	XferFuncDefault_8   XferFunctionType_8 = C.V4L2_XFER_FUNC_DEFAULT
+	XferFunc709_8       XferFunctionType_8 = C.V4L2_XFER_FUNC_709
+	XferFuncSRGB_8      XferFunctionType_8 = C.V4L2_XFER_FUNC_SRGB
+	XferFuncOpRGB_8     XferFunctionType_8 = C.V4L2_XFER_FUNC_OPRGB
+	XferFuncSMPTE240M_8 XferFunctionType_8 = C.V4L2_XFER_FUNC_SMPTE240M
+	XferFuncNone_8      XferFunctionType_8 = C.V4L2_XFER_FUNC_NONE
+	XferFuncDCIP3_8     XferFunctionType_8 = C.V4L2_XFER_FUNC_DCI_P3
+	XferFuncSMPTE2084_8 XferFunctionType_8 = C.V4L2_XFER_FUNC_SMPTE2084
+)
+
+const (
+	VideoMaxFrame  uint32 = C.VIDEO_MAX_FRAME
+	VideoMaxPlanes uint32 = C.VIDEO_MAX_PLANES
+)
+
+// PlanePixFormat (v4l2_plane_pix_format)
+type PlanePixFormat struct {
+	SizeImage    uint32
+	BytesPerLine uint32
+	Reserved     [6]uint16
+}
+
+type PixFormatMPlane struct {
+	Width        uint32
+	Height       uint32
+	PixelFormat  FourCCType
+	Field        FieldType
+	Colorspace   ColorspaceType
+	PlaneFmt     [VideoMaxPlanes]PlanePixFormat
+	NumPlanes    uint8
+	Flags        PixFmtFlag_8
+	YcbcrEnc     YCbCrEncodingType_8
+	HSVEnc       HSVEncodingType_8
+	Quantization QuantizationType_8
+	XferFunc     XferFunctionType_8
+	Reserved     [7]uint8
+}
+
 // GetPixFormat retrieves pixel information for the specified driver (via v4l2_format and v4l2_pix_format)
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
 // and https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
-func GetPixFormat(fd uintptr) (PixFormat, error) {
+func GetPixFormat(fd uintptr, bufType uint32) (PixFormat, error) {
 	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(BufTypeVideoCapture)
+	v4l2Format._type = C.uint(bufType)
 
 	if err := send(fd, C.VIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
@@ -307,12 +406,59 @@ func GetPixFormat(fd uintptr) (PixFormat, error) {
 	}, nil
 }
 
+func GetPixFormatMPlane(fd uintptr, bufType uint32) (PixFormatMPlane, error) {
+	var v4l2Format C.struct_v4l2_format
+	v4l2Format._type = C.uint(bufType)
+
+	if err := send(fd, C.VIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+		return PixFormatMPlane{}, fmt.Errorf("pix format failed: %w", err)
+	}
+
+	v4l2PixFmtMPlane := *(*C.struct_v4l2_pix_format_mplane)(unsafe.Pointer(&v4l2Format.fmt[0]))
+
+	// Convert plane formats
+	var planeFmt [VideoMaxPlanes]PlanePixFormat
+	for i := 0; i < int(v4l2PixFmtMPlane.num_planes); i++ {
+		cPlane := v4l2PixFmtMPlane.plane_fmt[i]
+		planeFmt[i] = PlanePixFormat{
+			SizeImage:    uint32(cPlane.sizeimage),
+			BytesPerLine: uint32(cPlane.bytesperline),
+		}
+	}
+
+	return PixFormatMPlane{
+		Width:        uint32(v4l2PixFmtMPlane.width),
+		Height:       uint32(v4l2PixFmtMPlane.height),
+		PixelFormat:  uint32(v4l2PixFmtMPlane.pixelformat),
+		Field:        uint32(v4l2PixFmtMPlane.field),
+		Colorspace:   uint32(v4l2PixFmtMPlane.colorspace),
+		PlaneFmt:     planeFmt,
+		NumPlanes:    uint8(v4l2PixFmtMPlane.num_planes),
+		Flags:        uint8(v4l2PixFmtMPlane.flags),
+		YcbcrEnc:     *(*uint8)(unsafe.Pointer(&v4l2PixFmtMPlane.anon0[0])),
+		HSVEnc:       *(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2PixFmtMPlane.anon0[0])) + unsafe.Sizeof(C.__u8(0)))),
+		Quantization: uint8(v4l2PixFmtMPlane.quantization),
+		XferFunc:     uint8(v4l2PixFmtMPlane.xfer_func),
+	}, nil
+}
+
 // SetPixFormat sets the pixel format information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
-func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
+func SetPixFormat(fd uintptr, pixFmt PixFormat, bufType uint32) error {
 	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(BufTypeVideoCapture)
+	v4l2Format._type = C.uint(bufType)
 	*(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Format.fmt[0])) = *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&pixFmt))
+
+	if err := send(fd, C.VIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+		return fmt.Errorf("pix format failed: %w", err)
+	}
+	return nil
+}
+
+func SetPixFormatMPlane(fd uintptr, pixFmtMPlane PixFormatMPlane, bufType uint32) error {
+	var v4l2Format C.struct_v4l2_format
+	v4l2Format._type = C.uint(bufType)
+	*(*C.struct_v4l2_pix_format_mplane)(unsafe.Pointer(&v4l2Format.fmt[0])) = *(*C.struct_v4l2_pix_format_mplane)(unsafe.Pointer(&pixFmtMPlane))
 
 	if err := send(fd, C.VIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return fmt.Errorf("pix format failed: %w", err)

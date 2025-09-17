@@ -195,7 +195,7 @@ func printFormatInfo(dev *device2.Device) error {
 }
 
 func printFormatDesc(dev *device2.Device) error {
-	descs, err := dev.GetFormatDescriptions()
+	descs, err := dev.GetFormatDescriptions(v4l2.BufTypeVideoCapture)
 	if err != nil {
 		return fmt.Errorf("format desc: %w", err)
 	}

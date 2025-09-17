@@ -116,8 +116,8 @@ func GetFormatFrameSizes(fd uintptr, encoding FourCCType) (result []FrameSizeEnu
 // GetAllFormatFrameSizes returns all supported frame sizes for all supported formats.
 // It iterates from format at index 0 until it encounters and error and then stops. For
 // each supported format, it retrieves all supported frame sizes.
-func GetAllFormatFrameSizes(fd uintptr) (result []FrameSizeEnum, err error) {
-	formats, err := GetAllFormatDescriptions(fd)
+func GetAllFormatFrameSizes(fd uintptr, bufType uint32) (result []FrameSizeEnum, err error) {
+	formats, err := GetAllFormatDescriptions(fd, bufType)
 	if len(formats) == 0 && err != nil {
 		return nil, fmt.Errorf("frame sizes: %w", err)
 	}

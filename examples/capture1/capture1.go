@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// get supported format descriptions
-	fmtDescs, err := device.GetFormatDescriptions()
+	fmtDescs, err := device.GetFormatDescriptions(v4l2.BufTypeVideoCapture)
 	if err != nil {
 		log.Fatal("failed to get format desc:", err)
 	}
