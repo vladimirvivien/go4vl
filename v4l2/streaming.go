@@ -13,39 +13,96 @@ import (
 // Streaming with Buffers
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html
 
-// BufType (v4l2_buf_type)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html?highlight=v4l2_buf_type#c.V4L.v4l2_buf_type
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L141
+// BufType specifies the type of V4L2 buffer used for data transfer.
+// It determines whether the buffer is for video capture, output, or other purposes.
+// This type corresponds to v4l2_buf_type in the kernel API.
+//
+// References:
+//   - https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html?highlight=v4l2_buf_type#c.V4L.v4l2_buf_type
+//   - https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L141
 type BufType = uint32
 
+// Buffer type constants define the direction and purpose of data flow.
 const (
+	// BufTypeVideoCapture is for video capture buffers (camera/tuner input).
+	// Used when reading frames from a video source.
 	BufTypeVideoCapture BufType = C.V4L2_BUF_TYPE_VIDEO_CAPTURE
-	BufTypeVideoOutput  BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT
-	BufTypeOverlay      BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
+
+	// BufTypeVideoOutput is for video output buffers (display/encoder output).
+	// Used when sending frames to a video sink.
+	BufTypeVideoOutput BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT
+
+	// BufTypeOverlay is for video overlay buffers.
+	// Used for hardware overlay onto a display.
+	BufTypeOverlay BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
 )
 
-// IOType (v4l2_memory)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/mmap.html?highlight=v4l2_memory_mmap
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L188
+// IOType specifies the I/O method for transferring data between userspace and the V4L2 device.
+// Different I/O types offer various trade-offs between performance, complexity, and memory usage.
+// This type corresponds to v4l2_memory in the kernel API.
+//
+// References:
+//   - https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/mmap.html?highlight=v4l2_memory_mmap
+//   - https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L188
 type IOType = uint32
 
+// I/O type constants define how buffers are allocated and accessed.
 const (
-	IOTypeMMAP    IOType = C.V4L2_MEMORY_MMAP
+	// IOTypeMMAP uses memory-mapped buffers for zero-copy data transfer.
+	// This is the most efficient and commonly supported I/O method.
+	// Buffers are allocated by the driver and mapped into userspace.
+	IOTypeMMAP IOType = C.V4L2_MEMORY_MMAP
+
+	// IOTypeUserPtr uses application-allocated buffers.
+	// The application provides memory pointers to the driver.
+	// Requires contiguous physical memory in some cases.
 	IOTypeUserPtr IOType = C.V4L2_MEMORY_USERPTR
+
+	// IOTypeOverlay writes directly to video memory for display.
+	// Deprecated in newer kernels.
 	IOTypeOverlay IOType = C.V4L2_MEMORY_OVERLAY
-	IOTypeDMABuf  IOType = C.V4L2_MEMORY_DMABUF
+
+	// IOTypeDMABuf uses DMA buffer sharing for inter-device communication.
+	// Allows zero-copy sharing between V4L2 and other subsystems like DRM.
+	// Requires DMABUF support in both driver and hardware.
+	IOTypeDMABuf IOType = C.V4L2_MEMORY_DMABUF
 )
 
+// BufFlag represents buffer status flags that indicate the state of a V4L2 buffer.
+// These flags are set by the driver and/or application to track buffer lifecycle
+// and provide metadata about the buffer contents.
 type BufFlag = uint32
 
+// Buffer flag constants indicate buffer state and frame metadata.
 const (
-	BufFlagMapped              BufFlag = C.V4L2_BUF_FLAG_MAPPED
-	BufFlagQueued              BufFlag = C.V4L2_BUF_FLAG_QUEUED
-	BufFlagDone                BufFlag = C.V4L2_BUF_FLAG_DONE
-	BufFlagKeyFrame            BufFlag = C.V4L2_BUF_FLAG_KEYFRAME
-	BufFlagPFrame              BufFlag = C.V4L2_BUF_FLAG_PFRAME
-	BufFlagBFrame              BufFlag = C.V4L2_BUF_FLAG_BFRAME
-	BufFlagError               BufFlag = C.V4L2_BUF_FLAG_ERROR
+	// BufFlagMapped indicates the buffer is memory-mapped into userspace.
+	// Set when the buffer has been successfully mapped with mmap().
+	BufFlagMapped BufFlag = C.V4L2_BUF_FLAG_MAPPED
+
+	// BufFlagQueued indicates the buffer is queued for I/O.
+	// The buffer is owned by the driver and should not be accessed by the application.
+	BufFlagQueued BufFlag = C.V4L2_BUF_FLAG_QUEUED
+
+	// BufFlagDone indicates the buffer has been processed and contains valid data.
+	// For capture: buffer contains a captured frame.
+	// For output: buffer has been displayed/transmitted.
+	BufFlagDone BufFlag = C.V4L2_BUF_FLAG_DONE
+
+	// BufFlagKeyFrame indicates the buffer contains a keyframe (I-frame).
+	// Used with compressed video streams.
+	BufFlagKeyFrame BufFlag = C.V4L2_BUF_FLAG_KEYFRAME
+
+	// BufFlagPFrame indicates the buffer contains a P-frame (predicted frame).
+	// Used with compressed video streams.
+	BufFlagPFrame BufFlag = C.V4L2_BUF_FLAG_PFRAME
+
+	// BufFlagBFrame indicates the buffer contains a B-frame (bi-directional predicted frame).
+	// Used with compressed video streams.
+	BufFlagBFrame BufFlag = C.V4L2_BUF_FLAG_BFRAME
+
+	// BufFlagError indicates an error occurred during capture/output.
+	// The buffer contents are likely invalid.
+	BufFlagError BufFlag = C.V4L2_BUF_FLAG_ERROR
 	BufFlagInRequest           BufFlag = C.V4L2_BUF_FLAG_IN_REQUEST
 	BufFlagTimeCode            BufFlag = C.V4L2_BUF_FLAG_TIMECODE
 	BufFlagM2MHoldCaptureBuf   BufFlag = C.V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF

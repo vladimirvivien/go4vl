@@ -12,12 +12,23 @@ import (
 	"unsafe"
 )
 
+// FrameSizeType indicates how frame sizes are specified for a pixel format.
+// Different devices support different ways of expressing available frame dimensions.
 type FrameSizeType = uint32
 
+// Frame size type constants define how frame dimensions can be configured.
 const (
-	FrameSizeTypeDiscrete   FrameSizeType = C.V4L2_FRMSIZE_TYPE_DISCRETE
+	// FrameSizeTypeDiscrete indicates the device supports specific fixed frame sizes.
+	// For example: 640x480, 1280x720, 1920x1080
+	FrameSizeTypeDiscrete FrameSizeType = C.V4L2_FRMSIZE_TYPE_DISCRETE
+
+	// FrameSizeTypeContinuous indicates any frame size within a range is supported.
+	// The device can handle any width/height within minimum and maximum bounds.
 	FrameSizeTypeContinuous FrameSizeType = C.V4L2_FRMSIZE_TYPE_CONTINUOUS
-	FrameSizeTypeStepwise   FrameSizeType = C.V4L2_FRMSIZE_TYPE_STEPWISE
+
+	// FrameSizeTypeStepwise indicates frame sizes with specific step increments.
+	// For example: widths from 160 to 1920 in steps of 16 pixels.
+	FrameSizeTypeStepwise FrameSizeType = C.V4L2_FRMSIZE_TYPE_STEPWISE
 )
 
 // FrameSizeEnum uses v4l2_frmsizeenum to get supported frame size for the driver based for the pixel format.

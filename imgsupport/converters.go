@@ -7,8 +7,33 @@ import (
 	"image/jpeg"
 )
 
-// Yuyv2Jpeg attempts to convert the YUYV image using Go's built-in
-// YCbCr encoder
+// Yuyv2Jpeg converts a YUYV (YUV 4:2:2) formatted frame to JPEG format.
+//
+// YUYV is a packed pixel format where two pixels share chroma (color) information:
+//   - Each 4 bytes represent 2 pixels: [Y0][U][Y1][V]
+//   - Y0, Y1: Luminance values for pixel 0 and pixel 1
+//   - U, V: Shared chroma values for both pixels
+//
+// Parameters:
+//   - width: Frame width in pixels (must be even)
+//   - height: Frame height in pixels
+//   - frame: Raw YUYV data (expected size: width * height * 2 bytes)
+//
+// Returns:
+//   - []byte: JPEG-encoded image data
+//   - error: Conversion error if any
+//
+// Note: This function is currently experimental and disabled (returns unsupported error).
+// The conversion implementation needs further testing and optimization.
+//
+// Example:
+//
+//	// Convert 640x480 YUYV frame to JPEG
+//	jpegData, err := Yuyv2Jpeg(640, 480, yuyvFrame)
+//	if err != nil {
+//	    // Handle error - currently always returns unsupported
+//	    log.Printf("Conversion not supported: %v", err)
+//	}
 func Yuyv2Jpeg(width, height int, frame []byte) ([]byte, error) {
 	if true {
 		return nil, fmt.Errorf("unsupported")

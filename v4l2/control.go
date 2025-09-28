@@ -40,11 +40,18 @@ type Control struct {
 	flags   uint32
 }
 
+// ControlMenuItem represents a single option in a menu-type V4L2 control.
+// Menu controls allow selection from a discrete set of named options,
+// such as white balance modes, scene modes, or power line frequency settings.
 type ControlMenuItem struct {
-	ID    uint32
+	// ID is the control identifier this menu item belongs to
+	ID uint32
+	// Index is the menu item's position in the menu (starting from 0)
 	Index uint32
+	// Value is the numeric value associated with this menu option
 	Value uint32
-	Name  string
+	// Name is the human-readable label for this menu option
+	Name string
 }
 
 // IsMenu tests whether control Type == CtrlTypeMenu || Type == CtrlIntegerMenu

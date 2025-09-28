@@ -10,22 +10,92 @@ import (
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
+// Device represents a V4L2 video device and provides high-level methods for video capture and streaming.
+// It encapsulates the low-level V4L2 API interactions and manages the device lifecycle including
+// configuration, buffer management, and streaming operations.
+//
+// The Device struct is not safe for concurrent use. All methods should be called from a single goroutine,
+// except for GetOutput() which returns a channel safe for concurrent reads.
 type Device struct {
-	path         string
-	file         *os.File
-	fd           uintptr
-	config       config
-	bufType      v4l2.BufType
-	cap          v4l2.Capability
-	cropCap      v4l2.CropCapability
-	buffers      [][]byte
+	// path is the file system path to the device (e.g., /dev/video0, /dev/video1)
+	path string
+
+	// file is the opened file handle for the device (currently unused, kept for future use)
+	file *os.File
+
+	// fd is the file descriptor used for low-level V4L2 ioctl operations
+	fd uintptr
+
+	// config holds the device configuration including pixel format, FPS, buffer size, and IO type
+	config config
+
+	// bufType specifies the buffer type (capture or output) determined by device capabilities
+	bufType v4l2.BufType
+
+	// cap stores the device capabilities queried during initialization
+	cap v4l2.Capability
+
+	// cropCap stores the cropping capabilities for video capture devices
+	cropCap v4l2.CropCapability
+
+	// buffers holds memory-mapped buffers used for zero-copy frame transfer
+	buffers [][]byte
+
+	// requestedBuf contains the buffer request parameters negotiated with the driver
 	requestedBuf v4l2.RequestBuffers
-	streaming    bool
-	output       chan []byte
+
+	// streaming indicates whether the device is currently streaming video data
+	streaming bool
+
+	// output is the channel that delivers captured video frames to consumers
+	output chan []byte
 }
 
-// Open creates opens the underlying device at specified path for streaming.
-// It returns a *Device or an error if unable to open device.
+// Open opens a V4L2 video device at the specified path and prepares it for streaming.
+// The device is opened in read-write mode with non-blocking I/O.
+//
+// Parameters:
+//   - path: The file system path to the video device (e.g., "/dev/video0")
+//   - options: Optional configuration functions to customize device behavior
+//
+// Available options:
+//   - WithBufferSize(n): Set the number of buffers for streaming (default: 2)
+//   - WithPixFormat(fmt): Set the pixel format and frame dimensions
+//   - WithFPS(fps): Set the frames per second for capture
+//   - WithIOType(io): Set the I/O method (currently only memory-mapped I/O is supported)
+//
+// The function performs the following initialization steps:
+//  1. Opens the device file descriptor
+//  2. Queries device capabilities
+//  3. Determines buffer type (capture/output) based on capabilities
+//  4. Configures pixel format and frame rate
+//  5. Resets crop settings to defaults if supported
+//
+// Returns:
+//   - *Device: A configured device ready for streaming
+//   - error: An error if the device cannot be opened or configured
+//
+// Possible errors:
+//   - Device not found or permission denied
+//   - Device does not support streaming I/O
+//   - Unsupported buffer type or pixel format
+//   - Failed to set requested frame rate
+//
+// Example:
+//
+//	dev, err := device.Open("/dev/video0",
+//	    device.WithBufferSize(4),
+//	    device.WithPixFormat(v4l2.PixFormat{
+//	        Width: 640,
+//	        Height: 480,
+//	        PixelFormat: v4l2.PixelFmtMJPEG,
+//	    }),
+//	    device.WithFPS(30),
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer dev.Close()
 func Open(path string, options ...Option) (*Device, error) {
 	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
 	if err != nil {
@@ -114,7 +184,11 @@ func Open(path string, options ...Option) (*Device, error) {
 	return dev, nil
 }
 
-// Close closes the underlying device associated with `d` .
+// Close closes the device and releases all associated resources.
+// If the device is currently streaming, it will be stopped before closing.
+// This method should always be called when done with the device, typically using defer.
+//
+// Returns an error if stopping the stream or closing the file descriptor fails.
 func (d *Device) Close() error {
 	if d.streaming {
 		if err := d.Stop(); err != nil {
@@ -124,57 +198,111 @@ func (d *Device) Close() error {
 	return v4l2.CloseDevice(d.fd)
 }
 
-// Name returns the device name (or path)
+// Name returns the file system path of the device (e.g., "/dev/video0").
+// This is the same path that was provided to the Open function.
 func (d *Device) Name() string {
 	return d.path
 }
 
-// Fd returns the file descriptor value for the device
+// Fd returns the underlying file descriptor for the device.
+// This can be used for low-level V4L2 operations or with select/poll/epoll.
+//
+// Note: Direct manipulation of the file descriptor may interfere with
+// the Device's internal state management.
 func (d *Device) Fd() uintptr {
 	return d.fd
 }
 
-// Buffers returns the internal mapped buffers. This method should be
-// called after streaming has been started otherwise it may return nil.
+// Buffers returns the memory-mapped buffers used for video streaming.
+// These buffers are allocated and mapped during Start() and provide zero-copy
+// access to video frames.
+//
+// Returns nil if called before Start() or after Stop().
+// The returned slice should not be modified as it's used internally for streaming.
 func (d *Device) Buffers() [][]byte {
 	return d.buffers
 }
 
-// Capability returns device capability info.
+// Capability returns the device capability information including supported
+// features, driver info, and device-specific capabilities.
+// This information is queried during device initialization.
+//
+// The capability can be used to check for specific features:
+//   - Video capture/output support
+//   - Streaming I/O support
+//   - Multi-planar format support
+//   - Hardware codec support
 func (d *Device) Capability() v4l2.Capability {
 	return d.cap
 }
 
-// BufferType this is a convenience method that returns the device mode (i.e. Capture, Output, etc)
-// Use method Capability for detail about the device.
+// BufferType returns the buffer type for this device, which indicates whether
+// the device is configured for video capture (BufTypeVideoCapture) or
+// video output (BufTypeVideoOutput).
+//
+// This is determined automatically during device initialization based on
+// the device's capabilities.
 func (d *Device) BufferType() v4l2.BufType {
 	return d.bufType
 }
 
-// BufferCount returns configured number of buffers to be used during streaming.
-// If called after streaming start, this value could be updated by the driver.
+// BufferCount returns the number of buffers allocated for streaming.
+// This value may differ from the requested count as the driver may
+// adjust it based on hardware constraints.
+//
+// The actual count is finalized when Start() is called.
+// Before streaming, this returns the requested count.
+// After streaming starts, it returns the actual allocated count.
 func (d *Device) BufferCount() v4l2.BufType {
 	return d.config.bufSize
 }
 
-// MemIOType returns the device memory input/output type (i.e. Memory mapped, DMA, user pointer, etc)
+// MemIOType returns the memory I/O method used for frame transfer.
+// Currently, only memory-mapped I/O (IOTypeMMAP) is supported, which provides
+// efficient zero-copy frame access.
+//
+// Future versions may support additional I/O methods like DMA or user pointers.
 func (d *Device) MemIOType() v4l2.IOType {
 	return d.config.ioType
 }
 
-// GetOutput returns the channel that outputs streamed data that is
-// captured from the underlying device driver.
+// GetOutput returns a read-only channel that delivers captured video frames.
+// Each frame is delivered as a byte slice containing the raw frame data in the
+// configured pixel format.
+//
+// The channel is created when the device is opened and buffered according to
+// the configured buffer size. Frames are delivered continuously while streaming.
+//
+// The channel is closed when Stop() is called or the context is cancelled.
+// Consumers should handle channel closure gracefully.
+//
+// Frame format depends on the configured pixel format (e.g., MJPEG, YUYV, H264).
+// Use GetPixFormat() to determine the current format.
+//
+// Example:
+//
+//	for frame := range dev.GetOutput() {
+//	    // Process frame data
+//	    fmt.Printf("Received frame: %d bytes\n", len(frame))
+//	}
 func (d *Device) GetOutput() <-chan []byte {
 	return d.output
 }
 
-// SetInput sets up an input channel for data this sent for output to the
-// underlying device driver.
+// SetInput sets up an input channel for sending video data to output devices.
+// This method is currently not implemented and reserved for future use with
+// video output devices.
+//
+// TODO: Implement for video output device support
 func (d *Device) SetInput(in <-chan []byte) {
 
 }
 
-// GetCropCapability returns cropping info for device
+// GetCropCapability returns the cropping capabilities for video capture devices,
+// including supported crop boundaries and default crop rectangle.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture
+// or cropping operations.
 func (d *Device) GetCropCapability() (v4l2.CropCapability, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.CropCapability{}, v4l2.ErrorUnsupportedFeature
@@ -182,7 +310,14 @@ func (d *Device) GetCropCapability() (v4l2.CropCapability, error) {
 	return d.cropCap, nil
 }
 
-// SetCropRect crops the video dimension for the device
+// SetCropRect sets the crop rectangle for video capture, allowing selection of
+// a sub-region of the full frame.
+//
+// Parameters:
+//   - r: Rectangle specifying the crop region (left, top, width, height)
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support cropping.
+// The actual crop region may be adjusted by the driver to match hardware constraints.
 func (d *Device) SetCropRect(r v4l2.Rect) error {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.ErrorUnsupportedFeature
@@ -193,7 +328,13 @@ func (d *Device) SetCropRect(r v4l2.Rect) error {
 	return nil
 }
 
-// GetPixFormat retrieves pixel format info for device
+// GetPixFormat returns the current pixel format configuration including
+// frame dimensions, pixel format, field order, and other format parameters.
+//
+// The format is either explicitly set via SetPixFormat() or the device's
+// default format queried during initialization.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.PixFormat{}, v4l2.ErrorUnsupportedFeature
@@ -210,7 +351,21 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	return d.config.pixFormat, nil
 }
 
-// SetPixFormat sets the pixel format for the associated device.
+// SetPixFormat configures the pixel format for video capture including
+// frame dimensions, pixel encoding, and other format parameters.
+//
+// Parameters:
+//   - pixFmt: Pixel format specification including width, height, and format
+//
+// Common pixel formats:
+//   - PixelFmtMJPEG: Motion JPEG compressed format
+//   - PixelFmtYUYV: YUV 4:2:2 packed format
+//   - PixelFmtH264: H.264 compressed video
+//
+// The driver may adjust the requested format to match hardware capabilities.
+// Call GetPixFormat() after setting to retrieve the actual format.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.ErrorUnsupportedFeature
@@ -223,7 +378,14 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	return nil
 }
 
-// GetFormatDescription returns a format description for the device at specified format index
+// GetFormatDescription returns the format description at the specified index.
+// Format descriptions enumerate the pixel formats supported by the device.
+//
+// Parameters:
+//   - idx: Zero-based index of the format to query
+//
+// Use GetFormatDescriptions() to retrieve all supported formats at once.
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.FormatDescription{}, v4l2.ErrorUnsupportedFeature
@@ -232,7 +394,21 @@ func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error
 	return v4l2.GetFormatDescription(d.fd, idx)
 }
 
-// GetFormatDescriptions returns all possible format descriptions for device
+// GetFormatDescriptions returns all pixel formats supported by the device.
+// Each format description includes the format name, pixel format code,
+// and format flags.
+//
+// This is useful for discovering device capabilities and validating format support
+// before calling SetPixFormat().
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
+//
+// Example:
+//
+//	formats, err := dev.GetFormatDescriptions()
+//	for _, fmt := range formats {
+//	    log.Printf("Supported format: %s (0x%08x)\n", fmt.Description, fmt.PixelFormat)
+//	}
 func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return nil, v4l2.ErrorUnsupportedFeature
@@ -241,7 +417,11 @@ func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
 	return v4l2.GetAllFormatDescriptions(d.fd)
 }
 
-// GetVideoInputIndex returns current video input index for device
+// GetVideoInputIndex returns the currently selected video input index.
+// Video devices may have multiple inputs (e.g., composite, S-Video, HDMI).
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture
+// or input selection.
 func (d *Device) GetVideoInputIndex() (int32, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return 0, v4l2.ErrorUnsupportedFeature
@@ -250,7 +430,13 @@ func (d *Device) GetVideoInputIndex() (int32, error) {
 	return v4l2.GetCurrentVideoInputIndex(d.fd)
 }
 
-// GetVideoInputInfo returns video input info for device
+// GetVideoInputInfo returns information about a specific video input.
+//
+// Parameters:
+//   - index: Zero-based index of the input to query
+//
+// The returned InputInfo includes the input name, type, and supported standards.
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 	if !d.cap.IsVideoCaptureSupported() {
 		return v4l2.InputInfo{}, v4l2.ErrorUnsupportedFeature
@@ -259,7 +445,11 @@ func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 	return v4l2.GetVideoInputInfo(d.fd, index)
 }
 
-// GetStreamParam returns streaming parameter information for device
+// GetStreamParam returns the current streaming parameters including
+// capture/output timing, buffer settings, and capability flags.
+//
+// For capture devices, this includes the frame interval (FPS) and capture modes.
+// Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
 	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
 		return v4l2.StreamParam{}, v4l2.ErrorUnsupportedFeature
@@ -267,7 +457,15 @@ func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
 	return v4l2.GetStreamParam(d.fd, d.bufType)
 }
 
-// SetStreamParam saves stream parameters for device
+// SetStreamParam configures streaming parameters for the device.
+//
+// Parameters:
+//   - param: Stream parameters including timing and buffer settings
+//
+// This is typically used to set frame timing parameters. For simpler FPS control,
+// use SetFrameRate() instead.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
 	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
 		return v4l2.ErrorUnsupportedFeature
@@ -275,7 +473,20 @@ func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
 	return v4l2.SetStreamParam(d.fd, d.bufType, param)
 }
 
-// SetFrameRate sets the FPS rate value of the device
+// SetFrameRate sets the frames per second (FPS) for video capture or output.
+//
+// Parameters:
+//   - fps: Desired frames per second (e.g., 30, 60)
+//
+// The actual frame rate may be adjusted by the driver based on hardware capabilities.
+// Use GetFrameRate() to retrieve the actual rate after setting.
+//
+// Common frame rates:
+//   - 15 FPS: Low bandwidth streaming
+//   - 30 FPS: Standard video capture
+//   - 60 FPS: Smooth motion capture
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support frame rate control.
 func (d *Device) SetFrameRate(fps uint32) error {
 	if !d.cap.IsStreamingSupported() {
 		return fmt.Errorf("set frame rate: %w", v4l2.ErrorUnsupportedFeature)
@@ -297,7 +508,11 @@ func (d *Device) SetFrameRate(fps uint32) error {
 	return nil
 }
 
-// GetFrameRate returns the FPS value for the device
+// GetFrameRate returns the current frames per second (FPS) setting.
+// If not explicitly set, returns the device's default frame rate.
+//
+// The actual frame rate during streaming may vary based on lighting conditions,
+// processing load, and hardware limitations.
 func (d *Device) GetFrameRate() (uint32, error) {
 	if d.config.fps == 0 {
 		param, err := d.GetStreamParam()
@@ -317,11 +532,50 @@ func (d *Device) GetFrameRate() (uint32, error) {
 	return d.config.fps, nil
 }
 
-// GetMediaInfo returns info for a device that supports the Media API
+// GetMediaInfo returns media controller information for devices that support
+// the Media Controller API, used for complex video pipelines.
+//
+// Returns an error if the device doesn't support the Media Controller API.
+// Most simple webcams don't support this feature.
 func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
 	return v4l2.GetMediaDeviceInfo(d.fd)
 }
 
+// Start begins video streaming from the device. This method allocates buffers,
+// memory-maps them, and starts a background goroutine to handle frame capture.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//
+// The streaming process:
+//  1. Allocates the requested number of buffers
+//  2. Memory-maps buffers for zero-copy access
+//  3. Enqueues all buffers to the driver
+//  4. Starts the streaming I/O
+//  5. Launches a goroutine to handle frame delivery
+//
+// Frames are delivered through the channel returned by GetOutput().
+// The stream continues until Stop() is called or the context is cancelled.
+//
+// Returns an error if:
+//   - The context is already cancelled
+//   - Streaming is already active
+//   - Buffer allocation fails
+//   - The device doesn't support streaming
+//
+// Example:
+//
+//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	defer cancel()
+//
+//	if err := dev.Start(ctx); err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer dev.Stop()
+//
+//	for frame := range dev.GetOutput() {
+//	    // Process frames until context timeout
+//	}
 func (d *Device) Start(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -358,6 +612,13 @@ func (d *Device) Start(ctx context.Context) error {
 	return nil
 }
 
+// Stop halts video streaming and releases streaming resources.
+// This method unmaps buffers, stops the stream, and closes the output channel.
+//
+// Safe to call multiple times - returns immediately if not streaming.
+// Should always be called when done streaming to free resources.
+//
+// Returns an error if buffer unmapping or stream stopping fails.
 func (d *Device) Stop() error {
 	if !d.streaming {
 		return nil
