@@ -1,4 +1,4 @@
-[![Go Reference](https://pkg.go.dev/badge/github.com/vladimirvivien/go4vl.svg)](https://pkg.go.dev/github.com/vladimirvivien/go4vl) [![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vladimirvivien/go4vl.svg)](https://pkg.go.dev/github.com/vladimirvivien/go4vl) [![Go Report Card](https://goreportcard.com/badge/github.com/vladimirvivien/go4vl)](https://goreportcard.com/report/github.com/vladimirvivien/go4vl) [![Build Status](https://github.com/vladimirvivien/go4vl/actions/workflows/test.yml/badge.svg)](https://github.com/vladimirvivien/go4vl/actions/workflows/test.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # go4vl
 
@@ -8,10 +8,34 @@ A Go centric abstraction of the library for  `Video for Linux 2`  (v4l2) user AP
 
 ----
 
-The `go4vl` project is for working with the Video for Linux 2 API for real-time video. 
+The `go4vl` project is for working with the Video for Linux 2 API for real-time video.
 It hides all the complexities of working with V4L2 and provides idiomatic Go types, like channels, to consume and process captured video frames.
 
 > This project is designed to work with Linux and the Linux Video API only.  It is *NOT* meant to be a portable/cross-platform package.
+
+## Table of Contents
+
+- [Why go4vl?](#why-go4vl)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Overview](#api-overview)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Roadmap](#roadmap)
+
+## Why go4vl?
+
+Working directly with V4L2 in Go requires complex C interop and manual memory management. `go4vl` provides:
+
+* **Idiomatic Go API** - Use channels and standard Go types instead of C structs
+* **Zero-copy streaming** - Memory-mapped buffers for efficient video processing
+* **Simplified device control** - Easy access to formats, controls, and capture settings
+* **Pure Linux focus** - Optimized for Linux video pipelines without cross-platform compromises
 
 ## Features
 
@@ -20,37 +44,54 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 * Exposes device enumeration and information
 * Provides device capture control
 * Access to video format information
-* Streaming users zero-copy IO using memory mapped buffers
+* Streaming uses zero-copy IO with memory-mapped buffers
 
-## Compilation Requirements
+## Prerequisites
 
-* Go compiler/tools
-* Kernel minimum v5.10.x
-* A locally configured C compiler (or a cross-compiler if building off-device)
+**Software:**
+* Go 1.16 or later
+* Linux kernel 5.10.x or later
+* C compiler (gcc/clang) or cross-compiler for target platform
+* V4L2 drivers (typically included in Linux kernel)
 
-See [example/README.md](./examples/README.md) for further example of how to build projects that uses go4vl, including cross-compilation.
+**Hardware:**
+* V4L2-compatible capture device (webcam, capture card, etc.)
+* Device accessible via `/dev/videoX`
 
-All examples have been tested using a Raspberry PI 3, running 32-bit Raspberry PI OS.
-The package should work with no problem on your 64-bit Linux OS.
+**Tested platforms:**
+* Raspberry Pi 3/4 (32-bit and 64-bit Raspberry Pi OS)
+* x86_64 Linux distributions
+* ARM Linux systems with V4L2 support
 
-## Getting started
+See [examples/README.md](./examples/README.md) for detailed build instructions including cross-compilation with Zig and Docker.
 
-### Using the go4vl package
-
-To include `go4vl` in your own code, `go get` the package:
+## Installation
 
 ```bash
 go get github.com/vladimirvivien/go4vl/v4l2
 ```
 
-## Video capture example
+Ensure your user has access to video devices:
+```bash
+sudo usermod -a -G video $USER
+# Log out and back in for changes to take effect
+```
 
-The following is a simple example that shows how to capture a single frame from an attached camera device
-and save the image to a file. 
+## Quick Start
 
-The example assumes the attached device supports JPEG (MJPEG) output format inherently.
+Capture a single frame and save to file (assumes MJPEG format support):
 
 ```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/vladimirvivien/go4vl/device"
+)
+
 func main() {
 	dev, err := device.Open("/dev/video0", device.WithBufferSize(1))
 	if err != nil {
@@ -62,7 +103,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// capture frame
+	// Capture frame from channel
 	frame := <-dev.GetOutput()
 
 	file, err := os.Create("pic.jpg")
@@ -77,12 +118,168 @@ func main() {
 }
 ```
 
-> See complete example [here](./examples/snapshot/snap.go).
+See complete example: [examples/snapshot/snap.go](./examples/snapshot/snap.go)
+
+## API Overview
+
+**Core packages:**
+* **`device`** - High-level device operations (open, start, capture, close)
+* **`v4l2`** - Low-level V4L2 types and ioctls
+* **`imgsupport`** - Image format conversion utilities
+
+**Key concepts:**
+
+**Device management:**
+```go
+// List available devices
+devices := device.GetAllDevices()
+
+// Open device with options
+dev, err := device.Open("/dev/video0",
+    device.WithBufferSize(4),
+    device.WithPixFormat(v4l2.PixFormat{PixelFormat: v4l2.PixelFmtMJPEG}),
+)
+defer dev.Close()
+```
+
+**Format control:**
+```go
+// Query supported formats
+formats := dev.GetFormatDescriptions()
+
+// Set pixel format
+currFmt, err := dev.GetPixFormat()
+currFmt.PixelFormat = v4l2.PixelFmtYUYV
+if err := dev.SetPixFormat(currFmt); err != nil {
+    log.Fatal(err)
+}
+```
+
+**Device controls:**
+```go
+// Get control value
+brightness := dev.GetControl(v4l2.CtrlBrightness)
+
+// Set control value
+dev.SetControl(v4l2.CtrlBrightness, 128)
+```
+
+**Streaming:**
+```go
+ctx := context.Background()
+dev.Start(ctx)
+
+for frame := range dev.GetOutput() {
+    // Process frame bytes
+    processFrame(frame)
+}
+```
+
+Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg.go.dev/github.com/vladimirvivien/go4vl)
 
 ## Examples
-This repository comes with several examples that show how to use the API to build Go programs that can capture images from Linux.
-> See list of [examples](./examples/README.md)
+
+This repository includes multiple examples demonstrating various capabilities:
+
+* **[snapshot](./examples/snapshot/)** - Capture single frame to file
+* **[capture0](./examples/capture0/)** - Capture multiple frames
+* **[capture1](./examples/capture1/)** - Capture with specific format
+* **[device_info](./examples/device_info/)** - Query device information
+* **[format](./examples/format/)** - Query and set formats
+* **[user_ctrl](./examples/user_ctrl/)** - Control brightness, contrast, etc.
+* **[ext_ctrls](./examples/ext_ctrls/)** - Extended codec controls
+* **[simplecam](./examples/simplecam/)** - Web streaming camera
+* **[webcam](./examples/webcam/)** - Full-featured webcam with controls
+
+Full examples list: [examples/README.md](./examples/README.md)
+
+## Troubleshooting
+
+**Device not found:**
+```bash
+# List available video devices
+ls -l /dev/video*
+
+# Check device info
+v4l2-ctl --list-devices
+```
+
+**Permission denied:**
+```bash
+# Add user to video group
+sudo usermod -a -G video $USER
+# Log out and back in
+
+# Or temporarily
+sudo chmod 666 /dev/video0
+```
+
+**No frames received:**
+```bash
+# Verify device capabilities
+v4l2-ctl -d /dev/video0 --all
+
+# Check supported formats
+v4l2-ctl -d /dev/video0 --list-formats-ext
+```
+
+**Build errors:**
+```bash
+# Install build essentials
+sudo apt install build-essential
+
+# Install kernel headers
+sudo apt install linux-headers-$(uname -r)
+```
+
+## Testing
+
+go4vl uses real V4L2 devices for testing with v4l2loopback virtual devices.
+
+```bash
+# Run unit tests
+go test -v ./device ./v4l2 ./imgsupport
+
+# Run integration tests (requires v4l2loopback)
+sudo go test -v -tags=integration ./test/...
+```
+
+See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing documentation including:
+* v4l2loopback setup
+* Virtual device configuration
+* CI/CD integration
+* Docker-based testing
+
+## Contributing
+
+Contributions are welcome! To contribute:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please ensure:
+* Code follows Go conventions (`go fmt`, `go vet`)
+* Tests pass (`go test ./...`)
+* New features include tests
+* Documentation is updated
+
+Report bugs and request features via [GitHub Issues](https://github.com/vladimirvivien/go4vl/issues).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2021 Vladimir Vivien
 
 ## Roadmap
-The main goal is to port as many functionalities as possible so that 
-adopters can use Go to create cool video-based tools on platforms such as the Raspberry Pi.
+
+The main goal is to port as many V4L2 functionalities as possible so that adopters can use Go to create video-based tools on platforms such as the Raspberry Pi and other Linux systems.
+
+**Current focus:**
+* Extended codec controls (H.264, VP8, MPEG2)
+* Advanced streaming modes
+* Performance optimizations
+* Broader device compatibility testing
