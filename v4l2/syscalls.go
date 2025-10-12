@@ -1,6 +1,7 @@
 package v4l2
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -87,17 +88,25 @@ func send(fd, req, arg uintptr) error {
 }
 
 // WaitForRead returns a channel that can be used to be notified when
-// a device's is ready to be read.
-func WaitForRead(dev Device) <-chan struct{} {
+// a device is ready to be read. The goroutine will exit when the context
+// is cancelled, preventing goroutine leaks.
+func WaitForRead(ctx context.Context, dev Device) <-chan struct{} {
 	sigChan := make(chan struct{})
 
 	go func(fd uintptr) {
 		defer close(sigChan)
 		var fdsRead sys.FdSet
 		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			fdsRead.Zero()
 			fdsRead.Set(int(fd))
-			tv := sys.Timeval{Sec: 2, Usec: 0}
+			// Use shorter timeout for more responsive shutdown
+			tv := sys.Timeval{Sec: 0, Usec: 100000} // 100ms
 			n, errno := sys.Select(int(fd+1), &fdsRead, nil, nil, &tv)
 			if errno == sys.EINTR {
 				continue
@@ -108,7 +117,11 @@ func WaitForRead(dev Device) <-chan struct{} {
 				continue
 			}
 
-			sigChan <- struct{}{}
+			select {
+			case sigChan <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}(dev.Fd())
 
