@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	sys "syscall"
+	"sync/atomic"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
@@ -14,14 +14,23 @@ import (
 // It encapsulates the low-level V4L2 API interactions and manages the device lifecycle including
 // configuration, buffer management, and streaming operations.
 //
-// The Device struct is not safe for concurrent use. All methods should be called from a single goroutine,
-// except for GetOutput() which returns a channel safe for concurrent reads.
+// # Concurrency Safety
+//
+// The Device struct has limited concurrency support:
+//
+//   - Configuration methods (Open, Close, Start, Stop, SetPixFormat, SetFrameRate, etc.)
+//     MUST be called from a single goroutine. Concurrent calls to these methods will
+//     cause race conditions and undefined behavior.
+//
+//   - GetOutput() and GetError() return channels that are safe to read from concurrently.
+//     Multiple goroutines can safely read from these channels.
+//
+//   - It is safe to call configuration methods while another goroutine reads from the
+//     output/error channels, but calling Start()/Stop() concurrently from multiple
+//     goroutines is NOT safe.
 type Device struct {
 	// path is the file system path to the device (e.g., /dev/video0, /dev/video1)
 	path string
-
-	// file is the opened file handle for the device (currently unused, kept for future use)
-	file *os.File
 
 	// fd is the file descriptor used for low-level V4L2 ioctl operations
 	fd uintptr
@@ -45,10 +54,14 @@ type Device struct {
 	requestedBuf v4l2.RequestBuffers
 
 	// streaming indicates whether the device is currently streaming video data
-	streaming bool
+	// Use atomic operations to access this field for thread-safety
+	streaming atomic.Bool
 
 	// output is the channel that delivers captured video frames to consumers
 	output chan []byte
+
+	// streamErr is the channel that delivers streaming errors to consumers
+	streamErr chan error
 }
 
 // Open opens a V4L2 video device at the specified path and prepares it for streaming.
@@ -132,9 +145,8 @@ func Open(path string, options ...Option) (*Device, error) {
 
 	switch {
 	case cap.IsVideoCaptureSupported():
-		// setup capture parameters and chan for captured data
+		// setup capture parameters (output channel created when streaming starts)
 		dev.bufType = v4l2.BufTypeVideoCapture
-		dev.output = make(chan []byte, dev.config.bufSize)
 	case cap.IsVideoOutputSupported():
 		dev.bufType = v4l2.BufTypeVideoOutput
 	default:
@@ -190,7 +202,7 @@ func Open(path string, options ...Option) (*Device, error) {
 //
 // Returns an error if stopping the stream or closing the file descriptor fails.
 func (d *Device) Close() error {
-	if d.streaming {
+	if d.streaming.Load() {
 		if err := d.Stop(); err != nil {
 			return err
 		}
@@ -287,6 +299,26 @@ func (d *Device) MemIOType() v4l2.IOType {
 //	}
 func (d *Device) GetOutput() <-chan []byte {
 	return d.output
+}
+
+// GetError returns a read-only channel that delivers streaming errors.
+// Errors are sent when critical issues occur during streaming, such as:
+//   - Failed buffer dequeue operations
+//   - Failed buffer requeue operations
+//   - Driver errors
+//
+// The channel is created when Start() is called and closed when Stop() is called
+// or the context is cancelled.
+//
+// Consumers should monitor this channel to detect streaming failures:
+//
+//	go func() {
+//	    for err := range dev.GetError() {
+//	        log.Printf("Streaming error: %v", err)
+//	    }
+//	}()
+func (d *Device) GetError() <-chan error {
+	return d.streamErr
 }
 
 // SetInput sets up an input channel for sending video data to output devices.
@@ -585,9 +617,11 @@ func (d *Device) Start(ctx context.Context) error {
 		return fmt.Errorf("device: start stream: %s", v4l2.ErrorUnsupportedFeature)
 	}
 
-	if d.streaming {
+	if d.streaming.Load() {
 		return fmt.Errorf("device: stream already started")
 	}
+
+	d.streaming.Store(true)
 
 	// allocate device buffers
 	bufReq, err := v4l2.InitBuffers(d)
@@ -604,10 +638,9 @@ func (d *Device) Start(ctx context.Context) error {
 	}
 
 	if err := d.startStreamLoop(ctx); err != nil {
+		d.streaming.Store(false) // Reset on failure
 		return fmt.Errorf("device: start stream loop: %s", err)
 	}
-
-	d.streaming = true
 
 	return nil
 }
@@ -620,7 +653,7 @@ func (d *Device) Start(ctx context.Context) error {
 //
 // Returns an error if buffer unmapping or stream stopping fails.
 func (d *Device) Stop() error {
-	if !d.streaming {
+	if !d.streaming.Load() {
 		return nil
 	}
 	if err := v4l2.UnmapMemoryBuffers(d); err != nil {
@@ -629,7 +662,11 @@ func (d *Device) Stop() error {
 	if err := v4l2.StreamOff(d); err != nil {
 		return fmt.Errorf("device: stop: %w", err)
 	}
-	d.streaming = false
+	d.streaming.Store(false)
+	// Set channels to nil so they can be recreated on next Start()
+	// The goroutine will close them before exiting
+	d.output = nil
+	d.streamErr = nil
 	return nil
 }
 
@@ -637,7 +674,14 @@ func (d *Device) Stop() error {
 // and report any errors. The loop runs in a separate goroutine and uses the sys.Select to trigger
 // capture events.
 func (d *Device) startStreamLoop(ctx context.Context) error {
-	d.output = make(chan []byte, d.config.bufSize)
+	// Only create channels if they don't exist (first start) or if they were closed (after stop)
+	// This prevents race conditions when channels are recreated while old goroutines are still running
+	if d.output == nil {
+		d.output = make(chan []byte, d.config.bufSize)
+	}
+	if d.streamErr == nil {
+		d.streamErr = make(chan error, 1)
+	}
 
 	// Initial enqueue of buffers for capture
 	for i := 0; i < int(d.config.bufSize); i++ {
@@ -653,12 +697,17 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 
 	go func() {
 		defer close(d.output)
+		defer close(d.streamErr)
+		defer func() {
+			// Mark streaming as stopped when goroutine exits
+			d.streaming.Store(false)
+		}()
 
 		fd := d.Fd()
 		var frame []byte
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
-		waitForRead := v4l2.WaitForRead(d)
+		waitForRead := v4l2.WaitForRead(ctx, d)
 		for {
 			select {
 			// handle stream capture (read from driver)
@@ -668,26 +717,75 @@ func (d *Device) startStreamLoop(ctx context.Context) error {
 					if errors.Is(err, sys.EAGAIN) {
 						continue
 					}
-					panic(fmt.Sprintf("device: stream loop dequeue: %s", err))
+					// Send error and exit gracefully instead of panic
+					select {
+					case d.streamErr <- fmt.Errorf("device: stream loop dequeue: %w", err):
+					default:
+					}
+					return
 				}
 
-				// copy mapped buffer (copying avoids polluted data from subsequent dequeue ops)
-				if buff.Flags&v4l2.BufFlagMapped != 0 && buff.Flags&v4l2.BufFlagError == 0 {
+				// Process buffer based on its state using switch for clarity
+				isMapped := buff.Flags&v4l2.BufFlagMapped != 0
+				hasError := buff.Flags&v4l2.BufFlagError != 0
+				hasData := buff.BytesUsed > 0
+
+				switch {
+				case isMapped && !hasError && hasData:
+					// Buffer has valid frame data, copy and send it
 					frame = make([]byte, buff.BytesUsed)
-					if n := copy(frame, d.buffers[buff.Index][:buff.BytesUsed]); n == 0 {
-						d.output <- []byte{}
+					copy(frame, d.buffers[buff.Index][:buff.BytesUsed])
+					// Non-blocking send with backpressure handling
+					select {
+					case d.output <- frame:
+						// Frame delivered successfully
+					default:
+						// Consumer too slow, frame dropped
+						select {
+						case d.streamErr <- fmt.Errorf("device: frame dropped (consumer too slow): %d bytes", buff.BytesUsed):
+						default:
+						}
 					}
-					d.output <- frame
 					frame = nil
-				} else {
-					d.output <- []byte{}
+
+				case isMapped && !hasError && !hasData:
+					// Driver stalling (empty frame), send empty slice to signal skip
+					select {
+					case d.output <- []byte{}:
+					default:
+						// Even empty frames can be dropped if consumer is too slow
+					}
+
+				case hasError:
+					// Buffer has error flag, report and send empty frame
+					select {
+					case d.streamErr <- fmt.Errorf("device: buffer error flag: index=%d flags=0x%x", buff.Index, buff.Flags):
+					default:
+					}
+					select {
+					case d.output <- []byte{}:
+					default:
+					}
+
+				default:
+					// Buffer not mapped or other issue, send empty frame
+					select {
+					case d.output <- []byte{}:
+					default:
+					}
 				}
 
 				if _, err := v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index); err != nil {
-					panic(fmt.Sprintf("device: stream loop queue: %s: buff: %#v", err, buff))
+					// Send error and exit gracefully instead of panic
+					select {
+					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", err, buff):
+					default:
+					}
+					return
 				}
 			case <-ctx.Done():
-				d.Stop()
+				// Context cancelled, exit gracefully
+				// streaming flag will be cleared by defer
 				return
 			}
 		}

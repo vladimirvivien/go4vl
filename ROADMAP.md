@@ -297,10 +297,18 @@ Accurate frame timing is critical for video synchronization, frame rate analysis
 - Create `FrameMetadata` struct with timestamp, sequence, and flags
 - Extend output channel to deliver metadata alongside frames (or add parallel channel)
 - Add frame type detection (keyframe, P-frame, B-frame)
-- Implement frame statistics collection (dropped frames, errors)
 - Add timestamp source configuration and queries
 - Create examples demonstrating frame timing analysis
 - Document synchronization strategies for multi-device capture
+
+**Future Consideration: Frame Capture Statistics**
+- Implement frame statistics collection and observability
+- Add atomic counters for frames processed, dropped, and errors
+- Create `GetStreamStats()` API to query runtime statistics
+- Add sequence number gap detection for dropped frame analysis
+- Provide configurable statistics reporting (callback, channel, polling)
+- Enable diagnostics without performance overhead
+- Document statistics interpretation and troubleshooting workflows
 
 ---
 
