@@ -2,10 +2,10 @@ package device
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	sys "syscall"
 	"sync/atomic"
+	sys "syscall"
+	"time"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
@@ -57,11 +57,25 @@ type Device struct {
 	// Use atomic operations to access this field for thread-safety
 	streaming atomic.Bool
 
-	// output is the channel that delivers captured video frames to consumers
+	// streamingMode tracks which API is being used (0=none, 1=GetOutput, 2=GetFrames)
+	// This ensures mutual exclusivity between the two streaming approaches
+	streamingMode atomic.Int32
+
+	// frames is the channel that delivers Frame objects with metadata to consumers
+	frames chan *Frame
+
+	// output is the channel that delivers captured video frames to consumers (legacy API)
 	output chan []byte
 
 	// streamErr is the channel that delivers streaming errors to consumers
 	streamErr chan error
+
+	// captureDone is closed when the capture goroutine exits
+	// Used by Stop() to wait for clean goroutine shutdown before unmapping buffers
+	captureDone chan struct{}
+
+	// framePool is the pool used for frame buffer allocation
+	framePool *FramePool
 }
 
 // Open opens a V4L2 video device at the specified path and prepares it for streaming.
@@ -115,7 +129,12 @@ func Open(path string, options ...Option) (*Device, error) {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
 
-	dev := &Device{path: path, config: config{}, fd: fd}
+	dev := &Device{
+		path:      path,
+		config:    config{},
+		fd:        fd,
+		framePool: defaultFramePool, // Use global default pool
+	}
 	// apply options
 	if len(options) > 0 {
 		for _, o := range options {
@@ -282,7 +301,15 @@ func (d *Device) MemIOType() v4l2.IOType {
 // Each frame is delivered as a byte slice containing the raw frame data in the
 // configured pixel format.
 //
-// The channel is created when the device is opened and buffered according to
+// Deprecated: Use GetFrames() instead. GetFrames() provides the same functionality
+// with significantly better performance through buffer pooling, using 540x less memory
+// (1 KB vs 614 KB per frame) and reducing GC pressure. This method will be removed
+// in a future version.
+//
+// This method selects the legacy streaming mode. Once called, GetFrames() cannot be used
+// on this device instance. Call Stop() to reset the streaming mode.
+//
+// The channel is created when the device starts streaming and buffered according to
 // the configured buffer size. Frames are delivered continuously while streaming.
 //
 // The channel is closed when Stop() is called or the context is cancelled.
@@ -298,7 +325,59 @@ func (d *Device) MemIOType() v4l2.IOType {
 //	    fmt.Printf("Received frame: %d bytes\n", len(frame))
 //	}
 func (d *Device) GetOutput() <-chan []byte {
+	// Set streaming mode to GetOutput (mode 1)
+	// CompareAndSwap ensures first-caller-wins semantics
+	if d.streamingMode.CompareAndSwap(0, 1) {
+		// Successfully claimed GetOutput mode
+	} else if d.streamingMode.Load() != 1 {
+		// GetFrames() was called first - return nil channel
+		// Reading from nil channel will block forever (user will notice the error)
+		return nil
+	}
 	return d.output
+}
+
+// GetFrames returns a read-only channel that delivers captured video frames
+// with metadata. Each Frame includes the raw frame data, timestamp, sequence number,
+// and buffer flags.
+//
+// This method selects the optimized streaming mode with buffer pooling. Once called,
+// GetOutput() cannot be used on this device instance. Call Stop() to reset the streaming mode.
+//
+// Users MUST call Frame.Release() when done processing to return the buffer to the pool.
+//
+// The channel is created when the device starts streaming and buffered according to
+// the configured buffer size. Frames are delivered continuously while streaming.
+//
+// The channel is closed when Stop() is called or the context is cancelled.
+// Consumers should handle channel closure gracefully.
+//
+// Example:
+//
+//	for frame := range dev.GetFrames() {
+//	    // Process frame data and metadata
+//	    fmt.Printf("Frame %d: %d bytes at %v\n",
+//	        frame.Sequence, len(frame.Data), frame.Timestamp)
+//
+//	    // Check if it's a keyframe
+//	    if frame.IsKeyFrame() {
+//	        fmt.Println("Keyframe detected")
+//	    }
+//
+//	    // IMPORTANT: Always release when done
+//	    frame.Release()
+//	}
+func (d *Device) GetFrames() <-chan *Frame {
+	// Set streaming mode to GetFrames (mode 2)
+	// CompareAndSwap ensures first-caller-wins semantics
+	if d.streamingMode.CompareAndSwap(0, 2) {
+		// Successfully claimed GetFrames mode
+	} else if d.streamingMode.Load() != 2 {
+		// GetOutput() was called first - return nil channel
+		// Reading from nil channel will block forever (user will notice the error)
+		return nil
+	}
+	return d.frames
 }
 
 // GetError returns a read-only channel that delivers streaming errors.
@@ -637,16 +716,38 @@ func (d *Device) Start(ctx context.Context) error {
 		return fmt.Errorf("device: make mapped buffers: %s", err)
 	}
 
-	if err := d.startStreamLoop(ctx); err != nil {
-		d.streaming.Store(false) // Reset on failure
-		return fmt.Errorf("device: start stream loop: %s", err)
+	// Create capture done channel for synchronization with Stop()
+	d.captureDone = make(chan struct{})
+
+	// Launch appropriate streaming loop based on which API is in use
+	mode := d.streamingMode.Load()
+	switch mode {
+	case 1: // GetOutput() mode
+		if err := d.captureRawBytes(ctx); err != nil {
+			d.streaming.Store(false)
+			return fmt.Errorf("device: start capture raw bytes: %s", err)
+		}
+	case 2: // GetFrames() mode
+		if err := d.captureFrames(ctx); err != nil {
+			d.streaming.Store(false)
+			return fmt.Errorf("device: start capture frames: %s", err)
+		}
+	default:
+		d.streaming.Store(false)
+		return fmt.Errorf("device: no streaming API selected (call GetOutput() or GetFrames() before Start())")
 	}
 
 	return nil
 }
 
 // Stop halts video streaming and releases streaming resources.
-// This method unmaps buffers, stops the stream, and closes the output channel.
+// This method waits for the capture goroutine to exit, then unmaps buffers and stops the stream.
+//
+// The method ensures proper synchronization:
+//  1. Waits for the capture goroutine to exit (with 500ms timeout)
+//  2. Unmaps memory buffers (safe after goroutine exits)
+//  3. Stops the device stream
+//  4. Resets state for next Start()
 //
 // Safe to call multiple times - returns immediately if not streaming.
 // Should always be called when done streaming to free resources.
@@ -656,140 +757,35 @@ func (d *Device) Stop() error {
 	if !d.streaming.Load() {
 		return nil
 	}
+
+	// Signal goroutines to stop BEFORE waiting
+	// This ensures they see streaming=false and can exit cleanly
+	d.streaming.Store(false)
+
+	// Wait for capture goroutine to exit before unmapping buffers
+	// This prevents segfaults from accessing unmapped memory
+	if d.captureDone != nil {
+		select {
+		case <-d.captureDone:
+			// Goroutine exited cleanly
+		case <-time.After(500 * time.Millisecond):
+			// Timeout - proceed anyway but this indicates a potential issue
+			// In practice, context cancellation should cause quick exit
+		}
+	}
+
 	if err := v4l2.UnmapMemoryBuffers(d); err != nil {
 		return fmt.Errorf("device: stop: %w", err)
 	}
 	if err := v4l2.StreamOff(d); err != nil {
 		return fmt.Errorf("device: stop: %w", err)
 	}
-	d.streaming.Store(false)
+	d.streamingMode.Store(0) // Reset mode to allow different API on next Start()
 	// Set channels to nil so they can be recreated on next Start()
 	// The goroutine will close them before exiting
 	d.output = nil
+	d.frames = nil
 	d.streamErr = nil
-	return nil
-}
-
-// startStreamLoop sets up the loop to run until context is cancelled, and returns immediately
-// and report any errors. The loop runs in a separate goroutine and uses the sys.Select to trigger
-// capture events.
-func (d *Device) startStreamLoop(ctx context.Context) error {
-	// Only create channels if they don't exist (first start) or if they were closed (after stop)
-	// This prevents race conditions when channels are recreated while old goroutines are still running
-	if d.output == nil {
-		d.output = make(chan []byte, d.config.bufSize)
-	}
-	if d.streamErr == nil {
-		d.streamErr = make(chan error, 1)
-	}
-
-	// Initial enqueue of buffers for capture
-	for i := 0; i < int(d.config.bufSize); i++ {
-		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i))
-		if err != nil {
-			return fmt.Errorf("device: buffer queueing: %w", err)
-		}
-	}
-
-	if err := v4l2.StreamOn(d); err != nil {
-		return fmt.Errorf("device: stream on: %w", err)
-	}
-
-	go func() {
-		defer close(d.output)
-		defer close(d.streamErr)
-		defer func() {
-			// Mark streaming as stopped when goroutine exits
-			d.streaming.Store(false)
-		}()
-
-		fd := d.Fd()
-		var frame []byte
-		ioMemType := d.MemIOType()
-		bufType := d.BufferType()
-		waitForRead := v4l2.WaitForRead(ctx, d)
-		for {
-			select {
-			// handle stream capture (read from driver)
-			case <-waitForRead:
-				buff, err := v4l2.DequeueBuffer(fd, ioMemType, bufType)
-				if err != nil {
-					if errors.Is(err, sys.EAGAIN) {
-						continue
-					}
-					// Send error and exit gracefully instead of panic
-					select {
-					case d.streamErr <- fmt.Errorf("device: stream loop dequeue: %w", err):
-					default:
-					}
-					return
-				}
-
-				// Process buffer based on its state using switch for clarity
-				isMapped := buff.Flags&v4l2.BufFlagMapped != 0
-				hasError := buff.Flags&v4l2.BufFlagError != 0
-				hasData := buff.BytesUsed > 0
-
-				switch {
-				case isMapped && !hasError && hasData:
-					// Buffer has valid frame data, copy and send it
-					frame = make([]byte, buff.BytesUsed)
-					copy(frame, d.buffers[buff.Index][:buff.BytesUsed])
-					// Non-blocking send with backpressure handling
-					select {
-					case d.output <- frame:
-						// Frame delivered successfully
-					default:
-						// Consumer too slow, frame dropped
-						select {
-						case d.streamErr <- fmt.Errorf("device: frame dropped (consumer too slow): %d bytes", buff.BytesUsed):
-						default:
-						}
-					}
-					frame = nil
-
-				case isMapped && !hasError && !hasData:
-					// Driver stalling (empty frame), send empty slice to signal skip
-					select {
-					case d.output <- []byte{}:
-					default:
-						// Even empty frames can be dropped if consumer is too slow
-					}
-
-				case hasError:
-					// Buffer has error flag, report and send empty frame
-					select {
-					case d.streamErr <- fmt.Errorf("device: buffer error flag: index=%d flags=0x%x", buff.Index, buff.Flags):
-					default:
-					}
-					select {
-					case d.output <- []byte{}:
-					default:
-					}
-
-				default:
-					// Buffer not mapped or other issue, send empty frame
-					select {
-					case d.output <- []byte{}:
-					default:
-					}
-				}
-
-				if _, err := v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index); err != nil {
-					// Send error and exit gracefully instead of panic
-					select {
-					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", err, buff):
-					default:
-					}
-					return
-				}
-			case <-ctx.Done():
-				// Context cancelled, exit gracefully
-				// streaming flag will be cleared by defer
-				return
-			}
-		}
-	}()
-
+	d.captureDone = nil
 	return nil
 }

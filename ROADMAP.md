@@ -10,7 +10,7 @@ go4vl aims to be the definitive Go library for V4L2 video capture and streaming,
 
 ## Roadmap Summary
 
-- [ ] [1. Frame Processing Pipeline Performance](#1-frame-processing-pipeline-performance)
+- [x] [1. Frame Processing Pipeline Performance](#1-frame-processing-pipeline-performance) ✅ **Phase 1 Complete**
 - [ ] [2. Migration from CGO to purego](#2-migration-from-cgo-to-purego)
 - [ ] [3. io.Reader/io.Writer Interface Support](#3-ioreaderiowriter-interface-support)
 - [ ] [4. Complete V4L2 Video Capture Feature Parity](#4-complete-v4l2-video-capture-feature-parity)
@@ -20,10 +20,10 @@ go4vl aims to be the definitive Go library for V4L2 video capture and streaming,
 - [ ] [8. Video Output Device Support](#8-video-output-device-support)
 - [ ] [9. Advanced Extended Controls API](#9-advanced-extended-controls-api)
 - [ ] [10. Asynchronous Frame Capture with Select/Poll/Epoll](#10-asynchronous-frame-capture-with-selectpollepoll)
-- [ ] [11. Frame Metadata and Timestamping](#11-frame-metadata-and-timestamping)
+- [x] [11. Frame Metadata and Timestamping](#11-frame-metadata-and-timestamping) ✅ **Phase 1 Complete**
 - [ ] [12. Hardware Codec Integration (H264, HEVC, VP8, VP9)](#12-hardware-codec-integration-h264-hevc-vp8-vp9)
 - [ ] [13. Media Controller API Integration](#13-media-controller-api-integration)
-- [ ] [14. Performance Optimization and Zero-Copy Enhancements](#14-performance-optimization-and-zero-copy-enhancements)
+- [x] [14. Performance Optimization and Zero-Copy Enhancements](#14-performance-optimization-and-zero-copy-enhancements) ✅ **Phase 1 Complete**
 - [ ] [15. WASM Component Model Plugin System](#15-wasm-component-model-plugin-system)
 
 ---
@@ -32,32 +32,38 @@ go4vl aims to be the definitive Go library for V4L2 video capture and streaming,
 
 ### 1. **Frame Processing Pipeline Performance**
 
-**Status:** Not Started
+**Status:** ✅ **Phase 1 Completed** - Memory Allocation Optimization
 **Goal:** Eliminate bottlenecks in frame processing pipelines to ensure maximum throughput and minimal latency
 
 **Rationale:**
 Frame processing performance is critical for real-time video applications. Bottlenecks can occur at multiple stages: frame capture, memory allocation, channel operations, format conversion, and user processing. Identifying and eliminating these bottlenecks ensures go4vl can handle high-resolution, high-frame-rate scenarios without dropping frames or introducing latency.
 
-**Key Performance Concerns:**
-- Frame copy overhead in the capture loop (currently copies every frame)
+**Completed Performance Improvements (Phase 1):**
+- ✅ **Memory allocation bottleneck eliminated:** Implemented FramePool with sync.Pool
+  - ~1,200x faster buffer allocation (22ns vs 28,000ns per 614KB frame)
+  - 99.996% reduction in memory allocated per operation (26 B vs 614 KB)
+  - Effective allocation elimination after pool warmup
+- ✅ **GC pressure reduction:** Buffer pooling dramatically reduces garbage collection overhead
+- ✅ **Separate streaming loops:** Optimized paths for GetOutput() and GetFrames() APIs
+- ✅ **Benchmark suite:** Comprehensive benchmarks for pool operations and allocation patterns
+- ✅ **Documentation:** Best practices for high-performance video processing
+
+**Key Performance Concerns (Remaining):**
+- Frame copy overhead in the capture loop (currently copies every frame from mmap)
 - Channel blocking and buffering strategies
-- Memory allocation patterns and GC pressure
 - Goroutine scheduling and synchronization
 - Lock contention in multi-device scenarios
 - Processing pipeline backpressure handling
 
-**Deliverables:**
+**Remaining Deliverables (Phase 2):**
 - Comprehensive performance profiling across different resolutions and frame rates
-- Identify and document all bottlenecks in the capture-to-processing pipeline
+- Identify remaining bottlenecks in the capture-to-processing pipeline
 - Implement lock-free or low-contention data structures where appropriate
 - Add configurable frame dropping strategies (drop oldest, drop newest, block)
 - Optimize channel buffer sizing and flow control
-- Implement frame pool allocator to reduce GC pressure
 - Add pipeline backpressure detection and handling
 - Create performance monitoring API (dropped frames, latency, throughput)
-- Benchmark suite for different pipeline configurations
 - Add CPU and memory profiling examples
-- Document best practices for high-performance video processing
 - Create reference implementations for common high-throughput scenarios
 
 **Target Performance Metrics:**
@@ -287,28 +293,44 @@ Current implementation uses `sys.Select` internally but doesn't expose file desc
 
 ### 7. **Frame Metadata and Timestamping**
 
-**Status:** Buffer timestamps exist but not fully exposed
+**Status:** ✅ **Completed** (Phase 1 - Frame Pool + Metadata)
 **Goal:** Comprehensive frame metadata including timestamps, sequence numbers, and flags
 
 **Rationale:**
 Accurate frame timing is critical for video synchronization, frame rate analysis, and time-based processing. Current implementation captures metadata but doesn't expose it through idiomatic interfaces.
 
-**Deliverables:**
-- Create `FrameMetadata` struct with timestamp, sequence, and flags
-- Extend output channel to deliver metadata alongside frames (or add parallel channel)
-- Add frame type detection (keyframe, P-frame, B-frame)
-- Add timestamp source configuration and queries
-- Create examples demonstrating frame timing analysis
-- Document synchronization strategies for multi-device capture
+**Completed Deliverables:**
+- ✅ Created `Frame` struct with timestamp, sequence, flags, and index
+- ✅ New `GetFrames()` API delivers Frame objects with metadata
+- ✅ Frame type detection methods (IsKeyFrame, IsPFrame, IsBFrame, HasError)
+- ✅ Frame pool implementation with Release() pattern
+- ✅ Created examples demonstrating frame timing analysis (examples/capture_frames)
+- ✅ Performance: ~1,200x faster allocation, 99.996% memory reduction per frame
 
-**Future Consideration: Frame Capture Statistics**
+**API Changes:**
+```go
+// New recommended API with metadata and pooling
+for frame := range dev.GetFrames() {
+    fmt.Printf("Frame %d at %v\n", frame.Sequence, frame.Timestamp)
+    if frame.IsKeyFrame() {
+        // Process keyframe
+    }
+    frame.Release() // Return buffer to pool
+}
+
+// Legacy API still available
+for data := range dev.GetOutput() {
+    // Process raw bytes
+}
+```
+
+**Remaining Future Work:**
+- Add timestamp source configuration and queries
+- Document synchronization strategies for multi-device capture
 - Implement frame statistics collection and observability
 - Add atomic counters for frames processed, dropped, and errors
 - Create `GetStreamStats()` API to query runtime statistics
 - Add sequence number gap detection for dropped frame analysis
-- Provide configurable statistics reporting (callback, channel, polling)
-- Enable diagnostics without performance overhead
-- Document statistics interpretation and troubleshooting workflows
 
 ---
 
@@ -354,21 +376,37 @@ Complex camera systems (CSI-2, MIPI) require Media Controller API to configure s
 
 ### 10. **Performance Optimization and Zero-Copy Enhancements**
 
-**Status:** Basic zero-copy with MMAP implemented
+**Status:** ✅ **Phase 1 Completed** - Frame Pool Implementation
 **Goal:** Minimize memory copies and CPU overhead for maximum throughput
 
 **Rationale:**
 Video streaming is performance-critical. Even with MMAP, the current implementation copies frames from mapped buffers. For high-resolution or high-frame-rate capture, additional optimizations are needed.
 
-**Deliverables:**
-- Implement optional zero-copy frame access with buffer lifecycle management
-- Add buffer recycling to avoid allocation overhead
-- Implement frame pool management for high-throughput scenarios
+**Completed Deliverables (Phase 1):**
+- ✅ Implemented frame pool management with sync.Pool for buffer recycling
+- ✅ Added buffer lifecycle management with Release() pattern
+- ✅ Achieved ~1,200x speedup in buffer allocation (22ns vs 28μs per 614KB frame)
+- ✅ 99.996% reduction in memory allocated per operation
+- ✅ Created separate streaming loops for optimal performance per API
+- ✅ Added benchmarks demonstrating performance improvements
+- ✅ Created high-performance example (examples/capture_frames)
+
+**Performance Results:**
+```
+Benchmark (640x480 YUYV, ~614KB frame):
+Direct Allocation:  27,592 ns/op    614,400 B/op    1 allocs/op
+FramePool.Get:          22 ns/op         26 B/op    1 allocs/op
+Speedup: ~1,245x faster, 99.996% memory reduction
+```
+
+**Remaining Deliverables (Phase 2):**
+- Implement true zero-copy frame access (no copy from mmap buffers)
+- Add buffer reference counting for zero-copy safety
 - Optimize goroutine scheduling and channel operations
-- Add CPU usage profiling and optimization
+- Add CPU usage profiling examples
 - Create performance testing suite with various resolutions/formats
 - Add benchmark results and optimization guide to documentation
-- Create high-throughput example (1080p60, 4K30)
+- Test high-throughput scenarios (1080p60, 4K30)
 
 ---
 

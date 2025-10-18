@@ -1,3 +1,5 @@
+// +build integration
+
 package test
 
 import (
@@ -65,33 +67,53 @@ func FindTestDevice(t TestLogger) string {
 		}
 	}
 
+	// Use global testDevice1 if it was set by TestMain and exists
+	if testDevice1 != "" {
+		if _, err := os.Stat(testDevice1); err == nil {
+			t.Logf("Using test device from TestMain: %s", testDevice1)
+			return testDevice1
+		}
+	}
+
 	// Common test device paths
-	testDevices := []string{
+	commonDevices := []string{
 		"/dev/video20", // v4l2loopback default
 		"/dev/video21",
 		"/dev/video10", // vivid default
 		"/dev/video11",
+		"/dev/video0",  // Real webcam
+		"/dev/video1",
 	}
 
-	for _, device := range testDevices {
-		if _, err := os.Stat(device); err == nil {
-			// Check if it's a v4l2 device
+	// Try with v4l2-ctl if available
+	if _, err := exec.LookPath("v4l2-ctl"); err == nil {
+		for _, device := range commonDevices {
+			if _, err := os.Stat(device); err == nil {
+				cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
+				if err := cmd.Run(); err == nil {
+					t.Logf("Found test device: %s", device)
+					return device
+				}
+			}
+		}
+
+		// Try to find any v4l2loopback device
+		devices, _ := filepath.Glob("/dev/video*")
+		for _, device := range devices {
 			cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
-			if err := cmd.Run(); err == nil {
-				t.Logf("Found test device: %s", device)
+			output, err := cmd.Output()
+			if err == nil && strings.Contains(string(output), "v4l2loopback") {
+				t.Logf("Found v4l2loopback device: %s", device)
 				return device
 			}
 		}
-	}
-
-	// Try to find any v4l2loopback device
-	devices, _ := filepath.Glob("/dev/video*")
-	for _, device := range devices {
-		cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
-		output, err := cmd.Output()
-		if err == nil && strings.Contains(string(output), "v4l2loopback") {
-			t.Logf("Found v4l2loopback device: %s", device)
-			return device
+	} else {
+		// v4l2-ctl not available, just check if devices exist
+		for _, device := range commonDevices {
+			if _, err := os.Stat(device); err == nil {
+				t.Logf("Found device (without v4l2-ctl validation): %s", device)
+				return device
+			}
 		}
 	}
 
@@ -106,7 +128,7 @@ func SetupV4L2Loopback(t *testing.T) string {
 		if os.Getenv("CI") == "true" {
 			t.Log("Attempting to load v4l2loopback module...")
 			cmd := exec.Command("sudo", "modprobe", "v4l2loopback",
-				"devices=1", "video_nr=20", "exclusive_caps=1",
+				"devices=1", "video_nr=20", "exclusive_caps=0",
 				"card_label=go4vl_test")
 			if err := cmd.Run(); err != nil {
 				t.Skipf("Failed to load v4l2loopback: %v", err)

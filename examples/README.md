@@ -1,12 +1,21 @@
 # Examples
 
+## Basic Capture Examples
+
 * [snapshot](./snapshot/) - A simple example to capture a single frame and save it to a file.
-* [capture0](./capture0) - Shows how to capture multiple images and saves them to files.
+* [capture0](./capture0) - Shows how to capture multiple images and saves them to files (legacy API).
+* [capture_frames](./capture_frames) - **Recommended**: Capture frames with metadata and buffer pooling for high-performance streaming.
 * [capture1](./capture1) - Shows how to capture multiple images using specified image format.
+
+## Device Information and Control
+
 * [device_info](./device_info) - Uses go4vl to query and print device and format information.
 * [format](./format) - Shows how to query and apply device and format information.
 * [ext_ctrls](./ext_ctrls/) Shows how to query and apply extended controls.
 * [user_ctrl](./user_ctrl/) Shows how to query and apply user controls.
+
+## Web Streaming Examples
+
 * [simplecam](./simplecam/) A functional webcam program that streams video to web page.
 * [webcam](./webcam) - Builds on simplecam and adds image control, format control, and face detection.
 
