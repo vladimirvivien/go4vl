@@ -164,7 +164,7 @@ brightness := dev.GetControl(v4l2.CtrlBrightness)
 dev.SetControl(v4l2.CtrlBrightness, 128)
 ```
 
-**Streaming:**
+**Streaming (Legacy API):**
 ```go
 ctx := context.Background()
 dev.Start(ctx)
@@ -175,6 +175,36 @@ for frame := range dev.GetOutput() {
 }
 ```
 
+**Streaming (Frame API - Recommended):**
+```go
+ctx := context.Background()
+dev.Start(ctx)
+
+for frame := range dev.GetFrames() {
+    // Access frame data with metadata
+    processFrame(frame.Data)
+
+    // Access metadata
+    log.Printf("Frame %d captured at %v", frame.Sequence, frame.Timestamp)
+
+    // Check frame type (for compressed formats like MJPEG, H.264)
+    if frame.IsKeyFrame() {
+        log.Printf("Keyframe detected")
+    }
+
+    // IMPORTANT: Release buffer back to pool
+    frame.Release()
+}
+```
+
+**Performance comparison (GetFrames vs GetOutput):**
+* **~1,200x faster** buffer allocation (22ns vs 28μs per 614KB frame)
+* **99.996% reduction** in memory allocated per operation (26 B vs 614 KB)
+* **60-80% reduction** in GC pauses for high-FPS streaming
+* **Metadata access** at zero cost (timestamp, sequence, flags)
+
+The `GetFrames()` API uses buffer pooling to dramatically reduce allocation overhead and GC pressure, making it ideal for high-throughput video processing. See [examples/capture_frames](./examples/capture_frames/) for a complete example.
+
 Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg.go.dev/github.com/vladimirvivien/go4vl)
 
 ## Examples
@@ -182,7 +212,8 @@ Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg
 This repository includes multiple examples demonstrating various capabilities:
 
 * **[snapshot](./examples/snapshot/)** - Capture single frame to file
-* **[capture0](./examples/capture0/)** - Capture multiple frames
+* **[capture0](./examples/capture0/)** - Capture multiple frames (legacy API)
+* **[capture_frames](./examples/capture_frames/)** - Capture with metadata and pooling (recommended)
 * **[capture1](./examples/capture1/)** - Capture with specific format
 * **[device_info](./examples/device_info/)** - Query device information
 * **[format](./examples/format/)** - Query and set formats

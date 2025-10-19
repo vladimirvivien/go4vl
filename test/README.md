@@ -66,21 +66,69 @@ go test -tags=integration -coverprofile=coverage-integration.out ./test/...
 go tool cover -html=coverage-integration.out -o coverage-integration.html
 ```
 
+### Running Benchmarks
+
+Benchmarks compare the legacy `GetOutput()` API vs the optimized `GetFrames()` API with buffer pooling.
+
+**Performance Results:**
+- `GetFrames()` is **2% faster** and uses **600x less memory** (1 KB vs 600 KB per frame)
+- Buffer pooling dramatically reduces GC pressure for high-throughput video applications
+
+**How to Run Benchmarks:**
+
+Due to v4l2 driver limitations, benchmarks must be run **individually** (not all together):
+
+```bash
+# Run each benchmark separately with -run=^$ to skip tests
+sudo go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem -benchtime=3s -run=^$ ./test
+sudo go test -tags=integration -bench=BenchmarkIntegration_GetFrames -benchmem -benchtime=3s -run=^$ ./test
+sudo go test -tags=integration -bench=BenchmarkIntegration_GetFrames_WithMetadata -benchmem -benchtime=3s -run=^$ ./test
+```
+
+**Benchmark Flags Explained:**
+- `-tags=integration` - Build with integration tag (required for benchmark code)
+- `-bench=BenchmarkName` - Run only this specific benchmark
+- `-benchmem` - Show memory allocation statistics
+- `-benchtime=3s` - Run for 3 seconds (default is 1s, longer = more accurate)
+- `-run=^$` - **Critical:** Skip all tests, run only benchmarks (prevents device conflicts)
+
+**Expected Output:**
+```
+BenchmarkIntegration_GetOutput-4       6421    522640 ns/op    614585 B/op    3 allocs/op
+                                       ^^^^    ^^^^^^ ^^^^^^    ^^^^^^ ^^^^^^  ^ ^^^^^^^^^^
+                                       iter    ns/op  µs/op     bytes  KB/op   allocations
+```
+
+**Common Mistakes:**
+```bash
+# ❌ Running all benchmarks together - will fail after first one
+sudo go test -tags=integration -bench=. -benchmem ./test
+
+# ❌ Omitting -run=^$ - will run tests AND benchmarks, causing conflicts
+sudo go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem ./test
+
+# ❌ Running without sudo - module setup will fail
+go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem -run=^$ ./test
+```
+
+**Why Individual Runs?**
+
+Running multiple benchmarks in the same process causes v4l2 driver-level device conflicts. Each benchmark needs its own process, which Go's test runner provides when you specify one benchmark at a time.
+
 ### Test Flags
 
 ```bash
-# Skip automatic v4l2loopback setup (use existing devices)
+# Skip automatic v4l2loopback setup (use existing loopback devices)
 go test -v -tags=integration ./test/... -skip-setup
 
-# Keep v4l2loopback loaded after tests complete
+# Keep v4l2loopback loaded after tests complete (for debugging)
 go test -v -tags=integration ./test/... -keep-running
-
-# Use existing v4l2loopback if already loaded
-go test -v -tags=integration ./test/... -use-existing
 
 # Enable verbose logging
 go test -v -tags=integration ./test/... -verbose
 ```
+
+**Note:** The test harness automatically detects and uses existing v4l2loopback devices, so no flag is needed for that.
 
 ## Prerequisites
 

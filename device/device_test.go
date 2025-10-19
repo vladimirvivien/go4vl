@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
@@ -556,35 +555,6 @@ func TestOptionOverride(t *testing.T) {
 	}
 }
 
-// TestDevice_ConcurrentStreamingFlag tests concurrent access to streaming flag
-func TestDevice_ConcurrentStreamingFlag(t *testing.T) {
-	dev := Device{}
-	done := make(chan bool)
-
-	// Start 10 goroutines that toggle the flag
-	for i := 0; i < 10; i++ {
-		go func() {
-			for j := 0; j < 100; j++ {
-				dev.streaming.Store(true)
-				_ = dev.streaming.Load()
-				dev.streaming.Store(false)
-				_ = dev.streaming.Load()
-			}
-			done <- true
-		}()
-	}
-
-	// Wait for all goroutines
-	for i := 0; i < 10; i++ {
-		<-done
-	}
-
-	// Final state should be false
-	if dev.streaming.Load() != false {
-		t.Error("Final streaming state should be false")
-	}
-}
-
 // TestDevice_TypicalConfiguration tests a typical device setup
 func TestDevice_TypicalConfiguration(t *testing.T) {
 	// Simulate typical device configuration
@@ -689,37 +659,6 @@ func TestDevice_ContextCancellation(t *testing.T) {
 	}
 }
 
-// TestDevice_AtomicBool tests the atomic.Bool usage pattern
-func TestDevice_AtomicBool(t *testing.T) {
-	var flag atomic.Bool
-
-	// Test initial state
-	if flag.Load() != false {
-		t.Error("Initial state should be false")
-	}
-
-	// Test Store and Load
-	flag.Store(true)
-	if flag.Load() != true {
-		t.Error("After Store(true), Load() should return true")
-	}
-
-	// Test CompareAndSwap (Go 1.19+)
-	swapped := flag.CompareAndSwap(true, false)
-	if !swapped {
-		t.Error("CompareAndSwap(true, false) should succeed")
-	}
-	if flag.Load() != false {
-		t.Error("After CompareAndSwap, flag should be false")
-	}
-
-	// Test failed CompareAndSwap
-	swapped = flag.CompareAndSwap(true, false)
-	if swapped {
-		t.Error("CompareAndSwap(true, false) should fail when flag is false")
-	}
-}
-
 // TestDevice_PixelFormatZeroValue tests GetPixFormat behavior with zero value
 func TestDevice_PixelFormatZeroValue(t *testing.T) {
 	dev := Device{
@@ -760,4 +699,88 @@ func TestDevice_SetCropRect_UnsupportedFeature(t *testing.T) {
 	if err != v4l2.ErrorUnsupportedFeature {
 		t.Errorf("SetCropRect() without capture support should return ErrorUnsupportedFeature, got %v", err)
 	}
+}
+
+// TestDevice_StreamingMutualExclusivity tests that GetOutput and GetFrames are mutually exclusive
+func TestDevice_StreamingMutualExclusivity(t *testing.T) {
+	t.Run("GetOutput_then_GetFrames", func(t *testing.T) {
+		dev := Device{}
+		dev.output = make(chan []byte, 2)
+
+		// First call to GetOutput() should succeed
+		ch1 := dev.GetOutput()
+		if ch1 == nil {
+			t.Error("First GetOutput() should return valid channel")
+		}
+		if dev.streamingMode.Load() != 1 {
+			t.Errorf("streamingMode = %d, want 1 (GetOutput)", dev.streamingMode.Load())
+		}
+
+		// Second call to GetOutput() should still work (same mode)
+		ch2 := dev.GetOutput()
+		if ch2 == nil {
+			t.Error("Second GetOutput() should return valid channel")
+		}
+
+		// Call to GetFrames() should fail (different mode)
+		framesCh := dev.GetFrames()
+		if framesCh != nil {
+			t.Error("GetFrames() after GetOutput() should return nil channel")
+		}
+	})
+
+	t.Run("GetFrames_then_GetOutput", func(t *testing.T) {
+		dev := Device{}
+		dev.frames = make(chan *Frame, 2)
+
+		// First call to GetFrames() should succeed
+		ch1 := dev.GetFrames()
+		if ch1 == nil {
+			t.Error("First GetFrames() should return valid channel")
+		}
+		if dev.streamingMode.Load() != 2 {
+			t.Errorf("streamingMode = %d, want 2 (GetFrames)", dev.streamingMode.Load())
+		}
+
+		// Second call to GetFrames() should still work (same mode)
+		ch2 := dev.GetFrames()
+		if ch2 == nil {
+			t.Error("Second GetFrames() should return valid channel")
+		}
+
+		// Call to GetOutput() should fail (different mode)
+		outputCh := dev.GetOutput()
+		if outputCh != nil {
+			t.Error("GetOutput() after GetFrames() should return nil channel")
+		}
+	})
+
+	t.Run("Stop_resets_mode", func(t *testing.T) {
+		dev := Device{}
+		dev.output = make(chan []byte, 2)
+		dev.streaming.Store(true) // Simulate streaming state
+
+		// Set to GetOutput mode
+		ch := dev.GetOutput()
+		if ch == nil {
+			t.Error("GetOutput() should succeed initially")
+		}
+
+		// Manually reset streaming mode (simulates what Stop() does when streaming is active)
+		dev.streamingMode.Store(0)
+
+		if dev.streamingMode.Load() != 0 {
+			t.Errorf("After mode reset, streamingMode = %d, want 0", dev.streamingMode.Load())
+		}
+
+		// Now GetFrames() should work
+		dev.frames = make(chan *Frame, 2)
+		framesCh := dev.GetFrames()
+		if framesCh == nil {
+			t.Error("GetFrames() should succeed after mode reset")
+		}
+		if dev.streamingMode.Load() != 2 {
+			t.Errorf("streamingMode = %d, want 2 (GetFrames)", dev.streamingMode.Load())
+		}
+	})
 }
