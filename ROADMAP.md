@@ -1,499 +1,863 @@
-# go4vl Roadmap
+# go4vl Roadmap - V4L2 API Parity
 
-This roadmap outlines the strategic direction and planned enhancements for the go4vl project. The primary goal remains to port as many V4L2 functionalities as possible, providing idiomatic Go types and abstractions for video capture and processing on Linux systems.
+This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video for Linux 2) API features based on the official Linux kernel documentation structure: [Video for Linux API](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html)
 
-## Project Vision
+**Primary Goal**: Achieve feature parity with the V4L2 userspace API, providing idiomatic Go bindings for all major V4L2 capabilities.
 
-go4vl aims to be the definitive Go library for V4L2 video capture and streaming, enabling developers to build robust video applications on Linux platforms including Raspberry Pi, embedded systems, and standard Linux distributions without dealing with C interop complexities.
+**See Also**: [ROADMAP_EXTENDED.md](./ROADMAP_EXTENDED.md) for strategic initiatives and performance optimization efforts beyond V4L2 parity.
 
----
-
-## Roadmap Summary
-
-- [x] [1. Frame Processing Pipeline Performance](#1-frame-processing-pipeline-performance) ✅ **Phase 1 Complete**
-- [ ] [2. Migration from CGO to purego](#2-migration-from-cgo-to-purego)
-- [ ] [3. io.Reader/io.Writer Interface Support](#3-ioreaderiowriter-interface-support)
-- [ ] [4. Complete V4L2 Video Capture Feature Parity](#4-complete-v4l2-video-capture-feature-parity)
-- [ ] [5. Multi-Planar Format Support](#5-multi-planar-format-support)
-- [ ] [6. Enhanced Image Format Conversion Library](#6-enhanced-image-format-conversion-library)
-- [ ] [7. User Pointer and DMA-BUF I/O Support](#7-user-pointer-and-dma-buf-io-support)
-- [ ] [8. Video Output Device Support](#8-video-output-device-support)
-- [ ] [9. Advanced Extended Controls API](#9-advanced-extended-controls-api)
-- [ ] [10. Asynchronous Frame Capture with Select/Poll/Epoll](#10-asynchronous-frame-capture-with-selectpollepoll)
-- [x] [11. Frame Metadata and Timestamping](#11-frame-metadata-and-timestamping) ✅ **Phase 1 Complete**
-- [ ] [12. Hardware Codec Integration (H264, HEVC, VP8, VP9)](#12-hardware-codec-integration-h264-hevc-vp8-vp9)
-- [ ] [13. Media Controller API Integration](#13-media-controller-api-integration)
-- [x] [14. Performance Optimization and Zero-Copy Enhancements](#14-performance-optimization-and-zero-copy-enhancements) ✅ **Phase 1 Complete**
-- [ ] [15. WASM Component Model Plugin System](#15-wasm-component-model-plugin-system)
+**Legend**:
+- ✅ Complete
+- 🚧 Partial / In Progress
+- ❌ Not Started
+- 🔴 Out of Scope (kernel-specific/deprecated)
 
 ---
 
-## Enhancement Details
+## 1. Common API Elements
 
-### 1. **Frame Processing Pipeline Performance**
+### 1.1 Opening and Closing Devices
+**Status**: ✅ Complete
 
-**Status:** ✅ **Phase 1 Completed** - Memory Allocation Optimization
-**Goal:** Eliminate bottlenecks in frame processing pipelines to ensure maximum throughput and minimal latency
+- [x] Device opening (`device.Open()`)
+- [x] Device closing (`device.Close()`)
+- [x] Multiple file descriptor management
+- [x] Device node naming conventions
+- [x] Error handling
 
-**Rationale:**
-Frame processing performance is critical for real-time video applications. Bottlenecks can occur at multiple stages: frame capture, memory allocation, channel operations, format conversion, and user processing. Identifying and eliminating these bottlenecks ensures go4vl can handle high-resolution, high-frame-rate scenarios without dropping frames or introducing latency.
-
-**Completed Performance Improvements (Phase 1):**
-- ✅ **Memory allocation bottleneck eliminated:** Implemented FramePool with sync.Pool
-  - ~1,200x faster buffer allocation (22ns vs 28,000ns per 614KB frame)
-  - 99.996% reduction in memory allocated per operation (26 B vs 614 KB)
-  - Effective allocation elimination after pool warmup
-- ✅ **GC pressure reduction:** Buffer pooling dramatically reduces garbage collection overhead
-- ✅ **Separate streaming loops:** Optimized paths for GetOutput() and GetFrames() APIs
-- ✅ **Benchmark suite:** Comprehensive benchmarks for pool operations and allocation patterns
-- ✅ **Documentation:** Best practices for high-performance video processing
-
-**Key Performance Concerns (Remaining):**
-- Frame copy overhead in the capture loop (currently copies every frame from mmap)
-- Channel blocking and buffering strategies
-- Goroutine scheduling and synchronization
-- Lock contention in multi-device scenarios
-- Processing pipeline backpressure handling
-
-**Remaining Deliverables (Phase 2):**
-- Comprehensive performance profiling across different resolutions and frame rates
-- Identify remaining bottlenecks in the capture-to-processing pipeline
-- Implement lock-free or low-contention data structures where appropriate
-- Add configurable frame dropping strategies (drop oldest, drop newest, block)
-- Optimize channel buffer sizing and flow control
-- Add pipeline backpressure detection and handling
-- Create performance monitoring API (dropped frames, latency, throughput)
-- Add CPU and memory profiling examples
-- Create reference implementations for common high-throughput scenarios
-
-**Target Performance Metrics:**
-- 1080p @ 60fps with < 5% CPU usage
-- 4K @ 30fps with minimal frame drops
-- Multi-device capture (4+ cameras) without contention
-- Sub-millisecond frame delivery latency
-- Zero frame drops under sustained load
-
-**Profiling and Optimization Areas:**
-- Frame delivery path (device → mmap → copy → channel → user)
-- Buffer lifecycle management
-- Context switching and goroutine overhead
-- Memory allocation patterns
-- Cache-line optimization for hot paths
+**Files**: `device/device.go`, `v4l2/syscalls.go`
 
 ---
 
-### 2. **Migration from CGO to purego**
+### 1.2 Querying Capabilities
+**Status**: ✅ Complete
 
-**Status:** Not Started
-**Goal:** Eliminate CGO dependency by migrating to pure Go C bindings using the purego library
+- [x] `VIDIOC_QUERYCAP` - Query device capabilities
+- [x] Capability struct (`v4l2.Capability`)
+- [x] Capability flag checking methods
+- [x] Driver/device/bus information
 
-**Rationale:**
-CGO introduces significant complexity, build overhead, and cross-compilation challenges. It prevents pure Go toolchain benefits like easy cross-compilation, faster builds, and simpler dependency management. The purego library enables calling C functions from pure Go without CGO, making the library more accessible and maintainable.
+**Files**: `v4l2/capability.go`, `device/device.go`
 
-**Benefits:**
-- Faster compilation times (no C compiler required)
-- Simplified cross-compilation for ARM/ARM64/x86_64
-- Better compatibility with Go's module system
-- Reduced binary size in many cases
-- Easier to contribute (no C toolchain knowledge required)
-- Full support for `go install` without C dependencies
-
-**Deliverables:**
-- Evaluate purego compatibility with V4L2 ioctl operations
-- Create purego-based syscall wrappers for all V4L2 ioctls
-- Migrate struct definitions to pure Go (remove C imports)
-- Update build system to remove CGO requirement
-- Ensure feature parity with current CGO implementation
-- Add CI/CD testing for pure Go builds
-- Update documentation reflecting pure Go approach
-- Create migration guide for existing users
-
-**Challenges:**
-- Complex struct alignment and padding requirements
-- Union type handling in pure Go
-- Performance comparison and optimization
-- Maintaining compatibility across kernel versions
+**Tests**: `v4l2/capability_test.go`
 
 ---
 
-### 2. **io.Reader/io.Writer Interface Support**
+### 1.3 Application Priority
+**Status**: ❌ Not Started
 
-**Status:** Not Started
-**Goal:** Provide standard io.Reader/io.Writer interfaces alongside existing channel-based API
+- [ ] `VIDIOC_G_PRIORITY` - Get access priority
+- [ ] `VIDIOC_S_PRIORITY` - Set access priority
+- [ ] Priority levels (background, interactive, record)
+- [ ] Priority conflict resolution
 
-**Rationale:**
-Channels are idiomatic for concurrent frame delivery, but many Go libraries and tools work with io.Reader/io.Writer interfaces. Supporting both patterns increases composability with the broader Go ecosystem (image processing, encoding, streaming libraries).
+**Priority**: Low (rarely used in practice)
 
-**Deliverables:**
-- Implement `io.Reader` interface for frame capture streams
-- Implement `io.Writer` interface for video output devices
-- Add frame framing/deframing for Reader/Writer (handle frame boundaries)
-- Support both blocking and non-blocking I/O modes
-- Create adapter utilities between channel and io interfaces
-- Add examples using io.Reader with standard library (io.Copy, bufio, etc.)
-- Add examples integrating with popular streaming libraries
-- Document performance characteristics of each approach
-- Provide guidance on when to use channels vs io interfaces
-
-**API Design Considerations:**
-- Frame boundary handling in streaming mode
-- Metadata delivery alongside frame data
-- Error handling and EOF semantics
-- Buffer management and zero-copy opportunities
+**Deliverables**:
+- Add priority constants to `v4l2/types.go`
+- Implement `GetPriority()` and `SetPriority()` methods
+- Add examples showing multi-application coordination
 
 ---
 
-### 3. **Complete V4L2 Video Capture Feature Parity**
+### 1.4 Video Inputs and Outputs
+**Status**: 🚧 Partial
 
-**Status:** In Progress (significant coverage exists, gaps remain)
-**Goal:** Achieve 100% coverage of V4L2 video capture APIs and capabilities
+- [x] `VIDIOC_ENUMINPUT` - Enumerate video inputs
+- [x] `VIDIOC_G_INPUT` - Get current input
+- [x] `VIDIOC_S_INPUT` - Set current input
+- [ ] `VIDIOC_ENUMOUTPUT` - Enumerate video outputs
+- [ ] `VIDIOC_G_OUTPUT` - Get current output
+- [ ] `VIDIOC_S_OUTPUT` - Set current output
+- [ ] Input/output status queries
+- [ ] Audio/video standard association
 
-**Rationale:**
-While go4vl covers core V4L2 functionality, some advanced features remain unimplemented. Complete feature parity ensures users never need to drop to C or use syscall directly.
+**Files**: `device/device.go` (partial)
 
-**Missing Features to Implement:**
-- Selection/Compose API (VIDIOC_G_SELECTION, VIDIOC_S_SELECTION)
-- Video standards enumeration and selection (NTSC, PAL, SECAM)
-- Video timings API for DV and HDMI sources
-- Priority and exclusive access control
-- Advanced cropping capabilities
-- Buffer export/import for cross-device workflows
-- Query extended capabilities flags
-- All buffer timestamp modes
-- Request API support for stateless codecs
-- All field order modes
-- Complete control flags support
-- Menu control integer values
-
-**Deliverables:**
-- Audit current V4L2 API coverage against kernel documentation
-- Implement remaining VIDIOC_* ioctls relevant to video capture
-- Add complete constant definitions for all flags and enums
-- Create comprehensive examples demonstrating each capability
-- Add integration tests for all implemented features
-- Document feature availability by kernel version
-- Create feature detection utilities
-- Update API reference with complete V4L2 mapping
+**Deliverables**:
+- Complete output device support
+- Add input/output enumeration
+- Add status query methods
+- Create video output examples
 
 ---
 
-### 4. **Multi-Planar Format Support**
+### 1.5 Audio Inputs and Outputs
+**Status**: ❌ Not Started
 
-**Status:** Not Started
-**Goal:** Add comprehensive support for multi-planar pixel formats (V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+- [ ] `VIDIOC_ENUMAUDIO` - Enumerate audio inputs
+- [ ] `VIDIOC_G_AUDIO` - Get current audio input
+- [ ] `VIDIOC_S_AUDIO` - Set current audio input
+- [ ] `VIDIOC_ENUMAUDOUT` - Enumerate audio outputs
+- [ ] `VIDIOC_G_AUDOUT` - Get current audio output
+- [ ] `VIDIOC_S_AUDOUT` - Set current audio output
+- [ ] Audio capability flags
+- [ ] Audio mode selection
 
-**Rationale:**
-Many modern cameras and video processors use multi-planar formats where Y, U, and V components are stored in separate memory planes. This is essential for advanced codec support and high-performance video processing.
+**Priority**: Medium (needed for TV tuner cards, webcams with mics)
 
-**Deliverables:**
-- Implement multi-planar buffer type support in `v4l2/streaming.go`
-- Add multi-planar format descriptors and negotiation
-- Extend `device.Device` to handle planar buffers
-- Create examples demonstrating multi-planar capture
-- Update API documentation with multi-planar usage patterns
-
----
-
-### 2. **Enhanced Image Format Conversion Library**
-
-**Status:** Partially Implemented (YUYV conversion disabled)
-**Goal:** Complete pixel format conversion utilities for common V4L2 formats
-
-**Rationale:**
-Current `imgsupport` package has disabled YUYV conversion. Users frequently need to convert between raw formats (YUYV, NV12, YV12) and standard image formats (JPEG, PNG) for processing or display.
-
-**Deliverables:**
-- Complete and test YUYV to JPEG/PNG conversion
-- Add NV12, YV12, and I420 format converters
-- Implement RGB format family converters (RGB24, RGB32, BGR24)
-- Add hardware-accelerated conversion paths where available
-- Benchmark and optimize conversion performance
-- Create format conversion example application
-- Document supported conversion paths and performance characteristics
+**Deliverables**:
+- Create `v4l2/audio.go` with audio structures
+- Implement audio enumeration and selection
+- Add audio capability queries
+- Create example with webcam microphone
 
 ---
 
-### 3. **User Pointer and DMA-BUF I/O Support**
+### 1.6 Tuners and Modulators
+**Status**: ❌ Not Started
 
-**Status:** Not Started (only MMAP currently supported)
-**Goal:** Implement V4L2_MEMORY_USERPTR and V4L2_MEMORY_DMABUF I/O methods
+- [ ] `VIDIOC_G_TUNER` - Get tuner properties
+- [ ] `VIDIOC_S_TUNER` - Set tuner properties
+- [ ] `VIDIOC_G_MODULATOR` - Get modulator properties
+- [ ] `VIDIOC_S_MODULATOR` - Set modulator properties
+- [ ] `VIDIOC_G_FREQUENCY` - Get tuner/modulator frequency
+- [ ] `VIDIOC_S_FREQUENCY` - Set tuner/modulator frequency
+- [ ] `VIDIOC_ENUM_FREQ_BANDS` - Enumerate frequency bands
+- [ ] Tuner capabilities and modes
+- [ ] Signal strength/AFC monitoring
+- [ ] RDS/RBDS support
 
-**Rationale:**
-User pointer mode allows application-allocated buffers, enabling zero-copy integration with other libraries. DMA-BUF support enables zero-copy sharing between V4L2 devices and GPU/display subsystems, critical for high-performance pipelines.
+**Priority**: Low (niche hardware - TV tuners, SDR)
 
-**Deliverables:**
-- Implement `IOTypeUserPtr` support in streaming layer
-- Add user-provided buffer allocation and management
-- Implement `IOTypeDMABuf` for inter-device buffer sharing
-- Add DMA-BUF file descriptor handling and synchronization
-- Create examples for user pointer mode
-- Create examples for DMA-BUF sharing with DRM/KMS
-- Document memory management best practices for each I/O type
-- Add performance comparison benchmarks
-
----
-
-### 4. **Video Output Device Support**
-
-**Status:** Partially Implemented (output path exists but incomplete)
-**Goal:** Complete implementation for video output devices (V4L2_BUF_TYPE_VIDEO_OUTPUT)
-
-**Rationale:**
-V4L2 supports video output for display devices, video encoders, and hardware accelerators. Currently go4vl primarily focuses on capture. Output support enables frame injection, video encoding pipelines, and display control.
-
-**Deliverables:**
-- Complete `Device.SetInput()` implementation for output devices
-- Add output buffer queue management
-- Implement frame timing control for output
-- Add output format negotiation and validation
-- Create video playback/display examples
-- Create encoder pipeline examples (with hardware encoders)
-- Document output device workflows and use cases
+**Deliverables**:
+- Create `v4l2/tuner.go`
+- Implement tuner/modulator structures
+- Add frequency control methods
+- Create FM radio tuner example
+- Create TV tuner example
 
 ---
 
-### 5. **Advanced Extended Controls API**
+### 1.7 Video Standards
+**Status**: ❌ Not Started
 
-**Status:** Basic support implemented
-**Goal:** Comprehensive extended controls with validation, compound controls, and control events
+- [ ] `VIDIOC_ENUMSTD` - Enumerate video standards
+- [ ] `VIDIOC_G_STD` - Get current standard
+- [ ] `VIDIOC_S_STD` - Set standard
+- [ ] `VIDIOC_QUERYSTD` - Detect standard
+- [ ] Standard IDs (PAL, NTSC, SECAM, etc.)
+- [ ] Standard framerates and line counts
 
-**Rationale:**
-Extended controls enable access to codec parameters, camera sensors, and advanced device features. Current implementation covers basics but lacks compound control support and event notification.
+**Priority**: Low (legacy analog TV, most modern devices use DV timings)
 
-**Deliverables:**
-- Implement compound control support (arrays, structs)
-- Add control event subscription and monitoring (VIDIOC_SUBSCRIBE_EVENT)
-- Implement control priority and error handling improvements
-- Add control validation and bounds checking enhancements
-- Create codec control profiles (H264, VP8, VP9, HEVC)
-- Add camera control presets (exposure, white balance, focus)
-- Create advanced controls example with live adjustment
-- Document control classes and codec-specific parameters
-
----
-
-### 6. **Asynchronous Frame Capture with Select/Poll/Epoll**
-
-**Status:** Currently uses select internally
-**Goal:** Expose low-level async I/O options for advanced use cases
-
-**Rationale:**
-Current implementation uses `sys.Select` internally but doesn't expose file descriptor for external event loops. Users may want to integrate V4L2 capture into custom event loops or multiplexed I/O systems.
-
-**Deliverables:**
-- Add optional async capture mode with exposed file descriptor
-- Implement epoll support for better scalability with multiple devices
-- Add timeout and deadline control for frame capture
-- Create examples showing integration with Go's context patterns
-- Create example integrating multiple devices in single event loop
-- Document async patterns and best practices
-- Add performance benchmarks comparing async methods
+**Deliverables**:
+- Create `v4l2/standard.go`
+- Add standard enumeration
+- Add standard detection
+- Document standard selection workflow
 
 ---
 
-### 7. **Frame Metadata and Timestamping**
+### 1.8 Digital Video (DV) Timings
+**Status**: ❌ Not Started
 
-**Status:** ✅ **Completed** (Phase 1 - Frame Pool + Metadata)
-**Goal:** Comprehensive frame metadata including timestamps, sequence numbers, and flags
+- [ ] `VIDIOC_ENUM_DV_TIMINGS` - Enumerate DV timings
+- [ ] `VIDIOC_G_DV_TIMINGS` - Get current DV timings
+- [ ] `VIDIOC_S_DV_TIMINGS` - Set DV timings
+- [ ] `VIDIOC_QUERY_DV_TIMINGS` - Detect DV timings
+- [ ] `VIDIOC_DV_TIMINGS_CAP` - Get DV timing capabilities
+- [ ] Timing presets (CEA-861, DMT, etc.)
+- [ ] Custom timing support
+- [ ] Interlaced/progressive detection
 
-**Rationale:**
-Accurate frame timing is critical for video synchronization, frame rate analysis, and time-based processing. Current implementation captures metadata but doesn't expose it through idiomatic interfaces.
+**Priority**: Medium (needed for HDMI capture cards, professional video)
 
-**Completed Deliverables:**
-- ✅ Created `Frame` struct with timestamp, sequence, flags, and index
-- ✅ New `GetFrames()` API delivers Frame objects with metadata
-- ✅ Frame type detection methods (IsKeyFrame, IsPFrame, IsBFrame, HasError)
-- ✅ Frame pool implementation with Release() pattern
-- ✅ Created examples demonstrating frame timing analysis (examples/capture_frames)
-- ✅ Performance: ~1,200x faster allocation, 99.996% memory reduction per frame
-
-**API Changes:**
-```go
-// New recommended API with metadata and pooling
-for frame := range dev.GetFrames() {
-    fmt.Printf("Frame %d at %v\n", frame.Sequence, frame.Timestamp)
-    if frame.IsKeyFrame() {
-        // Process keyframe
-    }
-    frame.Release() // Return buffer to pool
-}
-
-// Legacy API still available
-for data := range dev.GetOutput() {
-    // Process raw bytes
-}
-```
-
-**Remaining Future Work:**
-- Add timestamp source configuration and queries
-- Document synchronization strategies for multi-device capture
-- Implement frame statistics collection and observability
-- Add atomic counters for frames processed, dropped, and errors
-- Create `GetStreamStats()` API to query runtime statistics
-- Add sequence number gap detection for dropped frame analysis
+**Deliverables**:
+- Create `v4l2/dv_timings.go`
+- Implement timing structures
+- Add timing enumeration and detection
+- Create HDMI capture example
 
 ---
 
-### 8. **Hardware Codec Integration (H264, HEVC, VP8, VP9)**
+### 1.9 User Controls
+**Status**: ✅ Complete
 
-**Status:** Basic extended controls exist
-**Goal:** High-level APIs for hardware encoder/decoder configuration
+- [x] `VIDIOC_QUERYCTRL` - Query control properties
+- [x] `VIDIOC_G_CTRL` - Get control value
+- [x] `VIDIOC_S_CTRL` - Set control value
+- [x] `VIDIOC_QUERYMENU` - Query menu items
+- [x] Control types (integer, boolean, menu, button, etc.)
+- [x] Control flags and capabilities
 
-**Rationale:**
-Many platforms (Raspberry Pi, Jetson, modern CPUs) have hardware video codecs accessible via V4L2. Current low-level control support needs higher-level abstractions for practical use.
+**Files**: `v4l2/control.go`, `device/device.go`
 
-**Deliverables:**
-- Create codec configuration profiles for H264/HEVC/VP8/VP9
-- Add encoder preset system (quality vs speed trade-offs)
-- Implement bitrate control modes (CBR, VBR, CQP)
-- Add GOP structure configuration helpers
-- Create decoder capabilities query and setup
-- Add examples for hardware encoding (Raspberry Pi H264, etc.)
-- Add examples for hardware decoding
-- Document platform-specific codec availability and capabilities
-- Create codec benchmarking utilities
+**Tests**: `v4l2/control_test.go`
+
+**Examples**: `examples/user_ctrl/`
 
 ---
 
-### 9. **Media Controller API Integration**
+### 1.10 Extended Controls API
+**Status**: 🚧 Partial
 
-**Status:** Basic media info query exists
-**Goal:** Full Media Controller API for complex video pipelines
+- [x] `VIDIOC_G_EXT_CTRLS` - Get extended controls
+- [x] `VIDIOC_S_EXT_CTRLS` - Set extended controls
+- [x] `VIDIOC_TRY_EXT_CTRLS` - Try extended controls
+- [ ] Compound controls (arrays, structs)
+- [ ] Control classes (user, codec, camera, etc.)
+- [ ] `VIDIOC_SUBSCRIBE_EVENT` - Control change events
+- [ ] `VIDIOC_UNSUBSCRIBE_EVENT`
+- [ ] `VIDIOC_DQEVENT` - Dequeue control events
+- [ ] Atomic multi-control operations
 
-**Rationale:**
-Complex camera systems (CSI-2, MIPI) require Media Controller API to configure sensor, ISP, and capture device topology. Essential for embedded platforms and advanced camera modules.
+**Files**: `v4l2/control.go` (partial)
 
-**Deliverables:**
-- Implement media entity enumeration and topology discovery
-- Implement pipeline setup and validation
-- Add subdevice format negotiation
-- Create CSI-2 camera setup examples (Raspberry Pi Camera Module)
-- Create MIPI camera configuration examples
-- Document Media Controller concepts and workflows
-- Add pipeline visualization and debugging tools
-
----
-
-### 10. **Performance Optimization and Zero-Copy Enhancements**
-
-**Status:** ✅ **Phase 1 Completed** - Frame Pool Implementation
-**Goal:** Minimize memory copies and CPU overhead for maximum throughput
-
-**Rationale:**
-Video streaming is performance-critical. Even with MMAP, the current implementation copies frames from mapped buffers. For high-resolution or high-frame-rate capture, additional optimizations are needed.
-
-**Completed Deliverables (Phase 1):**
-- ✅ Implemented frame pool management with sync.Pool for buffer recycling
-- ✅ Added buffer lifecycle management with Release() pattern
-- ✅ Achieved ~1,200x speedup in buffer allocation (22ns vs 28μs per 614KB frame)
-- ✅ 99.996% reduction in memory allocated per operation
-- ✅ Created separate streaming loops for optimal performance per API
-- ✅ Added benchmarks demonstrating performance improvements
-- ✅ Created high-performance example (examples/capture_frames)
-
-**Performance Results:**
-```
-Benchmark (640x480 YUYV, ~614KB frame):
-Direct Allocation:  27,592 ns/op    614,400 B/op    1 allocs/op
-FramePool.Get:          22 ns/op         26 B/op    1 allocs/op
-Speedup: ~1,245x faster, 99.996% memory reduction
-```
-
-**Remaining Deliverables (Phase 2):**
-- Implement true zero-copy frame access (no copy from mmap buffers)
-- Add buffer reference counting for zero-copy safety
-- Optimize goroutine scheduling and channel operations
-- Add CPU usage profiling examples
-- Create performance testing suite with various resolutions/formats
-- Add benchmark results and optimization guide to documentation
-- Test high-throughput scenarios (1080p60, 4K30)
+**Deliverables**:
+- Implement compound control support
+- Add control event subscription
+- Add control classes/grouping
+- Create codec control examples
 
 ---
 
-### 14. **WASM Component Model Plugin System**
+### 1.11-1.15 Control References
+**Status**: 🚧 Partial
 
-**Status:** Not Started
-**Goal:** Enable extensible video processing pipelines using WebAssembly Component Model (WIT)
+#### 1.11 Camera Control Reference
+- [x] Basic camera controls (exposure, focus, zoom)
+- [ ] Complete camera control enumeration
+- [ ] Auto-focus regions
+- [ ] Scene modes
+- [ ] Exposure metering
 
-**Rationale:**
-A plugin system allows users to extend go4vl with custom frame processors, filters, encoders, and analyzers without modifying the core library. Using WASM Component Model with WIT (WebAssembly Interface Types) provides:
-- Language-agnostic plugins (write in Rust, C, Go, etc.)
-- Sandboxed execution for safety and security
-- Performance approaching native code
-- Cross-platform compatibility
-- Hot-reloadable processing pipelines
+#### 1.12 Flash Control Reference
+- [ ] Flash mode controls
+- [ ] Flash intensity
+- [ ] Torch mode
+- [ ] Flash timing
 
-**Use Cases:**
-- Custom image filters and effects
-- AI/ML inference on video frames
-- Custom codec implementations
-- Specialized format converters
-- Real-time video analytics
-- Edge detection, object tracking, etc.
+#### 1.13 Image Source Control Reference
+- [ ] Analog gain
+- [ ] Digital gain
+- [ ] Test patterns
 
-**Deliverables:**
-- Design WIT interface definitions for video processing plugins
-- Implement WASM runtime integration (wazero or wasmtime-go)
-- Create plugin lifecycle management (load, initialize, execute, unload)
-- Add frame buffer passing between host and plugin (zero-copy where possible)
-- Implement plugin discovery and registration system
-- Create plugin development SDK and templates
-- Add example plugins in multiple languages (Rust, TinyGo, C)
-- Document plugin API and development workflow
-- Create benchmarks comparing plugin vs native performance
-- Add plugin marketplace/registry documentation
+#### 1.14 Image Process Control Reference
+- [ ] Color correction
+- [ ] Sharpness
+- [ ] Noise reduction
 
-**WIT Interface Design:**
-```wit
-// Example WIT interface for frame processor plugin
-interface frame-processor {
-  // Initialize plugin with configuration
-  init: func(config: string) -> result<_, string>
+#### 1.15 Codec Control Reference
+- [ ] H.264 encoder controls
+- [ ] H.265/HEVC encoder controls
+- [ ] VP8/VP9 encoder controls
+- [ ] MPEG controls
+- [ ] Bitrate control modes
+- [ ] GOP structure
+- [ ] Quality/profile presets
 
-  // Process a single frame
-  process-frame: func(input: list<u8>, width: u32, height: u32, format: u32)
-    -> result<list<u8>, string>
+**Priority**: High for codec controls, Medium for others
 
-  // Query plugin capabilities
-  get-capabilities: func() -> plugin-info
-
-  // Cleanup resources
-  cleanup: func()
-}
-```
-
-**Integration Points:**
-- Pipeline stage insertion (pre-capture, post-capture, pre-encode)
-- Format conversion plugins
-- Codec plugins for custom formats
-- Control plugins for device automation
+**Deliverables**:
+- Create `v4l2/ext_ctrls_camera.go`
+- Create `v4l2/ext_ctrls_codec.go`
+- Implement codec control profiles
+- Create hardware encoder example
 
 ---
 
-## Additional Improvements
+## 2. Data Formats
 
-### Documentation
-- Create comprehensive API reference with detailed examples
-- Add architecture overview and design principles document
-- Create platform-specific guides (Raspberry Pi, Jetson, x86)
-- Add troubleshooting guide for common issues
+### 2.1 Image Formats
+**Status**: 🚧 Partial
 
-### Tooling
-- Create device capability inspection CLI tool
-- Add format conversion benchmarking tool
-- Create video capture GUI example (using fyne or similar)
-- Add device stress testing utility
+- [x] `VIDIOC_ENUM_FMT` - Enumerate formats
+- [x] `VIDIOC_G_FMT` - Get format
+- [x] `VIDIOC_S_FMT` - Set format
+- [x] `VIDIOC_TRY_FMT` - Try format
+- [x] Pixel format FOURCCs (MJPEG, YUYV, H264, etc.)
+- [ ] Format flags and capabilities
+- [ ] Colorspace information
+- [ ] Quantization range
+- [ ] Transfer function (gamma)
+
+**Files**: `v4l2/formats.go`, `device/device.go`
+
+**Deliverables**:
+- Complete colorspace support
+- Add HDR metadata
+- Document all supported pixel formats
+- Add format validation utilities
 
 ---
 
-## Long-Term Vision
+### 2.2 Compressed Formats
+**Status**: 🚧 Partial
 
-- **Cross-Device Synchronization:** Support synchronized capture from multiple devices with frame alignment
-- **Cloud Integration:** Examples for streaming to cloud services (RTMP, WebRTC, HLS)
-- **AI/ML Integration:** Examples integrating with Go ML frameworks and ONNX runtime for real-time inference
-- **Embedded Optimization:** Specialized builds for resource-constrained devices with reduced memory footprint
-- **Time-Code and Genlock Support:** Professional video production features for broadcast applications
+- [x] MJPEG support
+- [x] H.264 support
+- [ ] H.265/HEVC support
+- [ ] VP8/VP9 support
+- [ ] MPEG-2/4 support
+- [ ] Format-specific metadata
+
+**Files**: `v4l2/formats.go`
+
+**Deliverables**:
+- Add missing codec format constants
+- Document codec-specific parameters
+- Create encoder/decoder examples
 
 ---
 
-**Note:** This roadmap represents the project's aspirations and may evolve based on community contributions, user feedback, and emerging requirements.
+### 2.3 Reserved Format Identifiers
+**Status**: ✅ Complete
+
+- [x] FourCC pixel format codes
+- [x] Pixel format constants
+
+**Files**: `v4l2/formats.go`
+
+---
+
+### 2.4 Field Order
+**Status**: ✅ Complete
+
+- [x] Progressive
+- [x] Interlaced (top/bottom first)
+- [x] Field alternate
+
+**Files**: `v4l2/formats.go`
+
+---
+
+### 2.5 Colorspaces
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_COLORSPACE_*` constants
+- [ ] sRGB, Rec. 709, Rec. 2020
+- [ ] YCbCr encoding
+- [ ] Quantization ranges
+- [ ] Transfer functions
+- [ ] Colorspace conversion helpers
+
+**Priority**: Medium (important for professional video, HDR)
+
+**Deliverables**:
+- Create `v4l2/colorspace.go`
+- Add all colorspace constants
+- Add colorspace detection
+- Document colorspace workflows
+
+---
+
+## 3. Input/Output Methods
+
+### 3.1 Read/Write
+**Status**: ❌ Not Started
+
+- [ ] `read()` syscall support
+- [ ] `write()` syscall support
+- [ ] Blocking/non-blocking modes
+- [ ] `select()` integration
+
+**Priority**: Low (inefficient, streaming preferred)
+
+**Deliverables**:
+- Add read/write I/O option
+- Create simple read/write example
+- Document limitations vs streaming
+
+---
+
+### 3.2 Streaming I/O (Memory Mapping)
+**Status**: ✅ Complete
+
+- [x] `VIDIOC_REQBUFS` - Request buffers
+- [x] `VIDIOC_QUERYBUF` - Query buffer
+- [x] `VIDIOC_QBUF` - Queue buffer
+- [x] `VIDIOC_DQBUF` - Dequeue buffer
+- [x] `VIDIOC_STREAMON` - Start streaming
+- [x] `VIDIOC_STREAMOFF` - Stop streaming
+- [x] Memory-mapped buffers (MMAP)
+- [x] Buffer lifecycle management
+
+**Files**: `v4l2/streaming.go`, `device/device.go`
+
+**Tests**: `test/integration_test.go`
+
+---
+
+### 3.3 Streaming I/O (User Pointer)
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_MEMORY_USERPTR` support
+- [ ] User-allocated buffers
+- [ ] Buffer passing to driver
+- [ ] Memory alignment requirements
+
+**Priority**: Medium (zero-copy integration with other libraries)
+
+**Deliverables**:
+- Add UserPtr buffer allocation
+- Implement USERPTR queue/dequeue
+- Create userptr example
+- Benchmark vs MMAP
+
+---
+
+### 3.4 Streaming I/O (DMA Buffer Importing)
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_MEMORY_DMABUF` support
+- [ ] `VIDIOC_EXPBUF` - Export buffer as DMA-BUF
+- [ ] DMA-BUF file descriptor handling
+- [ ] Buffer import from DRM/GPU
+- [ ] DMA-BUF synchronization
+
+**Priority**: Medium-High (critical for GPU/display pipelines)
+
+**Deliverables**:
+- Create `v4l2/dmabuf.go`
+- Add DMA-BUF export/import
+- Create DRM integration example
+- Create GPU zero-copy example
+
+---
+
+### 3.5 Asynchronous I/O
+**Status**: ❌ Not Started
+
+- [ ] Non-blocking mode
+- [ ] `poll()` / `select()` / `epoll()` integration
+- [ ] `VIDIOC_DQEVENT` for async events
+- [ ] Timeout handling
+
+**Priority**: Medium (needed for multi-device capture)
+
+**Deliverables**:
+- Expose file descriptor for polling
+- Add async capture mode
+- Create multi-device epoll example
+
+---
+
+### 3.6 Buffers
+**Status**: ✅ Complete
+
+- [x] Buffer structure (`v4l2.Buffer`)
+- [x] Buffer flags
+- [x] Timestamp handling
+- [x] Sequence numbers
+- [x] Buffer metadata
+
+**Files**: `v4l2/streaming.go`, `device/frame.go`
+
+---
+
+### 3.7 Field Order
+**Status**: ✅ Complete
+
+- [x] Field order constants
+- [x] Progressive/interlaced detection
+
+**Files**: `v4l2/formats.go`
+
+---
+
+## 4. Interfaces
+
+### 4.1 Video Capture Interface
+**Status**: ✅ Complete
+
+- [x] Single-planar capture (`V4L2_BUF_TYPE_VIDEO_CAPTURE`)
+- [x] Frame capture loop
+- [x] Format negotiation
+- [x] Buffer management
+- [x] Context-based cancellation
+
+**Files**: `device/device.go`, `device/capture_bytes.go`, `device/capture_frames.go`
+
+**Examples**: `examples/capture0/`, `examples/capture_frames/`
+
+---
+
+### 4.2 Video Capture Interface (Multi-Planar)
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE`
+- [ ] Multi-planar buffer handling
+- [ ] Plane structure support
+- [ ] NV12, I420, YV12 planar formats
+
+**Priority**: Medium (needed for many hardware decoders/encoders)
+
+**Deliverables**:
+- Add multi-planar buffer types
+- Implement plane handling
+- Create multi-planar capture example
+
+---
+
+### 4.3 Video Output Interface
+**Status**: 🚧 Partial
+
+- [ ] `V4L2_BUF_TYPE_VIDEO_OUTPUT`
+- [ ] Frame output loop
+- [ ] Output format setup
+- [ ] Output buffer queueing
+- [ ] Timing control
+
+**Priority**: Medium (needed for video injection, encoding)
+
+**Deliverables**:
+- Complete output interface
+- Add output streaming loop
+- Create video playback example
+- Create encoder example
+
+---
+
+### 4.4 Video Output Interface (Multi-Planar)
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE`
+- [ ] Multi-planar output
+- [ ] Plane-based output formats
+
+**Priority**: Low (less common than capture)
+
+---
+
+### 4.5 Video Overlay Interface
+**Status**: 🔴 Out of Scope
+
+- Deprecated, not recommended for new applications
+- Use DRM/KMS for overlay functionality
+
+---
+
+### 4.6 Video Output Overlay Interface
+**Status**: 🔴 Out of Scope
+
+- Deprecated, replaced by DRM/KMS
+
+---
+
+### 4.7 Codec Interface
+**Status**: ❌ Not Started
+
+- [ ] Stateful codec interface
+- [ ] Encoder setup
+- [ ] Decoder setup
+- [ ] Codec state management
+- [ ] `VIDIOC_ENCODER_CMD` / `VIDIOC_DECODER_CMD`
+- [ ] Drain/flush operations
+- [ ] Dynamic resolution change
+
+**Priority**: High (hardware codec support)
+
+**Deliverables**:
+- Create `v4l2/codec.go`
+- Implement encoder/decoder state machines
+- Add codec command support
+- Create H.264 encoder example
+- Create H.264 decoder example
+
+---
+
+### 4.8 Effect Devices Interface
+**Status**: 🔴 Out of Scope
+
+- Rarely implemented in modern drivers
+
+---
+
+### 4.9 Raw VBI Data Interface
+**Status**: 🔴 Out of Scope
+
+- Legacy analog TV feature
+- Teletext/closed captions (use modern subtitle standards instead)
+
+---
+
+### 4.10 Sliced VBI Data Interface
+**Status**: 🔴 Out of Scope
+
+- Legacy analog TV feature
+
+---
+
+### 4.11 Teletext Interface
+**Status**: 🔴 Out of Scope
+
+- Legacy analog TV feature
+
+---
+
+### 4.12 Radio Interface
+**Status**: ❌ Not Started
+
+- [ ] FM/AM radio tuner support
+- [ ] RDS/RBDS data
+- [ ] Radio frequency control
+- [ ] Signal strength monitoring
+
+**Priority**: Low (niche hardware)
+
+---
+
+### 4.13 RDS Interface
+**Status**: ❌ Not Started
+
+- [ ] RDS data structures
+- [ ] Program information
+- [ ] Radio text
+
+**Priority**: Low
+
+---
+
+### 4.14 Software Defined Radio Interface (SDR)
+**Status**: ❌ Not Started
+
+- [ ] `V4L2_BUF_TYPE_SDR_CAPTURE`
+- [ ] IQ sample formats
+- [ ] Sample rate control
+- [ ] Tuning and gain control
+
+**Priority**: Low (specialized hardware)
+
+---
+
+### 4.15 Touch Devices
+**Status**: 🔴 Out of Scope
+
+- Touchscreen data should use input subsystem, not V4L2
+
+---
+
+### 4.16 Media Controller
+**Status**: ❌ Not Started
+
+- [ ] `MEDIA_IOC_DEVICE_INFO`
+- [ ] `MEDIA_IOC_ENUM_ENTITIES`
+- [ ] `MEDIA_IOC_ENUM_LINKS`
+- [ ] `MEDIA_IOC_SETUP_LINK`
+- [ ] Pipeline configuration
+- [ ] Subdevice management
+- [ ] Pad-level configuration
+
+**Priority**: High (required for CSI-2 cameras, complex pipelines)
+
+**Deliverables**:
+- Create `media/` package for Media Controller API
+- Implement entity/link enumeration
+- Add pipeline setup
+- Create Raspberry Pi Camera Module example
+- Create MIPI CSI-2 camera example
+
+---
+
+### 4.17 Sub-device Interface
+**Status**: ❌ Not Started
+
+- [ ] `VIDIOC_SUBDEV_ENUM_MBUS_CODE`
+- [ ] `VIDIOC_SUBDEV_ENUM_FRAME_SIZE`
+- [ ] `VIDIOC_SUBDEV_G_FMT` / `VIDIOC_S_FMT`
+- [ ] Pad-level format negotiation
+- [ ] Subdevice controls
+
+**Priority**: Medium (needed with Media Controller)
+
+**Deliverables**:
+- Add subdevice format handling
+- Create subdevice control API
+- Integrate with Media Controller
+
+---
+
+## 5. Event Handling
+
+### 5.1 Event Interface
+**Status**: ❌ Not Started
+
+- [ ] `VIDIOC_SUBSCRIBE_EVENT`
+- [ ] `VIDIOC_UNSUBSCRIBE_EVENT`
+- [ ] `VIDIOC_DQEVENT`
+- [ ] Event types:
+  - [ ] `V4L2_EVENT_VSYNC` - Vertical sync events
+  - [ ] `V4L2_EVENT_EOS` - End of stream
+  - [ ] `V4L2_EVENT_CTRL` - Control changes
+  - [ ] `V4L2_EVENT_FRAME_SYNC` - Frame sync events
+  - [ ] `V4L2_EVENT_SOURCE_CHANGE` - Source change (resolution, etc.)
+  - [ ] `V4L2_EVENT_MOTION_DET` - Motion detection
+
+**Priority**: Medium (useful for codec state changes, resolution changes)
+
+**Deliverables**:
+- Create `v4l2/events.go`
+- Implement event subscription
+- Add event polling/dequeueing
+- Create event monitoring example
+
+---
+
+## 6. Memory-to-Memory Interface
+
+### 6.1 Memory-to-Memory
+**Status**: ❌ Not Started
+
+- [ ] M2M device detection
+- [ ] Dual queue management (output + capture)
+- [ ] Job scheduling
+- [ ] Image processing devices
+- [ ] Video conversion devices
+- [ ] Codec devices (encoder/decoder)
+
+**Priority**: High (hardware codecs, scalers, converters)
+
+**Deliverables**:
+- Create M2M device abstraction
+- Implement dual-queue management
+- Create image scaler example
+- Create format converter example
+
+---
+
+## 7. Selection API (Cropping, Composing, Scaling)
+
+### 7.1 Crop/Selection API
+**Status**: 🚧 Partial
+
+- [x] `VIDIOC_CROPCAP` - Query crop capabilities (basic)
+- [ ] `VIDIOC_G_CROP` - Get crop rectangle
+- [ ] `VIDIOC_S_CROP` - Set crop rectangle
+- [ ] `VIDIOC_G_SELECTION` - Get selection rectangle
+- [ ] `VIDIOC_S_SELECTION` - Set selection rectangle
+- [ ] Selection targets (crop, compose, crop bounds, etc.)
+- [ ] Scaling support
+
+**Priority**: Medium (useful for region of interest, scaling)
+
+**Deliverables**:
+- Complete crop/selection API
+- Add selection target support
+- Create crop example
+- Create compose/scale example
+
+---
+
+## 8. MPEG Compression
+
+### 8.1 MPEG Compression API
+**Status**: 🔴 Deprecated
+
+- Replaced by extended controls (codec controls)
+- See section 1.15 Codec Control Reference
+
+---
+
+## 9. Memory Management
+
+### 9.1 CREATE_BUFS
+**Status**: ❌ Not Started
+
+- [ ] `VIDIOC_CREATE_BUFS` - Create buffers
+- [ ] Dynamic buffer allocation
+- [ ] Per-buffer format configuration
+
+**Priority**: Low (optional optimization)
+
+**Deliverables**:
+- Add CREATE_BUFS support
+- Add dynamic buffer allocation
+- Benchmark vs REQBUFS
+
+---
+
+### 9.2 DMABUF Exporting
+**Status**: ❌ Not Started
+
+- [ ] `VIDIOC_EXPBUF` - Export buffer as DMA-BUF
+- [ ] DMA-BUF fd management
+
+**Priority**: Medium (needed for GPU integration)
+
+---
+
+### 9.3 DMABUF Importing
+**Status**: ❌ Not Started
+
+- [ ] Import DMA-BUF from other subsystems
+- [ ] GPU-allocated buffer import
+- [ ] Display buffer sharing
+
+**Priority**: Medium
+
+---
+
+## 10. Debugging and Tracing
+
+### 10.1 Debug Interfaces
+**Status**: ❌ Not Started
+
+- [ ] `VIDIOC_LOG_STATUS` - Log device status
+- [ ] Debug register access (if supported)
+
+**Priority**: Low
+
+---
+
+## Summary Statistics
+
+### By Status
+- ✅ Complete: ~15 items
+- 🚧 Partial: ~8 items
+- ❌ Not Started: ~45 items
+- 🔴 Out of Scope: ~8 items
+
+### By Priority
+- **High**: Codec interface, M2M, Media Controller, Codec controls, DMA-BUF
+- **Medium**: Multi-planar, Video output, DV timings, Extended controls
+- **Low**: Priority API, Read/write I/O, Legacy features
+
+---
+
+## Implementation Phases
+
+### Phase 1: High-Priority Core Features (Current Focus)
+1. Frame Statistics API ✅
+2. Codec Control Reference
+3. Memory-to-Memory Interface
+4. Media Controller API
+5. DMA-BUF Support (Export/Import)
+
+### Phase 2: Professional Video Features
+1. Multi-planar support
+2. DV Timings
+3. Event Interface
+4. Selection API (Crop/Compose)
+
+### Phase 3: Additional Device Types
+1. Video Output Interface
+2. Audio Inputs/Outputs
+3. Codec State Management
+
+### Phase 4: Specialized Features
+1. User Pointer I/O
+2. Async I/O
+3. Tuners/Modulators
+4. SDR Interface
+
+---
+
+## Notes
+
+- Items marked 🔴 Out of Scope are legacy/deprecated features not recommended for new applications
+- Priority ratings consider:
+  - User demand
+  - Hardware availability
+  - Complexity
+  - Dependencies
+- Each roadmap item should have:
+  - Clear deliverables
+  - Test coverage
+  - Documentation
+  - Example code
+
+---
+
+**Last Updated**: 2025-10-19
+**Based On**: Linux Kernel Documentation v6.6+
