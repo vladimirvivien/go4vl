@@ -1,6 +1,6 @@
 module github.com/vladimirvivien/go4vl/webcam
 
-go 1.19
+go 1.25
 
 require (
 	github.com/esimov/pigo v1.4.6

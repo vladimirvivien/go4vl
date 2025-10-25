@@ -1,6 +1,6 @@
 module github.com/vladimirvivien/go4vl/simplecam
 
-go 1.19
+go 1.25
 
 require github.com/vladimirvivien/go4vl v0.0.5
 
