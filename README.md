@@ -50,8 +50,9 @@ Working directly with V4L2 in Go requires complex C interop and manual memory ma
 
 **Software:**
 * Go 1.16 or later
-* Linux kernel 5.10.x or later
+* Linux kernel 5.10.x or later (go4vl works with kernel 5.10.x and newer)
 * C compiler (gcc/clang) or cross-compiler for target platform
+* V4L2 kernel headers (linux-libc-dev on Debian/Ubuntu, kernel-headers on RHEL/Fedora)
 * V4L2 drivers (typically included in Linux kernel)
 
 **Hardware:**
@@ -63,7 +64,7 @@ Working directly with V4L2 in Go requires complex C interop and manual memory ma
 * x86_64 Linux distributions
 * ARM Linux systems with V4L2 support
 
-See [examples/README.md](./examples/README.md) for detailed build instructions including cross-compilation with Zig and Docker.
+See [docs/BUILD.md](./docs/BUILD.md) for comprehensive build instructions including prerequisite installation, cross-compilation, and troubleshooting.
 
 ## Installation
 
@@ -76,6 +77,28 @@ Ensure your user has access to video devices:
 sudo usermod -a -G video $USER
 # Log out and back in for changes to take effect
 ```
+
+**Note**: For detailed build instructions, including installing V4L2 headers, cross-compilation, and using custom kernel headers, see [docs/BUILD.md](./docs/BUILD.md).
+
+## Building
+
+To build the go4vl packages or examples:
+
+```bash
+# Build the v4l2 package
+go build ./v4l2
+
+# Build an example
+go build ./examples/snapshot
+```
+
+The build requires V4L2 kernel headers (typically from `linux-libc-dev` package). To use custom kernel headers, override the include path:
+
+```bash
+CGO_CFLAGS="-I/path/to/custom/headers" go build ./v4l2
+```
+
+For detailed build instructions including prerequisite installation, cross-compilation with Zig or Docker, and troubleshooting, see [docs/BUILD.md](./docs/BUILD.md).
 
 ## Quick Start
 
@@ -197,11 +220,6 @@ for frame := range dev.GetFrames() {
 }
 ```
 
-**Performance comparison (GetFrames vs GetOutput):**
-* **~1,200x faster** buffer allocation (22ns vs 28μs per 614KB frame)
-* **99.996% reduction** in memory allocated per operation (26 B vs 614 KB)
-* **60-80% reduction** in GC pauses for high-FPS streaming
-* **Metadata access** at zero cost (timestamp, sequence, flags)
 
 The `GetFrames()` API uses buffer pooling to dramatically reduce allocation overhead and GC pressure, making it ideal for high-throughput video processing. See [examples/capture_frames](./examples/capture_frames/) for a complete example.
 
