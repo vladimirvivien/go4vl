@@ -1,7 +1,6 @@
 package v4l2
 
 /*
-#cgo linux CFLAGS: -I ${SRCDIR}/../include/
 #include <linux/videodev2.h>
 #include <linux/v4l2-controls.h>
 */
