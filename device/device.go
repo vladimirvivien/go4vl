@@ -556,6 +556,135 @@ func (d *Device) GetVideoInputInfo(index uint32) (v4l2.InputInfo, error) {
 	return v4l2.GetVideoInputInfo(d.fd, index)
 }
 
+// SetVideoInputIndex sets the currently selected video input index.
+//
+// Parameters:
+//   - index: Zero-based index of the input to select
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture
+// or input selection.
+func (d *Device) SetVideoInputIndex(index int32) error {
+	if !d.cap.IsVideoCaptureSupported() {
+		return v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.SetVideoInputIndex(d.fd, index)
+}
+
+// GetVideoInputDescriptions returns all video inputs supported by the device.
+// Each input description includes the input name, type, and capabilities.
+//
+// This is useful for discovering input options before calling SetVideoInputIndex().
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
+//
+// Example:
+//
+//	inputs, err := dev.GetVideoInputDescriptions()
+//	for _, in := range inputs {
+//	    log.Printf("Input %d: %s (type=%d, status=%s)\n",
+//	        in.GetIndex(), in.GetName(), in.GetInputType(),
+//	        v4l2.InputStatuses[in.GetStatus()])
+//	}
+func (d *Device) GetVideoInputDescriptions() ([]v4l2.InputInfo, error) {
+	if !d.cap.IsVideoCaptureSupported() {
+		return nil, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.GetAllVideoInputInfo(d.fd)
+}
+
+// GetVideoInputStatus returns the current status of the selected video input.
+// The status includes signal detection, power status, and color information.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video capture
+// or input status queries.
+func (d *Device) GetVideoInputStatus() (v4l2.InputStatus, error) {
+	if !d.cap.IsVideoCaptureSupported() {
+		return 0, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.QueryInputStatus(d.fd)
+}
+
+// GetVideoOutputIndex returns the currently selected video output index.
+// Video devices may have multiple outputs (e.g., HDMI, DisplayPort, composite).
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video output
+// or output selection.
+func (d *Device) GetVideoOutputIndex() (int32, error) {
+	if !d.cap.IsVideoOutputSupported() {
+		return 0, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.GetCurrentVideoOutputIndex(d.fd)
+}
+
+// SetVideoOutputIndex sets the currently selected video output index.
+//
+// Parameters:
+//   - index: Zero-based index of the output to select
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video output
+// or output selection.
+func (d *Device) SetVideoOutputIndex(index int32) error {
+	if !d.cap.IsVideoOutputSupported() {
+		return v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.SetVideoOutputIndex(d.fd, index)
+}
+
+// GetVideoOutputInfo returns information about a specific video output.
+//
+// Parameters:
+//   - index: Zero-based index of the output to query
+//
+// The returned OutputInfo includes the output name, type, and supported standards.
+// Returns ErrorUnsupportedFeature if the device doesn't support video output.
+func (d *Device) GetVideoOutputInfo(index uint32) (v4l2.OutputInfo, error) {
+	if !d.cap.IsVideoOutputSupported() {
+		return v4l2.OutputInfo{}, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.GetVideoOutputInfo(d.fd, index)
+}
+
+// GetVideoOutputDescriptions returns all video outputs supported by the device.
+// Each output description includes the output name, type, and capabilities.
+//
+// This is useful for discovering output options before calling SetVideoOutputIndex().
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video output.
+//
+// Example:
+//
+//	outputs, err := dev.GetVideoOutputDescriptions()
+//	for _, out := range outputs {
+//	    log.Printf("Output %d: %s (type=%d)\n",
+//	        out.GetIndex(), out.GetName(), out.GetOutputType())
+//	}
+func (d *Device) GetVideoOutputDescriptions() ([]v4l2.OutputInfo, error) {
+	if !d.cap.IsVideoOutputSupported() {
+		return nil, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.GetAllVideoOutputInfo(d.fd)
+}
+
+// GetVideoOutputStatus returns the current status of the selected video output.
+// The status includes power and signal information.
+//
+// Returns ErrorUnsupportedFeature if the device doesn't support video output
+// or output status queries.
+func (d *Device) GetVideoOutputStatus() (v4l2.OutputStatus, error) {
+	if !d.cap.IsVideoOutputSupported() {
+		return 0, v4l2.ErrorUnsupportedFeature
+	}
+
+	return v4l2.QueryOutputStatus(d.fd)
+}
+
 // GetStreamParam returns the current streaming parameters including
 // capture/output timing, buffer settings, and capability flags.
 //
