@@ -61,24 +61,29 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.4 Video Inputs and Outputs
-**Status**: 🚧 Partial
+**Status**: ✅ Complete
 
 - [x] `VIDIOC_ENUMINPUT` - Enumerate video inputs
 - [x] `VIDIOC_G_INPUT` - Get current input
 - [x] `VIDIOC_S_INPUT` - Set current input
-- [ ] `VIDIOC_ENUMOUTPUT` - Enumerate video outputs
-- [ ] `VIDIOC_G_OUTPUT` - Get current output
-- [ ] `VIDIOC_S_OUTPUT` - Set current output
-- [ ] Input/output status queries
-- [ ] Audio/video standard association
+- [x] `VIDIOC_ENUMOUTPUT` - Enumerate video outputs
+- [x] `VIDIOC_G_OUTPUT` - Get current output
+- [x] `VIDIOC_S_OUTPUT` - Set current output
+- [x] Input/output status queries
+- [x] Audio/video standard association
 
-**Files**: `device/device.go` (partial)
+**Files**: `v4l2/video_info.go`, `device/device.go`
+
+**Tests**: `v4l2/video_info_test.go`, `test/video_io_test.go`
+
+**Examples**: `examples/video_inputs/`, `examples/video_outputs/`
 
 **Deliverables**:
-- Complete output device support
-- Add input/output enumeration
-- Add status query methods
-- Create video output examples
+- ✅ Complete output device support
+- ✅ Add input/output enumeration
+- ✅ Add status query methods
+- ✅ Create video input examples
+- ✅ Create video output examples
 
 ---
 

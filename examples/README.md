@@ -11,6 +11,8 @@
 
 * [device_info](./device_info) - Uses go4vl to query and print device and format information.
 * [format](./format) - Shows how to query and apply device and format information.
+* [video_inputs](./video_inputs/) - Enumerate and select video inputs (for devices with multiple inputs).
+* [video_outputs](./video_outputs/) - Enumerate and select video outputs (for output devices and v4l2loopback).
 * [ext_ctrls](./ext_ctrls/) Shows how to query and apply extended controls.
 * [user_ctrl](./user_ctrl/) Shows how to query and apply user controls.
 
