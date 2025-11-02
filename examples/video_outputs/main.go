@@ -61,7 +61,12 @@ func main() {
 		}
 
 		fmt.Printf("[%d] %s%s\n", output.GetIndex(), output.GetName(), active)
-		fmt.Printf("    Type:         %s\n", getOutputTypeName(output.GetOutputType()))
+
+		typeName := v4l2.OutputTypes[output.GetOutputType()]
+		if typeName == "" {
+			typeName = fmt.Sprintf("Unknown (%d)", output.GetOutputType())
+		}
+		fmt.Printf("    Type:         %s\n", typeName)
 		fmt.Printf("    Audioset:     0x%08x\n", output.GetAudioset())
 		fmt.Printf("    Modulator:    %d\n", output.GetModulator())
 		fmt.Printf("    Standards:    0x%016x\n", output.GetStandardId())
@@ -114,25 +119,16 @@ func main() {
 				log.Fatalf("Failed to get new output info: %v", err)
 			}
 			fmt.Printf("  Name: %s\n", info.GetName())
-			fmt.Printf("  Type: %s\n", getOutputTypeName(info.GetOutputType()))
+
+			typeName := v4l2.OutputTypes[info.GetOutputType()]
+			if typeName == "" {
+				typeName = fmt.Sprintf("Unknown (%d)", info.GetOutputType())
+			}
+			fmt.Printf("  Type: %s\n", typeName)
 		} else {
 			fmt.Printf("⚠ Output selection may not have worked (got %d, expected %d)\n", newIdx, selectOutput)
 		}
 	} else {
 		fmt.Println("Tip: Use -s <index> to select a different output")
-	}
-}
-
-// getOutputTypeName returns a human-readable name for the output type
-func getOutputTypeName(outputType v4l2.OutputType) string {
-	switch outputType {
-	case v4l2.OutputTypeModulator:
-		return "Modulator"
-	case v4l2.OutputTypeAnalog:
-		return "Analog"
-	case v4l2.OutputTypeAnalogVGAOverlay:
-		return "Analog VGA Overlay"
-	default:
-		return fmt.Sprintf("Unknown (%d)", outputType)
 	}
 }
