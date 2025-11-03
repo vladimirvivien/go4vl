@@ -57,8 +57,15 @@ func main() {
 		}
 
 		fmt.Printf("[%d] %s%s\n", input.GetIndex(), input.GetName(), active)
-		fmt.Printf("    Type:         %s\n", getInputTypeName(input.GetInputType()))
-		fmt.Printf("    Status:       %s\n", getInputStatusName(input.GetStatus()))
+
+		typeName := v4l2.InputTypes[input.GetInputType()]
+		if typeName == "" {
+			typeName = fmt.Sprintf("Unknown (%d)", input.GetInputType())
+		}
+		fmt.Printf("    Type:         %s\n", typeName)
+
+		statusName := getInputStatusName(input.GetStatus())
+		fmt.Printf("    Status:       %s\n", statusName)
 		fmt.Printf("    Audioset:     0x%08x\n", input.GetAudioset())
 		fmt.Printf("    Tuner:        %d\n", input.GetTuner())
 		fmt.Printf("    Standards:    0x%016x\n", input.GetStandardId())
@@ -121,26 +128,17 @@ func main() {
 				log.Fatalf("Failed to get new input info: %v", err)
 			}
 			fmt.Printf("  Name: %s\n", info.GetName())
-			fmt.Printf("  Type: %s\n", getInputTypeName(info.GetInputType()))
+
+			typeName := v4l2.InputTypes[info.GetInputType()]
+			if typeName == "" {
+				typeName = fmt.Sprintf("Unknown (%d)", info.GetInputType())
+			}
+			fmt.Printf("  Type: %s\n", typeName)
 		} else {
 			fmt.Printf("⚠ Input selection may not have worked (got %d, expected %d)\n", newIdx, selectInput)
 		}
 	} else {
 		fmt.Println("Tip: Use -s <index> to select a different input")
-	}
-}
-
-// getInputTypeName returns a human-readable name for the input type
-func getInputTypeName(inputType v4l2.InputType) string {
-	switch inputType {
-	case v4l2.InputTypeTuner:
-		return "Tuner"
-	case v4l2.InputTypeCamera:
-		return "Camera"
-	case v4l2.InputTypeTouch:
-		return "Touch"
-	default:
-		return fmt.Sprintf("Unknown (%d)", inputType)
 	}
 }
 

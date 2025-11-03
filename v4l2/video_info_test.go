@@ -70,6 +70,31 @@ func TestInputType_Constants(t *testing.T) {
 	}
 }
 
+// TestInputTypes_MapComplete verifies all input type values have descriptions
+func TestInputTypes_MapComplete(t *testing.T) {
+	tests := []struct {
+		name      string
+		inputType InputType
+		expected  string
+	}{
+		{"Tuner", InputTypeTuner, "Tuner"},
+		{"Camera", InputTypeCamera, "Camera"},
+		{"Touch", InputTypeTouch, "Touch"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			desc, exists := InputTypes[tt.inputType]
+			if !exists {
+				t.Errorf("InputType %d not found in InputTypes map", tt.inputType)
+			}
+			if desc != tt.expected {
+				t.Errorf("InputTypes[%d] = %q, want %q", tt.inputType, desc, tt.expected)
+			}
+		})
+	}
+}
+
 // TestOutputType_Constants verifies output type constants
 func TestOutputType_Constants(t *testing.T) {
 	tests := []struct {
@@ -86,6 +111,31 @@ func TestOutputType_Constants(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.outputType != tt.expected {
 				t.Errorf("%s = %d, want %d", tt.name, tt.outputType, tt.expected)
+			}
+		})
+	}
+}
+
+// TestOutputTypes_MapComplete verifies all output type values have descriptions
+func TestOutputTypes_MapComplete(t *testing.T) {
+	tests := []struct {
+		name       string
+		outputType OutputType
+		expected   string
+	}{
+		{"Modulator", OutputTypeModulator, "Modulator"},
+		{"Analog", OutputTypeAnalog, "Analog"},
+		{"Analog VGA Overlay", OutputTypeAnalogVGAOverlay, "Analog VGA Overlay"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			desc, exists := OutputTypes[tt.outputType]
+			if !exists {
+				t.Errorf("OutputType %d not found in OutputTypes map", tt.outputType)
+			}
+			if desc != tt.expected {
+				t.Errorf("OutputTypes[%d] = %q, want %q", tt.outputType, desc, tt.expected)
 			}
 		})
 	}

@@ -50,6 +50,12 @@ const (
 	InputTypeTouch
 )
 
+var InputTypes = map[InputType]string{
+	InputTypeTuner:  "Tuner",
+	InputTypeCamera: "Camera",
+	InputTypeTouch:  "Touch",
+}
+
 type StandardId = uint64
 
 // OutputType represents the type of video output
@@ -60,6 +66,12 @@ const (
 	OutputTypeAnalog
 	OutputTypeAnalogVGAOverlay
 )
+
+var OutputTypes = map[OutputType]string{
+	OutputTypeModulator:        "Modulator",
+	OutputTypeAnalog:           "Analog",
+	OutputTypeAnalogVGAOverlay: "Analog VGA Overlay",
+}
 
 // OutputStatus represents the status of a video output
 // Note: The V4L2 API does not define output status flags in the same way as input status.
