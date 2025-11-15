@@ -217,25 +217,51 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.10 Extended Controls API
-**Status**: 🚧 Partial
+**Status**: ✅ Complete
 
 - [x] `VIDIOC_G_EXT_CTRLS` - Get extended controls
 - [x] `VIDIOC_S_EXT_CTRLS` - Set extended controls
 - [x] `VIDIOC_TRY_EXT_CTRLS` - Try extended controls
-- [ ] Compound controls (arrays, structs)
-- [ ] Control classes (user, codec, camera, etc.)
-- [ ] `VIDIOC_SUBSCRIBE_EVENT` - Control change events
-- [ ] `VIDIOC_UNSUBSCRIBE_EVENT`
-- [ ] `VIDIOC_DQEVENT` - Dequeue control events
-- [ ] Atomic multi-control operations
+- [x] Compound controls (arrays, strings, structs)
+- [x] Control classes (user, codec, camera, JPEG, flash, etc.)
+- [x] `VIDIOC_SUBSCRIBE_EVENT` - Event subscription
+- [x] `VIDIOC_UNSUBSCRIBE_EVENT` - Unsubscribe from events
+- [x] `VIDIOC_DQEVENT` - Dequeue events
+- [x] Atomic multi-control operations
+- [x] Event structures and types (control, vsync, EOS, source change, motion detection)
+- [x] Memory management for strings and compound data
+- [x] Control event data extraction
 
-**Files**: `v4l2/control.go` (partial)
+**Implementation**:
+- `v4l2/ext_controls.go` (462 lines) - Complete extended controls API
+- `v4l2/events.go` (324 lines) - Complete event subscription API
+- `device/device.go` (+117 lines) - 6 device-level methods
 
-**Deliverables**:
-- Implement compound control support
-- Add control event subscription
-- Add control classes/grouping
-- Create codec control examples
+**Features**:
+- 14 control classes (User, Codec, Camera, JPEG, Flash, Image Source, Image Processing, DV, FM Tx/Rx, RF Tuner, Detection, Stateless Codec, Colorimetry)
+- 7 event types (All, VSync, EOS, Control, Frame Sync, Source Change, Motion Detection)
+- Extended control structures with compound type support
+- Type-safe accessors for 32-bit, 64-bit, string, and compound values
+- Proper C memory management with Free() methods
+- Event subscription with flags (send initial, allow feedback)
+- Event data extraction for all event types
+
+**Methods Added**:
+- `Device.GetExtControls()` - Atomic get multiple controls
+- `Device.SetExtControls()` - Atomic set multiple controls
+- `Device.TryExtControls()` - Test control values without applying
+- `Device.SubscribeEvent()` - Subscribe to device events
+- `Device.UnsubscribeEvent()` - Unsubscribe from events
+- `Device.DequeueEvent()` - Retrieve pending events
+
+**Tests**: ✅ Complete (1,379 lines)
+- `v4l2/ext_controls_test.go` (502 lines) - 26 unit tests
+- `v4l2/events_test.go` (453 lines) - 30 unit tests
+- `test/ext_controls_test.go` (424 lines) - 9 integration tests
+- 65 total tests, all passing
+- No regressions in existing tests
+
+**Total**: ~2,282 lines (903 implementation + 1,379 tests)
 
 ---
 

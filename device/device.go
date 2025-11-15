@@ -1199,6 +1199,209 @@ func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
 	return v4l2.GetMediaDeviceInfo(d.fd)
 }
 
+// GetExtControls retrieves multiple extended control values atomically.
+//
+// This method allows getting multiple control values in a single atomic operation,
+// which is particularly useful for codec controls and compound controls.
+//
+// Example:
+//   ctrls := v4l2.NewExtControls()
+//   ctrls.Add(v4l2.NewExtControl(v4l2.CtrlBrightness))
+//   ctrls.Add(v4l2.NewExtControl(v4l2.CtrlContrast))
+//   if err := device.GetExtControls(ctrls); err != nil {
+//       return err
+//   }
+//   brightness := ctrls.GetControls()[0].GetValue()
+//   contrast := ctrls.GetControls()[1].GetValue()
+func (d *Device) GetExtControls(ctrls *v4l2.ExtControls) error {
+	return v4l2.GetExtControls(d.fd, ctrls)
+}
+
+// SetExtControls sets multiple extended control values atomically.
+//
+// This method allows setting multiple control values in a single atomic operation.
+// If any control fails, none of the controls are changed.
+//
+// Example:
+//   ctrls := v4l2.NewExtControls()
+//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
+//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlContrast, 100))
+//   if err := device.SetExtControls(ctrls); err != nil {
+//       return err
+//   }
+func (d *Device) SetExtControls(ctrls *v4l2.ExtControls) error {
+	return v4l2.SetExtControls(d.fd, ctrls)
+}
+
+// TryExtControls tests whether extended control values would be accepted without actually setting them.
+//
+// This is useful for validating control values before applying them.
+//
+// Example:
+//   ctrls := v4l2.NewExtControls()
+//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
+//   if err := device.TryExtControls(ctrls); err != nil {
+//       // Value would be rejected
+//       return err
+//   }
+//   // Value is valid, safe to apply
+func (d *Device) TryExtControls(ctrls *v4l2.ExtControls) error {
+	return v4l2.TryExtControls(d.fd, ctrls)
+}
+
+// High-level convenience methods for common controls
+
+// SetBrightness sets the brightness control value.
+//
+// Example:
+//   err := device.SetBrightness(128)
+func (d *Device) SetBrightness(value int32) error {
+	ctrls := v4l2.NewExtControls()
+	ctrls.AddValue(v4l2.CtrlBrightness, value)
+	return v4l2.SetExtControls(d.fd, ctrls)
+}
+
+// GetBrightness gets the current brightness value.
+//
+// Example:
+//   brightness, err := device.GetBrightness()
+func (d *Device) GetBrightness() (int32, error) {
+	ctrls := v4l2.NewExtControls()
+	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlBrightness))
+	if err := v4l2.GetExtControls(d.fd, ctrls); err != nil {
+		return 0, err
+	}
+	return ctrls.GetControls()[0].GetValue(), nil
+}
+
+// SetContrast sets the contrast control value.
+//
+// Example:
+//   err := device.SetContrast(100)
+func (d *Device) SetContrast(value int32) error {
+	ctrls := v4l2.NewExtControls()
+	ctrls.AddValue(v4l2.CtrlContrast, value)
+	return v4l2.SetExtControls(d.fd, ctrls)
+}
+
+// GetContrast gets the current contrast value.
+//
+// Example:
+//   contrast, err := device.GetContrast()
+func (d *Device) GetContrast() (int32, error) {
+	ctrls := v4l2.NewExtControls()
+	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlContrast))
+	if err := v4l2.GetExtControls(d.fd, ctrls); err != nil {
+		return 0, err
+	}
+	return ctrls.GetControls()[0].GetValue(), nil
+}
+
+// SetSaturation sets the saturation control value.
+//
+// Example:
+//   err := device.SetSaturation(64)
+func (d *Device) SetSaturation(value int32) error {
+	ctrls := v4l2.NewExtControls()
+	ctrls.AddValue(v4l2.CtrlSaturation, value)
+	return v4l2.SetExtControls(d.fd, ctrls)
+}
+
+// GetSaturation gets the current saturation value.
+//
+// Example:
+//   saturation, err := device.GetSaturation()
+func (d *Device) GetSaturation() (int32, error) {
+	ctrls := v4l2.NewExtControls()
+	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlSaturation))
+	if err := v4l2.GetExtControls(d.fd, ctrls); err != nil {
+		return 0, err
+	}
+	return ctrls.GetControls()[0].GetValue(), nil
+}
+
+// SetHue sets the hue control value.
+//
+// Example:
+//   err := device.SetHue(0)
+func (d *Device) SetHue(value int32) error {
+	ctrls := v4l2.NewExtControls()
+	ctrls.AddValue(v4l2.CtrlHue, value)
+	return v4l2.SetExtControls(d.fd, ctrls)
+}
+
+// GetHue gets the current hue value.
+//
+// Example:
+//   hue, err := device.GetHue()
+func (d *Device) GetHue() (int32, error) {
+	ctrls := v4l2.NewExtControls()
+	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlHue))
+	if err := v4l2.GetExtControls(d.fd, ctrls); err != nil {
+		return 0, err
+	}
+	return ctrls.GetControls()[0].GetValue(), nil
+}
+
+// SubscribeEvent subscribes to V4L2 events.
+//
+// Events allow applications to be notified of device state changes such as
+// control value changes, end of stream, source resolution changes, etc.
+//
+// After subscribing, use DequeueEvent() to retrieve events from the device.
+//
+// Example - Subscribe to control change events:
+//   sub := v4l2.NewControlEventSubscription(v4l2.CtrlBrightness)
+//   sub.SetFlags(v4l2.EventSubFlagSendInitial)
+//   if err := device.SubscribeEvent(sub); err != nil {
+//       return err
+//   }
+//
+// Example - Subscribe to all events:
+//   sub := v4l2.NewEventSubscription(v4l2.EventAll)
+//   if err := device.SubscribeEvent(sub); err != nil {
+//       return err
+//   }
+func (d *Device) SubscribeEvent(sub *v4l2.EventSubscription) error {
+	return v4l2.SubscribeEvent(d.fd, sub)
+}
+
+// UnsubscribeEvent unsubscribes from V4L2 events.
+//
+// The subscription parameter should match the original subscription.
+//
+// Example:
+//   sub := v4l2.NewEventSubscription(v4l2.EventCtrl)
+//   if err := device.UnsubscribeEvent(sub); err != nil {
+//       return err
+//   }
+func (d *Device) UnsubscribeEvent(sub *v4l2.EventSubscription) error {
+	return v4l2.UnsubscribeEvent(d.fd, sub)
+}
+
+// DequeueEvent retrieves a pending event from the device.
+//
+// This method blocks until an event is available or an error occurs.
+// To use non-blocking event retrieval, use select() or poll() on the device file descriptor.
+//
+// Returns the event and nil on success, or nil and an error if no event is available.
+//
+// Example:
+//   event, err := device.DequeueEvent()
+//   if err != nil {
+//       return err
+//   }
+//   switch event.GetType() {
+//   case v4l2.EventCtrl:
+//       ctrlData := event.GetCtrlData()
+//       fmt.Printf("Control changed: ID=%d, Value=%d\n", event.GetID(), ctrlData.Value)
+//   case v4l2.EventEOS:
+//       fmt.Println("End of stream")
+//   }
+func (d *Device) DequeueEvent() (*v4l2.Event, error) {
+	return v4l2.DequeueEvent(d.fd)
+}
+
 // Start begins video streaming from the device. This method allocates buffers,
 // memory-maps them, and starts a background goroutine to handle frame capture.
 //
