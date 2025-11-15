@@ -15,6 +15,8 @@
 * [video_outputs](./video_outputs/) - Enumerate and select video outputs (for output devices and v4l2loopback).
 * [audio_inputs](./audio_inputs/) - Enumerate and select audio inputs (for webcams with mics, TV tuner cards).
 * [audio_outputs](./audio_outputs/) - Enumerate and select audio outputs (for video output devices).
+* [tuner](./tuner/) - Enumerate tuners, get/set frequency, and query signal strength (for radio/TV tuners, SDR devices).
+* [modulator](./modulator/) - Enumerate modulators and control transmission frequency (for RF modulators, transmitters).
 * [ext_ctrls](./ext_ctrls/) Shows how to query and apply extended controls.
 * [user_ctrl](./user_ctrl/) Shows how to query and apply user controls.
 

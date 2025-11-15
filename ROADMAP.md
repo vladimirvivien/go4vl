@@ -116,27 +116,33 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.6 Tuners and Modulators
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] `VIDIOC_G_TUNER` - Get tuner properties
-- [ ] `VIDIOC_S_TUNER` - Set tuner properties
-- [ ] `VIDIOC_G_MODULATOR` - Get modulator properties
-- [ ] `VIDIOC_S_MODULATOR` - Set modulator properties
-- [ ] `VIDIOC_G_FREQUENCY` - Get tuner/modulator frequency
-- [ ] `VIDIOC_S_FREQUENCY` - Set tuner/modulator frequency
-- [ ] `VIDIOC_ENUM_FREQ_BANDS` - Enumerate frequency bands
-- [ ] Tuner capabilities and modes
-- [ ] Signal strength/AFC monitoring
-- [ ] RDS/RBDS support
+- [x] `VIDIOC_G_TUNER` - Get tuner properties
+- [x] `VIDIOC_S_TUNER` - Set tuner properties
+- [x] `VIDIOC_G_MODULATOR` - Get modulator properties
+- [x] `VIDIOC_S_MODULATOR` - Set modulator properties
+- [x] `VIDIOC_G_FREQUENCY` - Get tuner/modulator frequency
+- [x] `VIDIOC_S_FREQUENCY` - Set tuner/modulator frequency
+- [x] `VIDIOC_ENUM_FREQ_BANDS` - Enumerate frequency bands
+- [x] Tuner capabilities and modes
+- [x] Signal strength/AFC monitoring
+- [x] RDS/RBDS support structures
 
 **Priority**: Low (niche hardware - TV tuners, SDR)
 
+**Files**: `v4l2/tuner_info.go`, `device/device.go`
+
+**Tests**: `v4l2/tuner_info_test.go`, `test/tuner_modulator_test.go`
+
+**Examples**: `examples/tuner/`, `examples/modulator/`
+
 **Deliverables**:
-- Create `v4l2/tuner.go`
-- Implement tuner/modulator structures
-- Add frequency control methods
-- Create FM radio tuner example
-- Create TV tuner example
+- ✅ Create `v4l2/tuner_info.go`
+- ✅ Implement tuner/modulator structures
+- ✅ Add frequency control methods
+- ✅ Create tuner example (radio/TV)
+- ✅ Create modulator example
 
 ---
 
