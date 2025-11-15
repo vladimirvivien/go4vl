@@ -88,24 +88,30 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.5 Audio Inputs and Outputs
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] `VIDIOC_ENUMAUDIO` - Enumerate audio inputs
-- [ ] `VIDIOC_G_AUDIO` - Get current audio input
-- [ ] `VIDIOC_S_AUDIO` - Set current audio input
-- [ ] `VIDIOC_ENUMAUDOUT` - Enumerate audio outputs
-- [ ] `VIDIOC_G_AUDOUT` - Get current audio output
-- [ ] `VIDIOC_S_AUDOUT` - Set current audio output
-- [ ] Audio capability flags
-- [ ] Audio mode selection
+- [x] `VIDIOC_ENUMAUDIO` - Enumerate audio inputs
+- [x] `VIDIOC_G_AUDIO` - Get current audio input
+- [x] `VIDIOC_S_AUDIO` - Set current audio input
+- [x] `VIDIOC_ENUMAUDOUT` - Enumerate audio outputs
+- [x] `VIDIOC_G_AUDOUT` - Get current audio output
+- [x] `VIDIOC_S_AUDOUT` - Set current audio output
+- [x] Audio capability flags
+- [x] Audio mode selection
 
 **Priority**: Medium (needed for TV tuner cards, webcams with mics)
 
+**Files**: `v4l2/audio_info.go`, `device/device.go`
+
+**Tests**: `v4l2/audio_info_test.go`, `test/audio_io_test.go`
+
+**Examples**: `examples/audio_inputs/`, `examples/audio_outputs/`
+
 **Deliverables**:
-- Create `v4l2/audio.go` with audio structures
-- Implement audio enumeration and selection
-- Add audio capability queries
-- Create example with webcam microphone
+- ✅ Create `v4l2/audio_info.go` with audio structures
+- ✅ Implement audio enumeration and selection
+- ✅ Add audio capability queries
+- ✅ Create example with webcam microphone
 
 ---
 

@@ -685,6 +685,142 @@ func (d *Device) GetVideoOutputStatus() (v4l2.OutputStatus, error) {
 	return v4l2.QueryOutputStatus(d.fd)
 }
 
+// GetAudioInfo returns information about a specific audio input.
+//
+// Parameters:
+//   - index: Zero-based index of the audio input to query
+//
+// The returned AudioInfo includes the audio input name, capabilities, and mode.
+// This can be used to enumerate available audio inputs associated with the device.
+//
+// Example:
+//
+//	audio, err := dev.GetAudioInfo(0)
+//	if err == nil {
+//	    log.Printf("Audio: %s, Stereo: %v\n", audio.GetName(), audio.IsStereo())
+//	}
+func (d *Device) GetAudioInfo(index uint32) (v4l2.AudioInfo, error) {
+	return v4l2.GetAudioInfo(d.fd, index)
+}
+
+// GetAudioDescriptions returns all audio inputs supported by the device.
+// Each audio description includes the audio name, capabilities, and modes.
+//
+// This is useful for discovering available audio inputs before selecting one.
+//
+// Example:
+//
+//	audios, err := dev.GetAudioDescriptions()
+//	for _, audio := range audios {
+//	    log.Printf("Audio %d: %s, Stereo: %v, AVL: %v\n",
+//	        audio.GetIndex(), audio.GetName(),
+//	        audio.IsStereo(), audio.HasAVL())
+//	}
+func (d *Device) GetAudioDescriptions() ([]v4l2.AudioInfo, error) {
+	return v4l2.GetAllAudioInfo(d.fd)
+}
+
+// GetCurrentAudio returns the currently selected audio input.
+//
+// Returns the audio input configuration including index, name, and capabilities.
+func (d *Device) GetCurrentAudio() (v4l2.AudioInfo, error) {
+	return v4l2.GetCurrentAudio(d.fd)
+}
+
+// SetAudio sets the current audio input by index.
+//
+// Parameters:
+//   - index: Zero-based index of the audio input to select
+//
+// Example:
+//
+//	// Select the first audio input
+//	err := dev.SetAudio(0)
+func (d *Device) SetAudio(index uint32) error {
+	return v4l2.SetAudio(d.fd, index)
+}
+
+// SetAudioMode sets the audio mode for the current audio input.
+//
+// Parameters:
+//   - mode: Audio mode to set (e.g., v4l2.AudioModeAVL for Automatic Volume Level)
+//
+// Example:
+//
+//	// Enable Automatic Volume Level
+//	err := dev.SetAudioMode(v4l2.AudioModeAVL)
+func (d *Device) SetAudioMode(mode v4l2.AudioMode) error {
+	return v4l2.SetAudioMode(d.fd, mode)
+}
+
+// GetAudioOutInfo returns information about a specific audio output.
+//
+// Parameters:
+//   - index: Zero-based index of the audio output to query
+//
+// The returned AudioOutInfo includes the audio output name, capabilities, and mode.
+// This can be used to enumerate available audio outputs associated with the device.
+//
+// Example:
+//
+//	audioOut, err := dev.GetAudioOutInfo(0)
+//	if err == nil {
+//	    log.Printf("Audio Out: %s, Stereo: %v\n", audioOut.GetName(), audioOut.IsStereo())
+//	}
+func (d *Device) GetAudioOutInfo(index uint32) (v4l2.AudioOutInfo, error) {
+	return v4l2.GetAudioOutInfo(d.fd, index)
+}
+
+// GetAudioOutDescriptions returns all audio outputs supported by the device.
+// Each audio output description includes the name, capabilities, and modes.
+//
+// This is useful for discovering available audio outputs before selecting one.
+//
+// Example:
+//
+//	audioOuts, err := dev.GetAudioOutDescriptions()
+//	for _, audioOut := range audioOuts {
+//	    log.Printf("Audio Out %d: %s, Stereo: %v, AVL: %v\n",
+//	        audioOut.GetIndex(), audioOut.GetName(),
+//	        audioOut.IsStereo(), audioOut.HasAVL())
+//	}
+func (d *Device) GetAudioOutDescriptions() ([]v4l2.AudioOutInfo, error) {
+	return v4l2.GetAllAudioOutInfo(d.fd)
+}
+
+// GetCurrentAudioOut returns the currently selected audio output.
+//
+// Returns the audio output configuration including index, name, and capabilities.
+func (d *Device) GetCurrentAudioOut() (v4l2.AudioOutInfo, error) {
+	return v4l2.GetCurrentAudioOut(d.fd)
+}
+
+// SetAudioOut sets the current audio output by index.
+//
+// Parameters:
+//   - index: Zero-based index of the audio output to select
+//
+// Example:
+//
+//	// Select the first audio output
+//	err := dev.SetAudioOut(0)
+func (d *Device) SetAudioOut(index uint32) error {
+	return v4l2.SetAudioOut(d.fd, index)
+}
+
+// SetAudioOutMode sets the audio mode for the current audio output.
+//
+// Parameters:
+//   - mode: Audio mode to set (e.g., v4l2.AudioModeAVL for Automatic Volume Level)
+//
+// Example:
+//
+//	// Enable Automatic Volume Level on audio output
+//	err := dev.SetAudioOutMode(v4l2.AudioModeAVL)
+func (d *Device) SetAudioOutMode(mode v4l2.AudioMode) error {
+	return v4l2.SetAudioOutMode(d.fd, mode)
+}
+
 // GetStreamParam returns the current streaming parameters including
 // capture/output timing, buffer settings, and capability flags.
 //

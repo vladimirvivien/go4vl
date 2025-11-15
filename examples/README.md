@@ -13,6 +13,8 @@
 * [format](./format) - Shows how to query and apply device and format information.
 * [video_inputs](./video_inputs/) - Enumerate and select video inputs (for devices with multiple inputs).
 * [video_outputs](./video_outputs/) - Enumerate and select video outputs (for output devices and v4l2loopback).
+* [audio_inputs](./audio_inputs/) - Enumerate and select audio inputs (for webcams with mics, TV tuner cards).
+* [audio_outputs](./audio_outputs/) - Enumerate and select audio outputs (for video output devices).
 * [ext_ctrls](./ext_ctrls/) Shows how to query and apply extended controls.
 * [user_ctrl](./user_ctrl/) Shows how to query and apply user controls.
 
