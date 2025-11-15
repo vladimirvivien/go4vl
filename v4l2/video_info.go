@@ -19,10 +19,9 @@ package v4l2
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // InputStatus
@@ -185,8 +184,8 @@ func GetAllVideoInputInfo(fd uintptr) (result []InputInfo, err error) {
 		var input C.struct_v4l2_input
 		input.index = C.uint(index)
 		if err = send(fd, C.VIDIOC_ENUMINPUT, uintptr(unsafe.Pointer(&input))); err != nil {
-			errno := err.(sys.Errno)
-			if errno.Is(sys.EINVAL) && len(result) > 0 {
+			// ErrorBadArgument (EINVAL) indicates no more inputs (end of enumeration)
+			if errors.Is(err, ErrorBadArgument) {
 				break
 			}
 			return result, fmt.Errorf("all video input info: %w", err)
@@ -244,8 +243,8 @@ func GetAllVideoOutputInfo(fd uintptr) (result []OutputInfo, err error) {
 		var output C.struct_v4l2_output
 		output.index = C.uint(index)
 		if err = send(fd, C.VIDIOC_ENUMOUTPUT, uintptr(unsafe.Pointer(&output))); err != nil {
-			errno := err.(sys.Errno)
-			if errno.Is(sys.EINVAL) && len(result) > 0 {
+			// ErrorBadArgument (EINVAL) indicates no more outputs (end of enumeration)
+			if errors.Is(err, ErrorBadArgument) {
 				break
 			}
 			return result, fmt.Errorf("all video output info: %w", err)

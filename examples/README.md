@@ -17,6 +17,7 @@
 * [audio_outputs](./audio_outputs/) - Enumerate and select audio outputs (for video output devices).
 * [tuner](./tuner/) - Enumerate tuners, get/set frequency, and query signal strength (for radio/TV tuners, SDR devices).
 * [modulator](./modulator/) - Enumerate modulators and control transmission frequency (for RF modulators, transmitters).
+* [dv_timings](./dv_timings/) - Query and detect Digital Video (DV) timings (for HDMI/DisplayPort/SDI capture cards).
 * [ext_ctrls](./ext_ctrls/) Shows how to query and apply extended controls.
 * [user_ctrl](./user_ctrl/) Shows how to query and apply user controls.
 

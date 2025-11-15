@@ -986,6 +986,123 @@ func (d *Device) SetModulator(modulator v4l2.ModulatorInfo) error {
 	return v4l2.SetModulator(d.fd, modulator)
 }
 
+// GetDVTimings returns the current Digital Video (DV) timings.
+//
+// DV timings are used for digital video interfaces like HDMI, DisplayPort, DVI, and SDI.
+// They describe the video format including resolution, refresh rate, and synchronization.
+//
+// Returns the current DV timings configuration.
+//
+// Example:
+//
+//	timings, err := dev.GetDVTimings()
+//	if err == nil {
+//	    bt := timings.GetBTTimings()
+//	    log.Printf("Resolution: %dx%d @ %.2f Hz",
+//	        bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
+//	}
+func (d *Device) GetDVTimings() (v4l2.DVTimings, error) {
+	return v4l2.GetDVTimings(d.fd)
+}
+
+// SetDVTimings sets the Digital Video (DV) timings.
+//
+// Parameters:
+//   - timings: DV timings to set
+//
+// Example:
+//
+//	// Set timings (typically from enumeration or query)
+//	err := dev.SetDVTimings(timings)
+func (d *Device) SetDVTimings(timings v4l2.DVTimings) error {
+	return v4l2.SetDVTimings(d.fd, timings)
+}
+
+// QueryDVTimings attempts to auto-detect DV timings from the input signal.
+//
+// This is useful for HDMI capture cards that can automatically detect the
+// incoming signal format (resolution, refresh rate, etc.).
+//
+// Returns the detected DV timings, or an error if no valid signal is detected.
+//
+// Example:
+//
+//	timings, err := dev.QueryDVTimings()
+//	if err != nil {
+//	    log.Printf("No signal detected: %v", err)
+//	    return
+//	}
+//	bt := timings.GetBTTimings()
+//	log.Printf("Detected: %dx%d @ %.2f Hz",
+//	    bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
+func (d *Device) QueryDVTimings() (v4l2.DVTimings, error) {
+	return v4l2.QueryDVTimings(d.fd)
+}
+
+// EnumerateDVTimings enumerates a specific DV timing by index.
+//
+// Parameters:
+//   - index: Zero-based index of the DV timing to query
+//   - pad: Pad number (use 0 for video nodes, specific pad for subdev nodes)
+//
+// Returns the enumerated DV timing at the specified index.
+//
+// Example:
+//
+//	enumTiming, err := dev.EnumerateDVTimings(0, 0)
+//	if err == nil {
+//	    timings := enumTiming.GetTimings()
+//	    bt := timings.GetBTTimings()
+//	    log.Printf("Timing %d: %dx%d @ %.2f Hz",
+//	        enumTiming.GetIndex(),
+//	        bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
+//	}
+func (d *Device) EnumerateDVTimings(index uint32, pad uint32) (v4l2.EnumDVTimings, error) {
+	return v4l2.EnumerateDVTimings(d.fd, index, pad)
+}
+
+// GetAllDVTimings enumerates all supported DV timings.
+//
+// Parameters:
+//   - pad: Pad number (use 0 for video nodes)
+//
+// Returns a slice of all supported DV timings.
+//
+// Example:
+//
+//	timings, err := dev.GetAllDVTimings(0)
+//	for i, timing := range timings {
+//	    bt := timing.GetTimings().GetBTTimings()
+//	    log.Printf("Timing %d: %dx%d @ %.2f Hz",
+//	        i, bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
+//	}
+func (d *Device) GetAllDVTimings(pad uint32) ([]v4l2.EnumDVTimings, error) {
+	return v4l2.GetAllDVTimings(d.fd, pad)
+}
+
+// GetDVTimingsCap returns the DV timing capabilities.
+//
+// This describes the range of supported resolutions, pixel clocks,
+// and timing standards supported by the device.
+//
+// Parameters:
+//   - pad: Pad number (use 0 for video nodes)
+//
+// Example:
+//
+//	cap, err := dev.GetDVTimingsCap(0)
+//	if err == nil {
+//	    btCap := cap.GetBTTimingsCap()
+//	    log.Printf("Supported resolutions: %dx%d to %dx%d",
+//	        btCap.GetMinWidth(), btCap.GetMinHeight(),
+//	        btCap.GetMaxWidth(), btCap.GetMaxHeight())
+//	    log.Printf("Interlaced: %v, Progressive: %v",
+//	        btCap.SupportsInterlaced(), btCap.SupportsProgressive())
+//	}
+func (d *Device) GetDVTimingsCap(pad uint32) (v4l2.DVTimingsCap, error) {
+	return v4l2.GetDVTimingsCap(d.fd, pad)
+}
+
 // GetStreamParam returns the current streaming parameters including
 // capture/output timing, buffer settings, and capability flags.
 //

@@ -167,24 +167,34 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.8 Digital Video (DV) Timings
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] `VIDIOC_ENUM_DV_TIMINGS` - Enumerate DV timings
-- [ ] `VIDIOC_G_DV_TIMINGS` - Get current DV timings
-- [ ] `VIDIOC_S_DV_TIMINGS` - Set DV timings
-- [ ] `VIDIOC_QUERY_DV_TIMINGS` - Detect DV timings
-- [ ] `VIDIOC_DV_TIMINGS_CAP` - Get DV timing capabilities
-- [ ] Timing presets (CEA-861, DMT, etc.)
-- [ ] Custom timing support
-- [ ] Interlaced/progressive detection
+- [x] `VIDIOC_ENUM_DV_TIMINGS` - Enumerate DV timings
+- [x] `VIDIOC_G_DV_TIMINGS` - Get current DV timings
+- [x] `VIDIOC_S_DV_TIMINGS` - Set DV timings
+- [x] `VIDIOC_QUERY_DV_TIMINGS` - Detect DV timings
+- [x] `VIDIOC_DV_TIMINGS_CAP` - Get DV timing capabilities
+- [x] Timing presets (CEA-861, DMT, CVT, GTF)
+- [x] Custom timing support (BT.656/1120)
+- [x] Interlaced/progressive detection
+- [x] Frame rate calculation from pixel clock
+- [x] Sync polarity detection (H-sync/V-sync)
+- [x] VIC code support (CEA-861, HDMI)
+- [x] Blanking period information
 
 **Priority**: Medium (needed for HDMI capture cards, professional video)
 
+**Files**: `v4l2/dv_timings.go`, `device/device.go`
+
+**Tests**: `v4l2/dv_timings_test.go`, `test/dv_timings_test.go`
+
+**Examples**: `examples/dv_timings/`
+
 **Deliverables**:
-- Create `v4l2/dv_timings.go`
-- Implement timing structures
-- Add timing enumeration and detection
-- Create HDMI capture example
+- ✅ Create `v4l2/dv_timings.go` with complete timing structures
+- ✅ Implement all 6 DV timing IOCTLs
+- ✅ Add timing enumeration and auto-detection
+- ✅ Create comprehensive DV timings example
 
 ---
 
@@ -820,9 +830,9 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ## Summary Statistics
 
 ### By Status
-- ✅ Complete: ~15 items
+- ✅ Complete: ~16 items
 - 🚧 Partial: ~8 items
-- ❌ Not Started: ~45 items
+- ❌ Not Started: ~44 items
 - 🔴 Out of Scope: ~8 items
 
 ### By Priority
@@ -843,7 +853,7 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 
 ### Phase 2: Professional Video Features
 1. Multi-planar support
-2. DV Timings
+2. DV Timings ✅
 3. Event Interface
 4. Selection API (Crop/Compose)
 
