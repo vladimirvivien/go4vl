@@ -821,6 +821,171 @@ func (d *Device) SetAudioOutMode(mode v4l2.AudioMode) error {
 	return v4l2.SetAudioOutMode(d.fd, mode)
 }
 
+// GetTunerInfo returns information about a specific tuner.
+//
+// Parameters:
+//   - index: Zero-based index of the tuner to query
+//
+// The returned TunerInfo includes the tuner name, type, capabilities,
+// frequency range, signal strength, and audio mode.
+//
+// Example:
+//
+//	tuner, err := dev.GetTunerInfo(0)
+//	if err == nil {
+//	    log.Printf("Tuner: %s, Type: %s, Signal: %d\n",
+//	        tuner.GetName(),
+//	        v4l2.TunerTypes[tuner.GetType()],
+//	        tuner.GetSignal())
+//	}
+func (d *Device) GetTunerInfo(index uint32) (v4l2.TunerInfo, error) {
+	return v4l2.GetTunerInfo(d.fd, index)
+}
+
+// GetAllTuners returns all tuners supported by the device.
+// Each tuner description includes the name, type, capabilities, and frequency range.
+//
+// This is useful for discovering available tuners before tuning.
+//
+// Example:
+//
+//	tuners, err := dev.GetAllTuners()
+//	for _, tuner := range tuners {
+//	    log.Printf("Tuner %d: %s (%s), Range: %d-%d\n",
+//	        tuner.GetIndex(), tuner.GetName(),
+//	        v4l2.TunerTypes[tuner.GetType()],
+//	        tuner.GetRangeLow(), tuner.GetRangeHigh())
+//	}
+func (d *Device) GetAllTuners() ([]v4l2.TunerInfo, error) {
+	return v4l2.GetAllTuners(d.fd)
+}
+
+// SetTuner sets tuner parameters such as audio mode.
+//
+// Parameters:
+//   - tuner: TunerInfo struct with desired settings
+//
+// Example:
+//
+//	tuner, _ := dev.GetTunerInfo(0)
+//	// Modify tuner settings as needed
+//	err := dev.SetTuner(tuner)
+func (d *Device) SetTuner(tuner v4l2.TunerInfo) error {
+	return v4l2.SetTuner(d.fd, tuner)
+}
+
+// GetFrequency returns the current frequency for the specified tuner.
+//
+// Parameters:
+//   - tunerIndex: Zero-based index of the tuner
+//
+// Returns FrequencyInfo containing the frequency in device-specific units.
+// Use TunerInfo.IsLowFreq() to determine if units are 1/16 kHz (true) or 1/16 MHz (false).
+//
+// Example:
+//
+//	freq, err := dev.GetFrequency(0)
+//	if err == nil {
+//	    log.Printf("Current frequency: %d\n", freq.GetFrequency())
+//	}
+func (d *Device) GetFrequency(tunerIndex uint32) (v4l2.FrequencyInfo, error) {
+	return v4l2.GetFrequency(d.fd, tunerIndex)
+}
+
+// SetFrequency sets the tuner frequency.
+//
+// Parameters:
+//   - tunerIndex: Zero-based index of the tuner
+//   - tunerType: Type of tuner (e.g., v4l2.TunerTypeRadio, v4l2.TunerTypeAnalogTV)
+//   - frequency: Frequency in device-specific units (check TunerInfo.IsLowFreq())
+//
+// For radio tuners with TunerCapLow capability:
+//   - Units are 1/16000 kHz (62.5 Hz)
+//   - Example: 100.5 MHz = 100500 kHz = 100500 * 16 = 1,608,000 units
+//
+// For tuners without TunerCapLow:
+//   - Units are 1/16 MHz (62.5 kHz)
+//
+// Example:
+//
+//	// Set FM radio to 100.5 MHz (assuming TunerCapLow)
+//	err := dev.SetFrequency(0, v4l2.TunerTypeRadio, 1608000)
+func (d *Device) SetFrequency(tunerIndex uint32, tunerType v4l2.TunerType, frequency uint32) error {
+	return v4l2.SetFrequency(d.fd, tunerIndex, tunerType, frequency)
+}
+
+// GetFrequencyBands returns all frequency bands for the specified tuner.
+//
+// Parameters:
+//   - tunerIndex: Zero-based index of the tuner
+//   - tunerType: Type of tuner (e.g., v4l2.TunerTypeRadio)
+//
+// Example:
+//
+//	bands, err := dev.GetFrequencyBands(0, v4l2.TunerTypeRadio)
+//	for _, band := range bands {
+//	    log.Printf("Band %d: %d-%d, Modulation: FM=%v AM=%v\n",
+//	        band.GetIndex(),
+//	        band.GetRangeLow(), band.GetRangeHigh(),
+//	        band.GetModulation()&v4l2.BandModulationFM != 0,
+//	        band.GetModulation()&v4l2.BandModulationAM != 0)
+//	}
+func (d *Device) GetFrequencyBands(tunerIndex uint32, tunerType v4l2.TunerType) ([]v4l2.FrequencyBandInfo, error) {
+	return v4l2.GetAllFrequencyBands(d.fd, tunerIndex, tunerType)
+}
+
+// GetModulatorInfo returns information about a specific modulator.
+//
+// Parameters:
+//   - index: Zero-based index of the modulator to query
+//
+// The returned ModulatorInfo includes the modulator name, type, capabilities,
+// and frequency range.
+//
+// Example:
+//
+//	mod, err := dev.GetModulatorInfo(0)
+//	if err == nil {
+//	    log.Printf("Modulator: %s, Type: %s\n",
+//	        mod.GetName(),
+//	        v4l2.TunerTypes[mod.GetType()])
+//	}
+func (d *Device) GetModulatorInfo(index uint32) (v4l2.ModulatorInfo, error) {
+	return v4l2.GetModulatorInfo(d.fd, index)
+}
+
+// GetAllModulators returns all modulators supported by the device.
+// Each modulator description includes the name, type, capabilities, and frequency range.
+//
+// This is useful for discovering available modulators before transmission.
+//
+// Example:
+//
+//	modulators, err := dev.GetAllModulators()
+//	for _, mod := range modulators {
+//	    log.Printf("Modulator %d: %s (%s), Range: %d-%d\n",
+//	        mod.GetIndex(), mod.GetName(),
+//	        v4l2.TunerTypes[mod.GetType()],
+//	        mod.GetRangeLow(), mod.GetRangeHigh())
+//	}
+func (d *Device) GetAllModulators() ([]v4l2.ModulatorInfo, error) {
+	return v4l2.GetAllModulators(d.fd)
+}
+
+// SetModulator sets modulator parameters such as transmission subchannels.
+//
+// Parameters:
+//   - modulator: ModulatorInfo struct with desired settings
+//
+// Example:
+//
+//	mod, _ := dev.GetModulatorInfo(0)
+//	// Modify modulator settings as needed
+//	err := dev.SetModulator(mod)
+func (d *Device) SetModulator(modulator v4l2.ModulatorInfo) error {
+	return v4l2.SetModulator(d.fd, modulator)
+}
+
 // GetStreamParam returns the current streaming parameters including
 // capture/output timing, buffer settings, and capability flags.
 //
