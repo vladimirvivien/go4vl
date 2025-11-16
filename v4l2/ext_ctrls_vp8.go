@@ -1,7 +1,14 @@
 package v4l2
 
-//#include <linux/v4l2-controls.h>
+/*
+#include <linux/videodev2.h>
+#include <linux/v4l2-controls.h>
+*/
 import "C"
+import (
+	"fmt"
+	"unsafe"
+)
 
 const (
 	VP8CoefficientProbabilityCount uint32 = 11 // C.V4L2_VP8_COEFF_PROB_CNT
@@ -91,4 +98,41 @@ type ControlVP8Frame struct {
 	AltFrameTimestamp    uint64
 
 	Flags uint64
+}
+
+// VP8 Stateless Codec Control IDs
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
+const (
+	CtrlVP8Frame CtrlID = C.V4L2_CID_STATELESS_VP8_FRAME
+)
+
+// Type-safe helper methods for ExtControls
+
+// AddVP8Frame adds a VP8 Frame control.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/ext-ctrls-codec-stateless.html
+func (ec *ExtControls) AddVP8Frame(frame *ControlVP8Frame) error {
+	if frame == nil {
+		return fmt.Errorf("VP8 frame cannot be nil")
+	}
+	size := unsafe.Sizeof(*frame)
+	data := unsafe.Slice((*byte)(unsafe.Pointer(frame)), size)
+	ec.AddCompound(CtrlVP8Frame, data)
+	return nil
+}
+
+// Type-safe helper methods for ExtControl (reading values back)
+
+// GetVP8Frame retrieves the VP8 Frame from a control value.
+func (ec *ExtControl) GetVP8Frame() (*ControlVP8Frame, error) {
+	data := ec.GetCompoundData()
+	if data == nil {
+		return nil, fmt.Errorf("no compound data in control")
+	}
+	expectedSize := int(unsafe.Sizeof(ControlVP8Frame{}))
+	if len(data) < expectedSize {
+		return nil, fmt.Errorf("invalid VP8 frame size: got %d, expected %d", len(data), expectedSize)
+	}
+	frame := &ControlVP8Frame{}
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(frame)), expectedSize), data)
+	return frame, nil
 }
