@@ -986,6 +986,118 @@ func (d *Device) SetModulator(modulator v4l2.ModulatorInfo) error {
 	return v4l2.SetModulator(d.fd, modulator)
 }
 
+// GetStandard returns the currently selected video standard.
+//
+// Video standards define the analog video signal format (PAL, NTSC, SECAM, etc.)
+// used by legacy analog video devices like TV tuners and composite video inputs.
+//
+// Returns the current standard ID, which may be a combination of multiple standards.
+//
+// Note: Modern digital devices (HDMI, etc.) use DV timings instead. This method
+// will return an error for devices that don't support analog standards.
+//
+// Example:
+//
+//	stdId, err := dev.GetStandard()
+//	if err == nil {
+//	    log.Printf("Current standard: %s", v4l2.StdNames[stdId])
+//	}
+func (d *Device) GetStandard() (v4l2.StdId, error) {
+	return v4l2.GetStandard(d.fd)
+}
+
+// SetStandard sets the video standard for analog video devices.
+//
+// Parameters:
+//   - stdId: Standard identifier (e.g., v4l2.StdPAL, v4l2.StdNTSC, v4l2.StdSECAM)
+//
+// The standard ID may be a single standard or a set of standards (OR'd together).
+// The driver will choose the best match if multiple standards are specified.
+//
+// Note: Changing the standard may also change the current video format.
+//
+// Example:
+//
+//	// Set to PAL-B/G (common in Western Europe)
+//	err := dev.SetStandard(v4l2.StdPAL_BG)
+//
+//	// Set to NTSC-M (USA)
+//	err := dev.SetStandard(v4l2.StdNTSC_M)
+func (d *Device) SetStandard(stdId v4l2.StdId) error {
+	return v4l2.SetStandard(d.fd, stdId)
+}
+
+// QueryStandard auto-detects the video standard from the current input signal.
+//
+// This method senses which of the supported standards is currently being received.
+// Returns a set of all detected standards.
+//
+// Note: The device must support standard detection for this to work.
+// Returns an error (typically ENOLINK) if no signal is detected.
+//
+// Example:
+//
+//	detected, err := dev.QueryStandard()
+//	if err == nil {
+//	    log.Printf("Detected standard: %s", v4l2.StdNames[detected])
+//	    // Now set it
+//	    dev.SetStandard(detected)
+//	}
+func (d *Device) QueryStandard() (v4l2.StdId, error) {
+	return v4l2.QueryStandard(d.fd)
+}
+
+// EnumerateStandard retrieves information about a video standard by index.
+//
+// Parameters:
+//   - index: Zero-based index of the standard to query
+//
+// Returns detailed information about the standard including name, frame rate,
+// and line count.
+//
+// Example:
+//
+//	std, err := dev.EnumerateStandard(0)
+//	if err == nil {
+//	    log.Printf("Standard 0: %s", std)
+//	}
+func (d *Device) EnumerateStandard(index uint32) (v4l2.Standard, error) {
+	return v4l2.EnumStandard(d.fd, index)
+}
+
+// GetAllStandards enumerates all supported video standards for the device.
+//
+// Returns a slice of all standards supported by this device.
+// Returns an empty slice if the device doesn't support analog standards
+// (e.g., digital-only devices like HDMI capture cards).
+//
+// Example:
+//
+//	standards, err := dev.GetAllStandards()
+//	for _, std := range standards {
+//	    log.Printf("Standard %d: %s (%.2f fps, %d lines)\n",
+//	        std.Index(), std.Name(), std.FrameRate(), std.FrameLines())
+//	}
+func (d *Device) GetAllStandards() ([]v4l2.Standard, error) {
+	return v4l2.GetAllStandards(d.fd)
+}
+
+// IsStandardSupported checks if a specific video standard is supported.
+//
+// Parameters:
+//   - stdId: Standard identifier to check
+//
+// Returns true if the device supports the specified standard.
+//
+// Example:
+//
+//	if supported, _ := dev.IsStandardSupported(v4l2.StdPAL); supported {
+//	    log.Println("PAL is supported")
+//	}
+func (d *Device) IsStandardSupported(stdId v4l2.StdId) (bool, error) {
+	return v4l2.IsStandardSupported(d.fd, stdId)
+}
+
 // GetDVTimings returns the current Digital Video (DV) timings.
 //
 // DV timings are used for digital video interfaces like HDMI, DisplayPort, DVI, and SDI.

@@ -147,22 +147,33 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.7 Video Standards
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] `VIDIOC_ENUMSTD` - Enumerate video standards
-- [ ] `VIDIOC_G_STD` - Get current standard
-- [ ] `VIDIOC_S_STD` - Set standard
-- [ ] `VIDIOC_QUERYSTD` - Detect standard
-- [ ] Standard IDs (PAL, NTSC, SECAM, etc.)
-- [ ] Standard framerates and line counts
+- [x] `VIDIOC_ENUMSTD` - Enumerate video standards
+- [x] `VIDIOC_G_STD` - Get current standard
+- [x] `VIDIOC_S_STD` - Set standard
+- [x] `VIDIOC_QUERYSTD` - Detect standard
+- [x] Standard IDs (PAL, NTSC, SECAM, etc.)
+- [x] Standard framerates and line counts
+- [x] Standard groupings (PAL-B/G, PAL-D/K, etc.)
+- [x] Helper functions for standard checking
 
 **Priority**: Low (legacy analog TV, most modern devices use DV timings)
 
+**Files**: `v4l2/standard.go`, `device/device.go`
+
+**Tests**: `v4l2/standard_test.go`, `test/standard_test.go`
+
+**Examples**: `examples/video_standards/`
+
 **Deliverables**:
-- Create `v4l2/standard.go`
-- Add standard enumeration
-- Add standard detection
-- Document standard selection workflow
+- ✅ Create `v4l2/standard.go` with complete API (329 lines)
+- ✅ Add standard enumeration (GetAllStandards, EnumStandard)
+- ✅ Add standard detection (QueryStandard)
+- ✅ Add device-level methods (6 methods)
+- ✅ Comprehensive unit tests (19 tests)
+- ✅ Integration tests (8 tests)
+- ✅ Complete example with README
 
 ---
 
@@ -217,7 +228,7 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 1.10 Extended Controls API
-**Status**: ✅ Complete
+**Status**: ✅ Complete + Enhanced
 
 - [x] `VIDIOC_G_EXT_CTRLS` - Get extended controls
 - [x] `VIDIOC_S_EXT_CTRLS` - Set extended controls
@@ -229,24 +240,39 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 - [x] `VIDIOC_DQEVENT` - Dequeue events
 - [x] Atomic multi-control operations
 - [x] Event structures and types (control, vsync, EOS, source change, motion detection)
-- [x] Memory management for strings and compound data
+- [x] Automatic memory management (no manual Free() calls)
+- [x] Type-safe codec control helpers (H.264, MPEG2, VP8, FWHT)
 - [x] Control event data extraction
 
 **Implementation**:
-- `v4l2/ext_controls.go` (462 lines) - Complete extended controls API
-- `v4l2/events.go` (324 lines) - Complete event subscription API
-- `device/device.go` (+117 lines) - 6 device-level methods
+- `v4l2/ext_controls.go` (497 lines) - Complete API with automatic memory management
+- `v4l2/ext_ctrls_h264.go` (+188 lines) - Type-safe H.264 codec helpers
+- `v4l2/ext_ctrls_mpeg2.go` (+107 lines) - Type-safe MPEG2 codec helpers
+- `v4l2/ext_ctrls_vp8.go` (+38 lines) - Type-safe VP8 codec helpers
+- `v4l2/ext_ctrls_fwht.go` (+36 lines) - Type-safe FWHT codec helpers
+- `v4l2/events.go` (290 lines) - Complete event subscription API
+- `device/device.go` (+112 lines) - High-level convenience methods
 
 **Features**:
+- **Automatic Memory Management**: No manual `Free()` calls required - memory managed via defer
+- **Three-Tier API**:
+  1. High-level: `dev.SetBrightness(128)` - One-liners for common controls
+  2. Type-safe: `ctrls.AddH264SPS(&sps)` - Compiler-checked codec structs
+  3. Generic: `ctrls.AddCompound(id, []byte)` - Raw bytes for custom controls
 - 14 control classes (User, Codec, Camera, JPEG, Flash, Image Source, Image Processing, DV, FM Tx/Rx, RF Tuner, Detection, Stateless Codec, Colorimetry)
 - 7 event types (All, VSync, EOS, Control, Frame Sync, Source Change, Motion Detection)
-- Extended control structures with compound type support
-- Type-safe accessors for 32-bit, 64-bit, string, and compound values
-- Proper C memory management with Free() methods
+- Type-safe accessors for int32, int64, string, and compound ([]byte) values
 - Event subscription with flags (send initial, allow feedback)
-- Event data extraction for all event types
 
-**Methods Added**:
+**Type-Safe Codec Helpers**:
+- H.264: `AddH264SPS/PPS/ScalingMatrix/SliceParams/DecodeParams/PredWeights()`
+- MPEG2: `AddMPEG2Sequence/Picture/Quantization()`
+- VP8: `AddVP8Frame()`
+- FWHT: `AddFWHTParams()`
+
+**High-Level Methods**:
+- `Device.GetBrightness/Contrast/Saturation/Hue()` - Simple getters
+- `Device.SetBrightness/Contrast/Saturation/Hue()` - Simple setters
 - `Device.GetExtControls()` - Atomic get multiple controls
 - `Device.SetExtControls()` - Atomic set multiple controls
 - `Device.TryExtControls()` - Test control values without applying
@@ -254,14 +280,18 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 - `Device.UnsubscribeEvent()` - Unsubscribe from events
 - `Device.DequeueEvent()` - Retrieve pending events
 
-**Tests**: ✅ Complete (1,379 lines)
-- `v4l2/ext_controls_test.go` (502 lines) - 26 unit tests
-- `v4l2/events_test.go` (453 lines) - 30 unit tests
-- `test/ext_controls_test.go` (424 lines) - 9 integration tests
-- 65 total tests, all passing
-- No regressions in existing tests
+**Tests**: ✅ Complete (1,678 lines)
+- `v4l2/ext_controls_test.go` (365 lines) - Unit tests for core API
+- `v4l2/ext_ctrls_codec_test.go` (299 lines) - Type-safe codec helper tests
+- `v4l2/events_test.go` (453 lines) - Event subscription tests
+- `test/ext_controls_test.go` (561 lines) - Integration tests (14 tests)
+- 70+ total tests, all passing ✅
 
-**Total**: ~2,282 lines (903 implementation + 1,379 tests)
+**Examples**: `examples/ext_ctrls/` (559 lines)
+- `main.go` (284 lines) - Comprehensive example with all API levels
+- `README.md` (380 lines) - Detailed documentation with codec examples
+
+**Total**: ~3,432 lines (1,268 implementation + 1,678 tests + 486 examples/docs)
 
 ---
 
@@ -912,5 +942,5 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 
 ---
 
-**Last Updated**: 2025-10-19
+**Last Updated**: 2025-11-22
 **Based On**: Linux Kernel Documentation v6.6+

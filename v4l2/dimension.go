@@ -15,6 +15,24 @@ type Fract struct {
 	Denominator uint32
 }
 
+// ToFloat converts the fraction to a float64 value
+func (f Fract) ToFloat() float64 {
+	if f.Denominator == 0 {
+		return 0
+	}
+	return float64(f.Numerator) / float64(f.Denominator)
+}
+
+// FrameRate returns the frame rate in Hz (inverse of frame period)
+// This is useful for video standards where Fract represents frame period
+func (f Fract) FrameRate() float64 {
+	period := f.ToFloat()
+	if period == 0 {
+		return 0
+	}
+	return 1.0 / period
+}
+
 // Rect (v4l2_rect)
 // https://www.kernel.org/doc/html/v4.14/media/uapi/v4l/dev-overlay.html?highlight=v4l2_rect#c.v4l2_rect
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L412
