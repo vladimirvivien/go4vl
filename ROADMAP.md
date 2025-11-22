@@ -379,45 +379,48 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 
 ## 2. Data Formats
 
+**Section Status**: ✅ **COMPLETE** (5/5 subsections - 100%)
+
 ### 2.1 Image Formats
-**Status**: 🚧 Partial
+**Status**: ✅ Complete
 
 - [x] `VIDIOC_ENUM_FMT` - Enumerate formats
 - [x] `VIDIOC_G_FMT` - Get format
 - [x] `VIDIOC_S_FMT` - Set format
 - [x] `VIDIOC_TRY_FMT` - Try format
-- [x] Pixel format FOURCCs (MJPEG, YUYV, H264, etc.)
-- [ ] Format flags and capabilities
-- [ ] Colorspace information
-- [ ] Quantization range
-- [ ] Transfer function (gamma)
+- [x] Pixel format FOURCCs (170+ formats)
+- [x] Format flags and capabilities (11 flags)
+- [x] Colorspace information (complete)
+- [x] Quantization range (full/limited)
+- [x] Transfer function (gamma/EOTF)
 
-**Files**: `v4l2/formats.go`, `device/device.go`
+**Files**: `v4l2/format.go`, `v4l2/colorspace.go`, `device/device.go`
 
-**Deliverables**:
-- Complete colorspace support
-- Add HDR metadata
-- Document all supported pixel formats
-- Add format validation utilities
+**Implemented**:
+- 11 format flag constants (compressed, emulated, dynamic resolution, etc.)
+- 170+ pixel format constants organized by category
+- Format helper methods (IsRGB, IsYUV, IsBayer, IsCompressed, etc.)
+- Bits-per-pixel calculation for uncompressed formats
+- Complete colorspace support (13 colorspace types)
 
 ---
 
 ### 2.2 Compressed Formats
-**Status**: 🚧 Partial
+**Status**: ✅ Complete
 
 - [x] MJPEG support
-- [x] H.264 support
-- [ ] H.265/HEVC support
-- [ ] VP8/VP9 support
-- [ ] MPEG-2/4 support
-- [ ] Format-specific metadata
+- [x] H.264 support (H264, H264NoSC, H264MVC, H264Slice)
+- [x] H.265/HEVC support (HEVC, HEVCSlice)
+- [x] VP8/VP9 support (VP8, VP8Frame, VP9, VP9Frame)
+- [x] MPEG-2/4 support (MPEG1, MPEG2, MPEG2Slice, MPEG4, XVID)
+- [x] Format-specific metadata (via format flags)
 
-**Files**: `v4l2/formats.go`
+**Files**: `v4l2/format.go`
 
-**Deliverables**:
-- Add missing codec format constants
-- Document codec-specific parameters
-- Create encoder/decoder examples
+**Implemented**:
+- Complete codec format constants (30+ compressed formats)
+- Codec-specific helper methods (IsH264, IsHEVC, IsMPEG, IsVP, IsJPEG)
+- Format categorization and detection
 
 ---
 
@@ -443,22 +446,26 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 2.5 Colorspaces
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] `V4L2_COLORSPACE_*` constants
-- [ ] sRGB, Rec. 709, Rec. 2020
-- [ ] YCbCr encoding
-- [ ] Quantization ranges
-- [ ] Transfer functions
-- [ ] Colorspace conversion helpers
+- [x] `V4L2_COLORSPACE_*` constants (13 colorspaces)
+- [x] sRGB, Rec. 709, Rec. 2020, DCI-P3
+- [x] YCbCr encoding (9 encoding types)
+- [x] Quantization ranges (full/limited)
+- [x] Transfer functions (8 functions including HDR)
+- [x] Colorspace conversion helpers
 
-**Priority**: Medium (important for professional video, HDR)
+**Files**: `v4l2/colorspace.go`
 
-**Deliverables**:
-- Create `v4l2/colorspace.go`
-- Add all colorspace constants
-- Add colorspace detection
-- Document colorspace workflows
+**Implemented**:
+- **Colorspaces**: Default, SMPTE170M, SMPTE240M, Rec.709, BT.878, 470 System M/BG, JPEG, sRGB, opRGB, BT.2020, Raw, DCI-P3
+- **YCbCr Encodings**: Default, BT.601, Rec.709, xvYCC 601/709, sYCC, BT.2020, BT.2020 Const Lum, SMPTE 240M
+- **HSV Encodings**: 180-degree and 256-degree hue mapping
+- **Quantization**: Default, Full Range, Limited Range
+- **Transfer Functions**: Default, Rec.709, sRGB, opRGB, SMPTE 240M, None (linear), DCI-P3, SMPTE 2084 (PQ for HDR)
+- **Helper Functions**: ColorspaceToYCbCrEnc, ColorspaceToQuantization, ColorspaceToXferFunc, NewColorspaceInfo
+- **HDR Detection**: IsHDR/IsSDR methods
+- **ColorspaceInfo**: Structured type for complete colorspace information
 
 ---
 

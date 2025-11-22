@@ -11,34 +11,327 @@ import (
 // FourCCType represents the four character encoding value
 type FourCCType = uint32
 
-// Some Predefined pixel format definitions
+// Pixel format definitions organized by category
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/pixfmt.html
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L518
+
+// RGB Formats
 var (
-	PixelFmtRGB24 FourCCType = C.V4L2_PIX_FMT_RGB24
-	PixelFmtGrey  FourCCType = C.V4L2_PIX_FMT_GREY
-	PixelFmtYUYV  FourCCType = C.V4L2_PIX_FMT_YUYV
-	PixelFmtYYUV  FourCCType = C.V4L2_PIX_FMT_YYUV
-	PixelFmtYVYU  FourCCType = C.V4L2_PIX_FMT_YVYU
-	PixelFmtUYVY  FourCCType = C.V4L2_PIX_FMT_UYVY
-	PixelFmtVYUY  FourCCType = C.V4L2_PIX_FMT_VYUY
+	PixelFmtRGB332  FourCCType = C.V4L2_PIX_FMT_RGB332
+	PixelFmtARGB444 FourCCType = C.V4L2_PIX_FMT_ARGB444
+	PixelFmtXRGB444 FourCCType = C.V4L2_PIX_FMT_XRGB444
+	PixelFmtRGB555  FourCCType = C.V4L2_PIX_FMT_RGB555
+	PixelFmtARGB555 FourCCType = C.V4L2_PIX_FMT_ARGB555
+	PixelFmtXRGB555 FourCCType = C.V4L2_PIX_FMT_XRGB555
+	PixelFmtRGB565  FourCCType = C.V4L2_PIX_FMT_RGB565
+	PixelFmtRGB555X FourCCType = C.V4L2_PIX_FMT_RGB555X
+	PixelFmtRGB565X FourCCType = C.V4L2_PIX_FMT_RGB565X
+	PixelFmtBGR666  FourCCType = C.V4L2_PIX_FMT_BGR666
+	PixelFmtBGR24   FourCCType = C.V4L2_PIX_FMT_BGR24
+	PixelFmtRGB24   FourCCType = C.V4L2_PIX_FMT_RGB24
+	PixelFmtBGR32   FourCCType = C.V4L2_PIX_FMT_BGR32
+	PixelFmtABGR32  FourCCType = C.V4L2_PIX_FMT_ABGR32
+	PixelFmtXBGR32  FourCCType = C.V4L2_PIX_FMT_XBGR32
+	PixelFmtRGB32   FourCCType = C.V4L2_PIX_FMT_RGB32
+	PixelFmtARGB32  FourCCType = C.V4L2_PIX_FMT_ARGB32
+	PixelFmtXRGB32  FourCCType = C.V4L2_PIX_FMT_XRGB32
+)
+
+// Greyscale Formats
+var (
+	PixelFmtGrey   FourCCType = C.V4L2_PIX_FMT_GREY
+	PixelFmtY4     FourCCType = C.V4L2_PIX_FMT_Y4
+	PixelFmtY6     FourCCType = C.V4L2_PIX_FMT_Y6
+	PixelFmtY10    FourCCType = C.V4L2_PIX_FMT_Y10
+	PixelFmtY12    FourCCType = C.V4L2_PIX_FMT_Y12
+	PixelFmtY14    FourCCType = C.V4L2_PIX_FMT_Y14
+	PixelFmtY16    FourCCType = C.V4L2_PIX_FMT_Y16
+	PixelFmtY16BE  FourCCType = C.V4L2_PIX_FMT_Y16_BE
+	PixelFmtY10BPACK FourCCType = C.V4L2_PIX_FMT_Y10BPACK
+)
+
+// YUV Packed Formats
+var (
+	PixelFmtYUYV   FourCCType = C.V4L2_PIX_FMT_YUYV
+	PixelFmtYYUV   FourCCType = C.V4L2_PIX_FMT_YYUV
+	PixelFmtYVYU   FourCCType = C.V4L2_PIX_FMT_YVYU
+	PixelFmtUYVY   FourCCType = C.V4L2_PIX_FMT_UYVY
+	PixelFmtVYUY   FourCCType = C.V4L2_PIX_FMT_VYUY
+	PixelFmtY41P   FourCCType = C.V4L2_PIX_FMT_Y41P
+	PixelFmtYUV444 FourCCType = C.V4L2_PIX_FMT_YUV444
+	PixelFmtYUV555 FourCCType = C.V4L2_PIX_FMT_YUV555
+	PixelFmtYUV565 FourCCType = C.V4L2_PIX_FMT_YUV565
+	PixelFmtYUV32  FourCCType = C.V4L2_PIX_FMT_YUV32
+	PixelFmtAYUV32 FourCCType = C.V4L2_PIX_FMT_AYUV32
+	PixelFmtXYUV32 FourCCType = C.V4L2_PIX_FMT_XYUV32
+	PixelFmtVUYA32 FourCCType = C.V4L2_PIX_FMT_VUYA32
+	PixelFmtVUYX32 FourCCType = C.V4L2_PIX_FMT_VUYX32
+)
+
+// YUV Planar Formats
+var (
+	PixelFmtYUV410  FourCCType = C.V4L2_PIX_FMT_YUV410
+	PixelFmtYVU410  FourCCType = C.V4L2_PIX_FMT_YVU410
+	PixelFmtYUV411P FourCCType = C.V4L2_PIX_FMT_YUV411P
+	PixelFmtYUV420  FourCCType = C.V4L2_PIX_FMT_YUV420
+	PixelFmtYVU420  FourCCType = C.V4L2_PIX_FMT_YVU420
+	PixelFmtYUV422P FourCCType = C.V4L2_PIX_FMT_YUV422P
+	PixelFmtYUV444M FourCCType = C.V4L2_PIX_FMT_YUV444M
+	PixelFmtYVU444M FourCCType = C.V4L2_PIX_FMT_YVU444M
+	PixelFmtYUV420M FourCCType = C.V4L2_PIX_FMT_YUV420M
+	PixelFmtYVU420M FourCCType = C.V4L2_PIX_FMT_YVU420M
+	PixelFmtYUV422M FourCCType = C.V4L2_PIX_FMT_YUV422M
+	PixelFmtYVU422M FourCCType = C.V4L2_PIX_FMT_YVU422M
+)
+
+// YUV Semi-Planar (NV) Formats
+var (
+	PixelFmtNV12    FourCCType = C.V4L2_PIX_FMT_NV12
+	PixelFmtNV21    FourCCType = C.V4L2_PIX_FMT_NV21
+	PixelFmtNV16    FourCCType = C.V4L2_PIX_FMT_NV16
+	PixelFmtNV61    FourCCType = C.V4L2_PIX_FMT_NV61
+	PixelFmtNV24    FourCCType = C.V4L2_PIX_FMT_NV24
+	PixelFmtNV42    FourCCType = C.V4L2_PIX_FMT_NV42
+	PixelFmtNV12M   FourCCType = C.V4L2_PIX_FMT_NV12M
+	PixelFmtNV21M   FourCCType = C.V4L2_PIX_FMT_NV21M
+	PixelFmtNV16M   FourCCType = C.V4L2_PIX_FMT_NV16M
+	PixelFmtNV61M   FourCCType = C.V4L2_PIX_FMT_NV61M
+	PixelFmtP010    FourCCType = C.V4L2_PIX_FMT_P010
+	PixelFmtP012    FourCCType = C.V4L2_PIX_FMT_P012
+)
+
+// Compressed Formats - JPEG
+var (
 	PixelFmtMJPEG FourCCType = C.V4L2_PIX_FMT_MJPEG
 	PixelFmtJPEG  FourCCType = C.V4L2_PIX_FMT_JPEG
-	PixelFmtMPEG  FourCCType = C.V4L2_PIX_FMT_MPEG
-	PixelFmtH264  FourCCType = C.V4L2_PIX_FMT_H264
-	PixelFmtMPEG4 FourCCType = C.V4L2_PIX_FMT_MPEG4
+)
+
+// Compressed Formats - H.26x
+var (
+	PixelFmtH263      FourCCType = C.V4L2_PIX_FMT_H263
+	PixelFmtH264      FourCCType = C.V4L2_PIX_FMT_H264
+	PixelFmtH264NoSC  FourCCType = C.V4L2_PIX_FMT_H264_NO_SC
+	PixelFmtH264MVC   FourCCType = C.V4L2_PIX_FMT_H264_MVC
+	PixelFmtH264Slice FourCCType = C.V4L2_PIX_FMT_H264_SLICE
+	PixelFmtHEVC      FourCCType = C.V4L2_PIX_FMT_HEVC
+	PixelFmtHEVCSlice FourCCType = C.V4L2_PIX_FMT_HEVC_SLICE
+)
+
+// Compressed Formats - MPEG
+var (
+	PixelFmtMPEG      FourCCType = C.V4L2_PIX_FMT_MPEG
+	PixelFmtMPEG1     FourCCType = C.V4L2_PIX_FMT_MPEG1
+	PixelFmtMPEG2     FourCCType = C.V4L2_PIX_FMT_MPEG2
+	PixelFmtMPEG2Slice FourCCType = C.V4L2_PIX_FMT_MPEG2_SLICE
+	PixelFmtMPEG4     FourCCType = C.V4L2_PIX_FMT_MPEG4
+	PixelFmtXVID      FourCCType = C.V4L2_PIX_FMT_XVID
+)
+
+// Compressed Formats - VP
+var (
+	PixelFmtVP8      FourCCType = C.V4L2_PIX_FMT_VP8
+	PixelFmtVP8Frame FourCCType = C.V4L2_PIX_FMT_VP8_FRAME
+	PixelFmtVP9      FourCCType = C.V4L2_PIX_FMT_VP9
+	PixelFmtVP9Frame FourCCType = C.V4L2_PIX_FMT_VP9_FRAME
+)
+
+// Compressed Formats - Other
+var (
+	PixelFmtAV1Frame      FourCCType = C.V4L2_PIX_FMT_AV1_FRAME
+	PixelFmtVC1Annex      FourCCType = C.V4L2_PIX_FMT_VC1_ANNEX_G
+	PixelFmtVC1AnnexL     FourCCType = C.V4L2_PIX_FMT_VC1_ANNEX_L
+	PixelFmtFWHT          FourCCType = C.V4L2_PIX_FMT_FWHT
+	PixelFmtFWHTStateless FourCCType = C.V4L2_PIX_FMT_FWHT_STATELESS
+)
+
+// Bayer Formats - 8-bit
+var (
+	PixelFmtSBGGR8 FourCCType = C.V4L2_PIX_FMT_SBGGR8
+	PixelFmtSGBRG8 FourCCType = C.V4L2_PIX_FMT_SGBRG8
+	PixelFmtSGRBG8 FourCCType = C.V4L2_PIX_FMT_SGRBG8
+	PixelFmtSRGGB8 FourCCType = C.V4L2_PIX_FMT_SRGGB8
+)
+
+// Bayer Formats - 10-bit
+var (
+	PixelFmtSBGGR10      FourCCType = C.V4L2_PIX_FMT_SBGGR10
+	PixelFmtSGBRG10      FourCCType = C.V4L2_PIX_FMT_SGBRG10
+	PixelFmtSGRBG10      FourCCType = C.V4L2_PIX_FMT_SGRBG10
+	PixelFmtSRGGB10      FourCCType = C.V4L2_PIX_FMT_SRGGB10
+	PixelFmtSBGGR10ALAW8 FourCCType = C.V4L2_PIX_FMT_SBGGR10ALAW8
+	PixelFmtSGBRG10ALAW8 FourCCType = C.V4L2_PIX_FMT_SGBRG10ALAW8
+	PixelFmtSGRBG10ALAW8 FourCCType = C.V4L2_PIX_FMT_SGRBG10ALAW8
+	PixelFmtSRGGB10ALAW8 FourCCType = C.V4L2_PIX_FMT_SRGGB10ALAW8
+	PixelFmtSBGGR10DPCM8 FourCCType = C.V4L2_PIX_FMT_SBGGR10DPCM8
+	PixelFmtSGBRG10DPCM8 FourCCType = C.V4L2_PIX_FMT_SGBRG10DPCM8
+	PixelFmtSGRBG10DPCM8 FourCCType = C.V4L2_PIX_FMT_SGRBG10DPCM8
+	PixelFmtSRGGB10DPCM8 FourCCType = C.V4L2_PIX_FMT_SRGGB10DPCM8
+	PixelFmtSBGGR10P     FourCCType = C.V4L2_PIX_FMT_SBGGR10P
+	PixelFmtSGBRG10P     FourCCType = C.V4L2_PIX_FMT_SGBRG10P
+	PixelFmtSGRBG10P     FourCCType = C.V4L2_PIX_FMT_SGRBG10P
+	PixelFmtSRGGB10P     FourCCType = C.V4L2_PIX_FMT_SRGGB10P
+)
+
+// Bayer Formats - 12-bit
+var (
+	PixelFmtSBGGR12 FourCCType = C.V4L2_PIX_FMT_SBGGR12
+	PixelFmtSGBRG12 FourCCType = C.V4L2_PIX_FMT_SGBRG12
+	PixelFmtSGRBG12 FourCCType = C.V4L2_PIX_FMT_SGRBG12
+	PixelFmtSRGGB12 FourCCType = C.V4L2_PIX_FMT_SRGGB12
+	PixelFmtSBGGR12P FourCCType = C.V4L2_PIX_FMT_SBGGR12P
+	PixelFmtSGBRG12P FourCCType = C.V4L2_PIX_FMT_SGBRG12P
+	PixelFmtSGRBG12P FourCCType = C.V4L2_PIX_FMT_SGRBG12P
+	PixelFmtSRGGB12P FourCCType = C.V4L2_PIX_FMT_SRGGB12P
+)
+
+// Bayer Formats - 14-bit
+var (
+	PixelFmtSBGGR14 FourCCType = C.V4L2_PIX_FMT_SBGGR14
+	PixelFmtSGBRG14 FourCCType = C.V4L2_PIX_FMT_SGBRG14
+	PixelFmtSGRBG14 FourCCType = C.V4L2_PIX_FMT_SGRBG14
+	PixelFmtSRGGB14 FourCCType = C.V4L2_PIX_FMT_SRGGB14
+	PixelFmtSBGGR14P FourCCType = C.V4L2_PIX_FMT_SBGGR14P
+	PixelFmtSGBRG14P FourCCType = C.V4L2_PIX_FMT_SGBRG14P
+	PixelFmtSGRBG14P FourCCType = C.V4L2_PIX_FMT_SGRBG14P
+	PixelFmtSRGGB14P FourCCType = C.V4L2_PIX_FMT_SRGGB14P
+)
+
+// Bayer Formats - 16-bit
+var (
+	PixelFmtSBGGR16 FourCCType = C.V4L2_PIX_FMT_SBGGR16
+	PixelFmtSGBRG16 FourCCType = C.V4L2_PIX_FMT_SGBRG16
+	PixelFmtSGRBG16 FourCCType = C.V4L2_PIX_FMT_SGRBG16
+	PixelFmtSRGGB16 FourCCType = C.V4L2_PIX_FMT_SRGGB16
 )
 
 // PixelFormats provides a map of FourCCType encoding description
 var PixelFormats = map[FourCCType]string{
-	PixelFmtRGB24: "24-bit RGB 8-8-8",
-	PixelFmtGrey:  "8-bit Greyscale",
-	PixelFmtYUYV:  "YUYV 4:2:2",
+	// RGB formats
+	PixelFmtRGB332:  "8-bit RGB 3-3-2",
+	PixelFmtARGB444: "16-bit ARGB 4-4-4-4",
+	PixelFmtXRGB444: "16-bit XRGB 4-4-4-4",
+	PixelFmtRGB555:  "16-bit RGB 5-5-5",
+	PixelFmtARGB555: "16-bit ARGB 1-5-5-5",
+	PixelFmtXRGB555: "16-bit XRGB 1-5-5-5",
+	PixelFmtRGB565:  "16-bit RGB 5-6-5",
+	PixelFmtRGB555X: "16-bit RGB 5-5-5 BE",
+	PixelFmtRGB565X: "16-bit RGB 5-6-5 BE",
+	PixelFmtBGR666:  "18-bit BGR 6-6-6",
+	PixelFmtBGR24:   "24-bit BGR 8-8-8",
+	PixelFmtRGB24:   "24-bit RGB 8-8-8",
+	PixelFmtBGR32:   "32-bit BGR 8-8-8-8",
+	PixelFmtABGR32:  "32-bit ABGR 8-8-8-8",
+	PixelFmtXBGR32:  "32-bit XBGR 8-8-8-8",
+	PixelFmtRGB32:   "32-bit RGB 8-8-8-8",
+	PixelFmtARGB32:  "32-bit ARGB 8-8-8-8",
+	PixelFmtXRGB32:  "32-bit XRGB 8-8-8-8",
+
+	// Greyscale formats
+	PixelFmtGrey:      "8-bit Greyscale",
+	PixelFmtY4:        "4-bit Greyscale",
+	PixelFmtY6:        "6-bit Greyscale",
+	PixelFmtY10:       "10-bit Greyscale",
+	PixelFmtY12:       "12-bit Greyscale",
+	PixelFmtY14:       "14-bit Greyscale",
+	PixelFmtY16:       "16-bit Greyscale",
+	PixelFmtY16BE:     "16-bit Greyscale BE",
+	PixelFmtY10BPACK: "10-bit Greyscale (packed)",
+
+	// YUV packed formats
+	PixelFmtYUYV:   "YUYV 4:2:2",
+	PixelFmtYYUV:   "YYUV 4:2:2",
+	PixelFmtYVYU:   "YVYU 4:2:2",
+	PixelFmtUYVY:   "UYVY 4:2:2",
+	PixelFmtVYUY:   "VYUY 4:2:2",
+	PixelFmtY41P:   "YUV 4:1:1",
+	PixelFmtYUV444: "YUV 4:4:4 (packed)",
+	PixelFmtYUV555: "YUV 5:5:5 (packed)",
+	PixelFmtYUV565: "YUV 5:6:5 (packed)",
+	PixelFmtYUV32:  "32-bit YUV 8-8-8-8",
+	PixelFmtAYUV32: "32-bit AYUV 8-8-8-8",
+	PixelFmtXYUV32: "32-bit XYUV 8-8-8-8",
+	PixelFmtVUYA32: "32-bit VUYA 8-8-8-8",
+	PixelFmtVUYX32: "32-bit VUYX 8-8-8-8",
+
+	// YUV planar formats
+	PixelFmtYUV410:  "YUV 4:1:0 planar",
+	PixelFmtYVU410:  "YVU 4:1:0 planar",
+	PixelFmtYUV411P: "YUV 4:1:1 planar",
+	PixelFmtYUV420:  "YUV 4:2:0 planar (I420)",
+	PixelFmtYVU420:  "YVU 4:2:0 planar (YV12)",
+	PixelFmtYUV422P: "YUV 4:2:2 planar",
+	PixelFmtYUV444M: "YUV 4:4:4 planar (multiplanar)",
+	PixelFmtYVU444M: "YVU 4:4:4 planar (multiplanar)",
+	PixelFmtYUV420M: "YUV 4:2:0 planar (multiplanar)",
+	PixelFmtYVU420M: "YVU 4:2:0 planar (multiplanar)",
+	PixelFmtYUV422M: "YUV 4:2:2 planar (multiplanar)",
+	PixelFmtYVU422M: "YVU 4:2:2 planar (multiplanar)",
+
+	// YUV semi-planar (NV) formats
+	PixelFmtNV12:  "YUV 4:2:0 semi-planar (NV12)",
+	PixelFmtNV21:  "YUV 4:2:0 semi-planar (NV21)",
+	PixelFmtNV16:  "YUV 4:2:2 semi-planar (NV16)",
+	PixelFmtNV61:  "YUV 4:2:2 semi-planar (NV61)",
+	PixelFmtNV24:  "YUV 4:4:4 semi-planar (NV24)",
+	PixelFmtNV42:  "YUV 4:4:4 semi-planar (NV42)",
+	PixelFmtNV12M: "YUV 4:2:0 semi-planar (NV12M multiplanar)",
+	PixelFmtNV21M: "YUV 4:2:0 semi-planar (NV21M multiplanar)",
+	PixelFmtNV16M: "YUV 4:2:2 semi-planar (NV16M multiplanar)",
+	PixelFmtNV61M: "YUV 4:2:2 semi-planar (NV61M multiplanar)",
+	PixelFmtP010:  "YUV 4:2:0 10-bit semi-planar (P010)",
+	PixelFmtP012:  "YUV 4:2:0 12-bit semi-planar (P012)",
+
+	// Compressed formats - JPEG
 	PixelFmtMJPEG: "Motion-JPEG",
 	PixelFmtJPEG:  "JFIF JPEG",
-	PixelFmtMPEG:  "MPEG-1/2/4",
-	PixelFmtH264:  "H.264",
-	PixelFmtMPEG4: "MPEG-4 Part 2 ES",
+
+	// Compressed formats - H.26x
+	PixelFmtH263:      "H.263",
+	PixelFmtH264:      "H.264 / MPEG-4 AVC",
+	PixelFmtH264NoSC:  "H.264 without start codes",
+	PixelFmtH264MVC:   "H.264 MVC",
+	PixelFmtH264Slice: "H.264 parsed slices",
+	PixelFmtHEVC:      "H.265 / HEVC",
+	PixelFmtHEVCSlice: "H.265 parsed slices",
+
+	// Compressed formats - MPEG
+	PixelFmtMPEG:       "MPEG-1/2/4",
+	PixelFmtMPEG1:      "MPEG-1 ES",
+	PixelFmtMPEG2:      "MPEG-2 ES",
+	PixelFmtMPEG2Slice: "MPEG-2 parsed slices",
+	PixelFmtMPEG4:      "MPEG-4 Part 2 ES",
+	PixelFmtXVID:       "Xvid",
+
+	// Compressed formats - VP
+	PixelFmtVP8:      "VP8",
+	PixelFmtVP8Frame: "VP8 frame",
+	PixelFmtVP9:      "VP9",
+	PixelFmtVP9Frame: "VP9 frame",
+
+	// Compressed formats - Other
+	PixelFmtAV1Frame:      "AV1 frame",
+	PixelFmtVC1Annex:      "VC-1 Annex G",
+	PixelFmtVC1AnnexL:     "VC-1 Annex L",
+	PixelFmtFWHT:          "Fast Walsh Hadamard Transform",
+	PixelFmtFWHTStateless: "FWHT stateless",
+
+	// Bayer formats (selected common ones)
+	PixelFmtSBGGR8:  "8-bit Bayer BGGR",
+	PixelFmtSGBRG8:  "8-bit Bayer GBRG",
+	PixelFmtSGRBG8:  "8-bit Bayer GRBG",
+	PixelFmtSRGGB8:  "8-bit Bayer RGGB",
+	PixelFmtSBGGR10: "10-bit Bayer BGGR",
+	PixelFmtSGBRG10: "10-bit Bayer GBRG",
+	PixelFmtSGRBG10: "10-bit Bayer GRBG",
+	PixelFmtSRGGB10: "10-bit Bayer RGGB",
+	PixelFmtSBGGR12: "12-bit Bayer BGGR",
+	PixelFmtSGBRG12: "12-bit Bayer GBRG",
+	PixelFmtSGRBG12: "12-bit Bayer GRBG",
+	PixelFmtSRGGB12: "12-bit Bayer RGGB",
+	PixelFmtSBGGR16: "16-bit Bayer BGGR",
+	PixelFmtSGBRG16: "16-bit Bayer GBRG",
+	PixelFmtSGRBG16: "16-bit Bayer GRBG",
+	PixelFmtSRGGB16: "16-bit Bayer RGGB",
 }
 
 // IsPixYUVEncoded returns true if the pixel format is a chrome+luminance YUV format
@@ -53,162 +346,6 @@ func IsPixYUVEncoded(pixFmt FourCCType) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-// ColorspaceType
-// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L195
-type ColorspaceType = uint32
-
-const (
-	ColorspaceDefault     ColorspaceType = C.V4L2_COLORSPACE_DEFAULT
-	ColorspaceSMPTE170M   ColorspaceType = C.V4L2_COLORSPACE_SMPTE170M
-	ColorspaceSMPTE240M   ColorspaceType = C.V4L2_COLORSPACE_SMPTE240M
-	ColorspaceREC709      ColorspaceType = C.V4L2_COLORSPACE_REC709
-	ColorspaceBT878       ColorspaceType = C.V4L2_COLORSPACE_BT878        //(absolete)
-	Colorspace470SystemM  ColorspaceType = C.V4L2_COLORSPACE_470_SYSTEM_M //(absolete)
-	Colorspace470SystemBG ColorspaceType = C.V4L2_COLORSPACE_470_SYSTEM_BG
-	ColorspaceJPEG        ColorspaceType = C.V4L2_COLORSPACE_JPEG
-	ColorspaceSRGB        ColorspaceType = C.V4L2_COLORSPACE_SRGB
-	ColorspaceOPRGB       ColorspaceType = C.V4L2_COLORSPACE_OPRGB
-	ColorspaceBT2020      ColorspaceType = C.V4L2_COLORSPACE_BT2020
-	ColorspaceRaw         ColorspaceType = C.V4L2_COLORSPACE_RAW
-	ColorspaceDCIP3       ColorspaceType = C.V4L2_COLORSPACE_DCI_P3
-)
-
-// Colorspaces is a map of colorspace to its respective description
-var Colorspaces = map[ColorspaceType]string{
-	ColorspaceDefault:     "Default",
-	ColorspaceREC709:      "Rec. 709",
-	Colorspace470SystemBG: "470 System BG",
-	ColorspaceJPEG:        "JPEG",
-	ColorspaceSRGB:        "sRGB",
-	ColorspaceOPRGB:       "opRGB",
-	ColorspaceBT2020:      "BT.2020",
-	ColorspaceRaw:         "Raw",
-	ColorspaceDCIP3:       "DCI-P3",
-}
-
-// YCbCrEncodingType (v4l2_ycbcr_encoding)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_ycbcr_encoding
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L300
-type YCbCrEncodingType = uint32
-
-const (
-	YCbCrEncodingDefault        YCbCrEncodingType = C.V4L2_YCBCR_ENC_DEFAULT
-	YCbCrEncoding601            YCbCrEncodingType = C.V4L2_YCBCR_ENC_601
-	YCbCrEncoding709            YCbCrEncodingType = C.V4L2_YCBCR_ENC_709
-	YCbCrEncodingXV601          YCbCrEncodingType = C.V4L2_YCBCR_ENC_XV601
-	YCbCrEncodingXV709          YCbCrEncodingType = C.V4L2_YCBCR_ENC_XV709
-	_                           YCbCrEncodingType = C.V4L2_YCBCR_ENC_SYCC //(absolete)
-	YCbCrEncodingBT2020         YCbCrEncodingType = C.V4L2_YCBCR_ENC_BT2020
-	YCbCrEncodingBT2020ConstLum YCbCrEncodingType = C.V4L2_YCBCR_ENC_BT2020_CONST_LUM
-)
-
-var YCbCrEncodings = map[YCbCrEncodingType]string{
-	YCbCrEncodingDefault:        "Default",
-	YCbCrEncoding601:            "ITU-R 601",
-	YCbCrEncoding709:            "Rec. 709",
-	YCbCrEncodingXV601:          "xvYCC 601",
-	YCbCrEncodingXV709:          "xvYCC 709",
-	YCbCrEncodingBT2020:         "BT.2020",
-	YCbCrEncodingBT2020ConstLum: "BT.2020 constant luminance",
-	HSVEncoding180:              "HSV 0-179",
-	HSVEncoding256:              "HSV 0-255",
-}
-
-// ColorspaceToYCbCrEnc is used to get the YCbCrEncoding when only a default YCbCr and the colorspace is known
-func ColorspaceToYCbCrEnc(cs ColorspaceType) YCbCrEncodingType {
-	switch cs {
-	case ColorspaceREC709, ColorspaceDCIP3:
-		return YCbCrEncoding709
-	case ColorspaceBT2020:
-		return YCbCrEncodingBT2020
-	default:
-		return YCbCrEncoding601
-	}
-}
-
-// HSVEncodingType (v4l2_hsv_encoding)
-// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L352
-type HSVEncodingType = YCbCrEncodingType
-
-const (
-	HSVEncoding180 HSVEncodingType = C.V4L2_HSV_ENC_180
-	HSVEncoding256 HSVEncodingType = C.V4L2_HSV_ENC_256
-)
-
-// QuantizationType (v4l2_quantization)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_quantization#c.V4L.v4l2_quantization
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L372
-type QuantizationType = uint32
-
-const (
-	QuantizationDefault      QuantizationType = C.V4L2_QUANTIZATION_DEFAULT
-	QuantizationFullRange    QuantizationType = C.V4L2_QUANTIZATION_FULL_RANGE
-	QuantizationLimitedRange QuantizationType = C.V4L2_QUANTIZATION_LIM_RANGE
-)
-
-var Quantizations = map[QuantizationType]string{
-	QuantizationDefault:      "Default",
-	QuantizationFullRange:    "Full range",
-	QuantizationLimitedRange: "Limited range",
-}
-
-func ColorspaceToQuantization(cs ColorspaceType) QuantizationType {
-	// TODO any RGB/HSV pixel formats should also return full-range
-	switch cs {
-	case ColorspaceOPRGB, ColorspaceSRGB, ColorspaceJPEG:
-		return QuantizationFullRange
-	default:
-		return QuantizationLimitedRange
-	}
-}
-
-// XferFunctionType (v4l2_xfer_func)
-// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/colorspaces-defs.html?highlight=v4l2_xfer_func#c.V4L.v4l2_xfer_func
-// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L259
-type XferFunctionType = uint32
-
-const (
-	XferFuncDefault   XferFunctionType = C.V4L2_XFER_FUNC_DEFAULT
-	XferFunc709       XferFunctionType = C.V4L2_XFER_FUNC_709
-	XferFuncSRGB      XferFunctionType = C.V4L2_XFER_FUNC_SRGB
-	XferFuncOpRGB     XferFunctionType = C.V4L2_XFER_FUNC_OPRGB
-	XferFuncSMPTE240M XferFunctionType = C.V4L2_XFER_FUNC_SMPTE240M
-	XferFuncNone      XferFunctionType = C.V4L2_XFER_FUNC_NONE
-	XferFuncDCIP3     XferFunctionType = C.V4L2_XFER_FUNC_DCI_P3
-	XferFuncSMPTE2084 XferFunctionType = C.V4L2_XFER_FUNC_SMPTE2084
-)
-
-var XferFunctions = map[XferFunctionType]string{
-	XferFuncDefault:   "Default",
-	XferFunc709:       "Rec. 709",
-	XferFuncSRGB:      "sRGB",
-	XferFuncOpRGB:     "opRGB",
-	XferFuncSMPTE240M: "SMPTE 240M",
-	XferFuncNone:      "None",
-	XferFuncDCIP3:     "DCI-P3",
-	XferFuncSMPTE2084: "SMPTE 2084",
-}
-
-// ColorspaceToXferFunc used to get true XferFunc when only colorspace and default XferFuc are known.
-func ColorspaceToXferFunc(cs ColorspaceType) XferFunctionType {
-	switch cs {
-	case ColorspaceOPRGB:
-		return XferFuncOpRGB
-	case ColorspaceSMPTE240M:
-		return XferFuncSMPTE240M
-	case ColorspaceDCIP3:
-		return XferFuncDCIP3
-	case ColorspaceRaw:
-		return XferFuncNone
-	case ColorspaceSRGB:
-		return XferFuncSRGB
-	case ColorspaceJPEG:
-		return XferFuncSRGB
-	default:
-		return XferFunc709
 	}
 }
 
@@ -244,6 +381,39 @@ var Fields = map[FieldType]string{
 	FieldInterlacedBottomTop: "interlaced bottom-top",
 }
 
+// PixFormatFlag represents format description flags from v4l2_fmtdesc
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-fmt.html
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L772
+type PixFormatFlag = uint32
+
+const (
+	FmtFlagCompressed           PixFormatFlag = C.V4L2_FMT_FLAG_COMPRESSED
+	FmtFlagEmulated             PixFormatFlag = C.V4L2_FMT_FLAG_EMULATED
+	FmtFlagContinuousBytestream PixFormatFlag = C.V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
+	FmtFlagDynamicResolution    PixFormatFlag = C.V4L2_FMT_FLAG_DYN_RESOLUTION
+	FmtFlagEncCapFrameInterval  PixFormatFlag = C.V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
+	FmtFlagCSCColorspace        PixFormatFlag = C.V4L2_FMT_FLAG_CSC_COLORSPACE
+	FmtFlagCSCXferFunc          PixFormatFlag = C.V4L2_FMT_FLAG_CSC_XFER_FUNC
+	FmtFlagCSCYCbCrEnc          PixFormatFlag = C.V4L2_FMT_FLAG_CSC_YCBCR_ENC
+	FmtFlagCSCQuantization      PixFormatFlag = C.V4L2_FMT_FLAG_CSC_QUANTIZATION
+	// FmtFlagMetaLineBased requires kernel 6.10+ (not available in Ubuntu 24.04)
+	// FmtFlagMetaLineBased        PixFormatFlag = C.V4L2_FMT_FLAG_META_LINE_BASED
+)
+
+// FormatFlags is a map of format flag descriptions
+var FormatFlags = map[PixFormatFlag]string{
+	FmtFlagCompressed:           "Compressed",
+	FmtFlagEmulated:             "Emulated (software conversion)",
+	FmtFlagContinuousBytestream: "Continuous bytestream",
+	FmtFlagDynamicResolution:    "Dynamic resolution change",
+	FmtFlagEncCapFrameInterval:  "Encoder frame interval capture",
+	FmtFlagCSCColorspace:        "Colorspace conversion supported",
+	FmtFlagCSCXferFunc:          "Transfer function conversion supported",
+	FmtFlagCSCYCbCrEnc:          "YCbCr encoding conversion supported",
+	FmtFlagCSCQuantization:      "Quantization conversion supported",
+	// FmtFlagMetaLineBased not included (requires kernel 6.10+)
+}
+
 // PixFormat contains video image format from v4l2_pix_format.
 // https://www.kernel.org/doc/html/v4.9/media/uapi/v4l/pixfmt-002.html?highlight=v4l2_pix_format
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L496
@@ -276,6 +446,295 @@ func (f PixFormat) String() string {
 		Quantizations[f.Quantization],
 		XferFunctions[f.XferFunc],
 	)
+}
+
+// IsCompressed returns true if the format is compressed
+func (f PixFormat) IsCompressed() bool {
+	return f.Flags&FmtFlagCompressed != 0
+}
+
+// IsEmulated returns true if the format is emulated (software conversion)
+func (f PixFormat) IsEmulated() bool {
+	return f.Flags&FmtFlagEmulated != 0
+}
+
+// SupportsDynamicResolution returns true if the format supports dynamic resolution changes
+func (f PixFormat) SupportsDynamicResolution() bool {
+	return f.Flags&FmtFlagDynamicResolution != 0
+}
+
+// SupportsColorspaceConversion returns true if the format supports colorspace conversion
+func (f PixFormat) SupportsColorspaceConversion() bool {
+	return f.Flags&FmtFlagCSCColorspace != 0
+}
+
+// GetFlags returns a list of flag descriptions for this format
+func (f PixFormat) GetFlags() []string {
+	var flags []string
+	for flag, desc := range FormatFlags {
+		if f.Flags&flag != 0 {
+			flags = append(flags, desc)
+		}
+	}
+	return flags
+}
+
+// IsRGB returns true if the pixel format is an RGB format
+func (f PixFormat) IsRGB() bool {
+	switch f.PixelFormat {
+	case PixelFmtRGB332, PixelFmtARGB444, PixelFmtXRGB444,
+		PixelFmtARGB555, PixelFmtXRGB555,
+		PixelFmtRGB565, PixelFmtRGB555, PixelFmtRGB555X, PixelFmtRGB565X,
+		PixelFmtBGR666, PixelFmtBGR24, PixelFmtRGB24,
+		PixelFmtBGR32, PixelFmtABGR32, PixelFmtXBGR32,
+		PixelFmtRGB32, PixelFmtARGB32, PixelFmtXRGB32:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsYUV returns true if the pixel format is a YUV format (packed, planar, or semi-planar)
+func (f PixFormat) IsYUV() bool {
+	return f.IsYUVPacked() || f.IsYUVPlanar() || f.IsYUVSemiPlanar()
+}
+
+// IsYUVPacked returns true if the pixel format is a packed YUV format
+func (f PixFormat) IsYUVPacked() bool {
+	switch f.PixelFormat {
+	case PixelFmtYUYV, PixelFmtYYUV, PixelFmtYVYU, PixelFmtUYVY, PixelFmtVYUY,
+		PixelFmtYUV444, PixelFmtYUV555, PixelFmtYUV565, PixelFmtYUV32,
+		PixelFmtAYUV32, PixelFmtXYUV32, PixelFmtVUYA32, PixelFmtVUYX32:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsYUVPlanar returns true if the pixel format is a planar YUV format
+func (f PixFormat) IsYUVPlanar() bool {
+	switch f.PixelFormat {
+	case PixelFmtYUV410, PixelFmtYUV420, PixelFmtYVU410, PixelFmtYVU420,
+		PixelFmtYUV422P, PixelFmtYUV411P, PixelFmtY41P,
+		PixelFmtYUV444M, PixelFmtYVU444M, PixelFmtYUV422M, PixelFmtYVU422M, PixelFmtYUV420M, PixelFmtYVU420M:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsYUVSemiPlanar returns true if the pixel format is a semi-planar YUV (NV) format
+func (f PixFormat) IsYUVSemiPlanar() bool {
+	switch f.PixelFormat {
+	case PixelFmtNV12, PixelFmtNV21, PixelFmtNV16, PixelFmtNV61, PixelFmtNV24, PixelFmtNV42,
+		PixelFmtNV12M, PixelFmtNV21M, PixelFmtNV16M, PixelFmtNV61M,
+		PixelFmtP010, PixelFmtP012:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsGreyscale returns true if the pixel format is a greyscale format
+func (f PixFormat) IsGreyscale() bool {
+	switch f.PixelFormat {
+	case PixelFmtGrey, PixelFmtY4, PixelFmtY6, PixelFmtY10, PixelFmtY12, PixelFmtY14, PixelFmtY16, PixelFmtY16BE, PixelFmtY10BPACK:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsBayer returns true if the pixel format is a Bayer pattern format
+func (f PixFormat) IsBayer() bool {
+	switch f.PixelFormat {
+	// 8-bit Bayer
+	case PixelFmtSBGGR8, PixelFmtSGBRG8, PixelFmtSGRBG8, PixelFmtSRGGB8,
+		// 10-bit Bayer
+		PixelFmtSBGGR10, PixelFmtSGBRG10, PixelFmtSGRBG10, PixelFmtSRGGB10,
+		PixelFmtSBGGR10P, PixelFmtSGBRG10P, PixelFmtSGRBG10P, PixelFmtSRGGB10P,
+		PixelFmtSBGGR10ALAW8, PixelFmtSGBRG10ALAW8, PixelFmtSGRBG10ALAW8, PixelFmtSRGGB10ALAW8,
+		PixelFmtSBGGR10DPCM8, PixelFmtSGBRG10DPCM8, PixelFmtSGRBG10DPCM8, PixelFmtSRGGB10DPCM8,
+		// 12-bit Bayer
+		PixelFmtSBGGR12, PixelFmtSGBRG12, PixelFmtSGRBG12, PixelFmtSRGGB12,
+		PixelFmtSBGGR12P, PixelFmtSGBRG12P, PixelFmtSGRBG12P, PixelFmtSRGGB12P,
+		// 14-bit Bayer
+		PixelFmtSBGGR14, PixelFmtSGBRG14, PixelFmtSGRBG14, PixelFmtSRGGB14,
+		PixelFmtSBGGR14P, PixelFmtSGBRG14P, PixelFmtSGRBG14P, PixelFmtSRGGB14P,
+		// 16-bit Bayer
+		PixelFmtSBGGR16, PixelFmtSGBRG16, PixelFmtSGRBG16, PixelFmtSRGGB16:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsH264 returns true if the pixel format is an H.264 variant
+func (f PixFormat) IsH264() bool {
+	switch f.PixelFormat {
+	case PixelFmtH264, PixelFmtH264NoSC, PixelFmtH264MVC, PixelFmtH264Slice:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsHEVC returns true if the pixel format is an HEVC/H.265 variant
+func (f PixFormat) IsHEVC() bool {
+	switch f.PixelFormat {
+	case PixelFmtHEVC, PixelFmtHEVCSlice:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsMPEG returns true if the pixel format is an MPEG variant
+func (f PixFormat) IsMPEG() bool {
+	switch f.PixelFormat {
+	case PixelFmtMPEG1, PixelFmtMPEG2, PixelFmtMPEG2Slice, PixelFmtMPEG4, PixelFmtXVID:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsVP returns true if the pixel format is a VP8/VP9 variant
+func (f PixFormat) IsVP() bool {
+	switch f.PixelFormat {
+	case PixelFmtVP8, PixelFmtVP8Frame, PixelFmtVP9, PixelFmtVP9Frame:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsJPEG returns true if the pixel format is JPEG or Motion-JPEG
+func (f PixFormat) IsJPEG() bool {
+	switch f.PixelFormat {
+	case PixelFmtJPEG, PixelFmtMJPEG:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetCategory returns a human-readable category for the pixel format
+func (f PixFormat) GetCategory() string {
+	if f.IsRGB() {
+		return "RGB"
+	}
+	if f.IsYUVPacked() {
+		return "YUV Packed"
+	}
+	if f.IsYUVPlanar() {
+		return "YUV Planar"
+	}
+	if f.IsYUVSemiPlanar() {
+		return "YUV Semi-Planar"
+	}
+	if f.IsGreyscale() {
+		return "Greyscale"
+	}
+	if f.IsBayer() {
+		return "Bayer"
+	}
+	if f.IsJPEG() {
+		return "JPEG"
+	}
+	if f.IsH264() {
+		return "H.264"
+	}
+	if f.IsHEVC() {
+		return "HEVC/H.265"
+	}
+	if f.IsMPEG() {
+		return "MPEG"
+	}
+	if f.IsVP() {
+		return "VP8/VP9"
+	}
+	if f.IsCompressed() {
+		return "Compressed"
+	}
+	return "Other"
+}
+
+// GetBitsPerPixel returns the average bits per pixel for uncompressed formats
+// Returns 0 for compressed formats or unknown formats
+func (f PixFormat) GetBitsPerPixel() int {
+	switch f.PixelFormat {
+	// RGB formats
+	case PixelFmtRGB332:
+		return 8
+	case PixelFmtARGB444, PixelFmtXRGB444:
+		return 16
+	case PixelFmtRGB555, PixelFmtRGB555X, PixelFmtRGB565, PixelFmtRGB565X,
+		PixelFmtARGB555, PixelFmtXRGB555:
+		return 16
+	case PixelFmtBGR666:
+		return 18
+	case PixelFmtBGR24, PixelFmtRGB24:
+		return 24
+	case PixelFmtBGR32, PixelFmtABGR32, PixelFmtXBGR32,
+		PixelFmtRGB32, PixelFmtARGB32, PixelFmtXRGB32:
+		return 32
+
+	// Greyscale
+	case PixelFmtGrey:
+		return 8
+	case PixelFmtY10, PixelFmtY10BPACK:
+		return 10
+	case PixelFmtY12:
+		return 12
+	case PixelFmtY14:
+		return 14
+	case PixelFmtY16, PixelFmtY16BE:
+		return 16
+
+	// Packed YUV
+	case PixelFmtYUYV, PixelFmtYYUV, PixelFmtYVYU, PixelFmtUYVY, PixelFmtVYUY, PixelFmtYUV555, PixelFmtYUV565:
+		return 16
+	case PixelFmtYUV444:
+		return 24
+	case PixelFmtAYUV32, PixelFmtXYUV32, PixelFmtVUYA32, PixelFmtVUYX32, PixelFmtYUV32:
+		return 32
+
+	// Planar YUV (average)
+	case PixelFmtYUV410, PixelFmtYVU410:
+		return 9 // 4:1:0
+	case PixelFmtYUV420, PixelFmtYVU420, PixelFmtYUV420M, PixelFmtYVU420M, PixelFmtNV12, PixelFmtNV21, PixelFmtNV12M, PixelFmtNV21M:
+		return 12 // 4:2:0
+	case PixelFmtYUV422P, PixelFmtYUV411P, PixelFmtY41P, PixelFmtYUV422M, PixelFmtYVU422M, PixelFmtNV16, PixelFmtNV61, PixelFmtNV16M, PixelFmtNV61M:
+		return 16 // 4:2:2
+	case PixelFmtYUV444M, PixelFmtYVU444M, PixelFmtNV24, PixelFmtNV42:
+		return 24 // 4:4:4
+
+	// Bayer - 8 bit
+	case PixelFmtSBGGR8, PixelFmtSGBRG8, PixelFmtSGRBG8, PixelFmtSRGGB8:
+		return 8
+	// Bayer - 10 bit
+	case PixelFmtSBGGR10, PixelFmtSGBRG10, PixelFmtSGRBG10, PixelFmtSRGGB10,
+		PixelFmtSBGGR10P, PixelFmtSGBRG10P, PixelFmtSGRBG10P, PixelFmtSRGGB10P,
+		PixelFmtSBGGR10ALAW8, PixelFmtSGBRG10ALAW8, PixelFmtSGRBG10ALAW8, PixelFmtSRGGB10ALAW8,
+		PixelFmtSBGGR10DPCM8, PixelFmtSGBRG10DPCM8, PixelFmtSGRBG10DPCM8, PixelFmtSRGGB10DPCM8:
+		return 10
+	// Bayer - 12 bit
+	case PixelFmtSBGGR12, PixelFmtSGBRG12, PixelFmtSGRBG12, PixelFmtSRGGB12,
+		PixelFmtSBGGR12P, PixelFmtSGBRG12P, PixelFmtSGRBG12P, PixelFmtSRGGB12P:
+		return 12
+	// Bayer - 14 bit
+	case PixelFmtSBGGR14, PixelFmtSGBRG14, PixelFmtSGRBG14, PixelFmtSRGGB14,
+		PixelFmtSBGGR14P, PixelFmtSGBRG14P, PixelFmtSGRBG14P, PixelFmtSRGGB14P:
+		return 14
+	// Bayer - 16 bit
+	case PixelFmtSBGGR16, PixelFmtSGBRG16, PixelFmtSGRBG16, PixelFmtSRGGB16:
+		return 16
+
+	default:
+		// Compressed formats or unknown
+		return 0
+	}
 }
 
 // GetPixFormat retrieves pixel information for the specified driver (via v4l2_format and v4l2_pix_format)

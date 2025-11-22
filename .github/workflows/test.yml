@@ -17,7 +17,8 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential linux-headers-$(uname -r)
+        # Install linux-headers-generic to get the latest available kernel headers
+        sudo apt-get install -y build-essential linux-headers-generic
 
     - name: Run Unit Tests
       run: go test -v ./v4l2 ./device ./imgsupport
@@ -37,7 +38,8 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        sudo apt-get install -y build-essential linux-headers-$(uname -r)
+        # Install linux-headers-generic to get the latest available kernel headers
+        sudo apt-get install -y build-essential linux-headers-generic
 
     - name: Install v4l2 dependencies
       run: |
