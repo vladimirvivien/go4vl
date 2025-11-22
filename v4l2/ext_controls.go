@@ -491,6 +491,6 @@ func makeExtControl(qryCtrl C.struct_v4l2_query_ext_ctrl) Control {
 		Minimum: int32(qryCtrl.minimum),
 		Step:    int32(qryCtrl.step),
 		Default: int32(qryCtrl.default_value),
-		flags:   uint32(qryCtrl.flags),
+		Flags:   uint32(qryCtrl.flags),
 	}
 }
