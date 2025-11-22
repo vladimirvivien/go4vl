@@ -17,6 +17,28 @@ import (
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1740
 type CtrlValue = int32
 
+// CtrlFlag represents flags for V4L2 controls
+type CtrlFlag = uint32
+
+// Control flags
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
+const (
+	CtrlFlagDisabled        CtrlFlag = C.V4L2_CTRL_FLAG_DISABLED
+	CtrlFlagGrabbed         CtrlFlag = C.V4L2_CTRL_FLAG_GRABBED
+	CtrlFlagReadOnly        CtrlFlag = C.V4L2_CTRL_FLAG_READ_ONLY
+	CtrlFlagUpdate          CtrlFlag = C.V4L2_CTRL_FLAG_UPDATE
+	CtrlFlagInactive        CtrlFlag = C.V4L2_CTRL_FLAG_INACTIVE
+	CtrlFlagSlider          CtrlFlag = C.V4L2_CTRL_FLAG_SLIDER
+	CtrlFlagWriteOnly       CtrlFlag = C.V4L2_CTRL_FLAG_WRITE_ONLY
+	CtrlFlagVolatile        CtrlFlag = C.V4L2_CTRL_FLAG_VOLATILE
+	CtrlFlagHasPayload      CtrlFlag = C.V4L2_CTRL_FLAG_HAS_PAYLOAD
+	CtrlFlagExecuteOnWrite  CtrlFlag = C.V4L2_CTRL_FLAG_EXECUTE_ON_WRITE
+	CtrlFlagModifyLayout    CtrlFlag = C.V4L2_CTRL_FLAG_MODIFY_LAYOUT
+	CtrlFlagDynamicArray    CtrlFlag = C.V4L2_CTRL_FLAG_DYNAMIC_ARRAY
+	CtrlFlagNextCtrl        CtrlFlag = C.V4L2_CTRL_FLAG_NEXT_CTRL
+	CtrlFlagNextCompound    CtrlFlag = C.V4L2_CTRL_FLAG_NEXT_COMPOUND
+)
+
 // Control (v4l2_control)
 //
 // This type is used to query/set/get user-specific controls.
@@ -36,7 +58,7 @@ type Control struct {
 	Maximum int32
 	Step    int32
 	Default int32
-	flags   uint32
+	Flags   uint32
 }
 
 // ControlMenuItem represents a single option in a menu-type V4L2 control.
@@ -177,7 +199,7 @@ func makeControl(qryCtrl C.struct_v4l2_queryctrl) Control {
 		Minimum: int32(qryCtrl.minimum),
 		Step:    int32(qryCtrl.step),
 		Default: int32(qryCtrl.default_value),
-		flags:   uint32(qryCtrl.flags),
+		Flags:   uint32(qryCtrl.flags),
 	}
 }
 

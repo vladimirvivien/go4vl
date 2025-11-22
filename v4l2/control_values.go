@@ -196,9 +196,19 @@ const (
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/ext-ctrls-flash.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L1060
 const (
-	CtrlFlashClass   CtrlID = C.V4L2_CID_FLASH_CLASS
-	CtrlFlashLEDMode CtrlID = C.V4L2_CID_FLASH_LED_MODE
-	// TODO add all flash control const values
+	CtrlFlashClass              CtrlID = C.V4L2_CID_FLASH_CLASS
+	CtrlFlashLEDMode            CtrlID = C.V4L2_CID_FLASH_LED_MODE
+	CtrlFlashStrobeSource       CtrlID = C.V4L2_CID_FLASH_STROBE_SOURCE
+	CtrlFlashStrobe             CtrlID = C.V4L2_CID_FLASH_STROBE
+	CtrlFlashStrobeStop         CtrlID = C.V4L2_CID_FLASH_STROBE_STOP
+	CtrlFlashStrobeStatus       CtrlID = C.V4L2_CID_FLASH_STROBE_STATUS
+	CtrlFlashTimeout            CtrlID = C.V4L2_CID_FLASH_TIMEOUT
+	CtrlFlashIntensity          CtrlID = C.V4L2_CID_FLASH_INTENSITY
+	CtrlFlashTorchIntensity     CtrlID = C.V4L2_CID_FLASH_TORCH_INTENSITY
+	CtrlFlashIndicatorIntensity CtrlID = C.V4L2_CID_FLASH_INDICATOR_INTENSITY
+	CtrlFlashFault              CtrlID = C.V4L2_CID_FLASH_FAULT
+	CtrlFlashChargeCurrent      CtrlID = C.V4L2_CID_FLASH_CHARGE
+	CtrlFlashReady              CtrlID = C.V4L2_CID_FLASH_READY
 )
 
 // JPEG control values
@@ -214,17 +224,30 @@ const (
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L1127
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/ext-ctrls-image-source.html
 const (
-	CtrlImgSrcClass         CtrlID = C.V4L2_CID_IMAGE_SOURCE_CLASS
-	CtrlImgSrcVerticalBlank CtrlID = C.V4L2_CID_VBLANK
+	CtrlImgSrcClass            CtrlID = C.V4L2_CID_IMAGE_SOURCE_CLASS
+	CtrlImgSrcVerticalBlank    CtrlID = C.V4L2_CID_VBLANK
+	CtrlImgSrcHorizontalBlank  CtrlID = C.V4L2_CID_HBLANK
+	CtrlImgSrcAnalogueGain     CtrlID = C.V4L2_CID_ANALOGUE_GAIN
+	CtrlImgSrcTestPatternRed   CtrlID = C.V4L2_CID_TEST_PATTERN_RED
+	CtrlImgSrcTestPatternGreenR CtrlID = C.V4L2_CID_TEST_PATTERN_GREENR
+	CtrlImgSrcTestPatternBlue  CtrlID = C.V4L2_CID_TEST_PATTERN_BLUE
+	CtrlImgSrcTestPatternGreenB CtrlID = C.V4L2_CID_TEST_PATTERN_GREENB
+	CtrlImgSrcUnitCellSize     CtrlID = C.V4L2_CID_UNIT_CELL_SIZE
+	CtrlImgSrcNotifyGains      CtrlID = C.V4L2_CID_NOTIFY_GAINS
 )
 
 // Image process controls
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/ext-ctrls-image-process.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h#L1144
 const (
-	CtrlImgProcClass = C.V4L2_CID_IMAGE_PROC_CLASS
-	// TODO implement all image process values
+	CtrlImgProcClass          CtrlID = C.V4L2_CID_IMAGE_PROC_CLASS
+	CtrlImgProcLinkFreq       CtrlID = C.V4L2_CID_LINK_FREQ
+	CtrlImgProcPixelRate      CtrlID = C.V4L2_CID_PIXEL_RATE
+	CtrlImgProcTestPattern    CtrlID = C.V4L2_CID_TEST_PATTERN
+	CtrlImgProcDeinterlacing  CtrlID = C.V4L2_CID_DEINTERLACING_MODE
+	CtrlImgProcDigitalGain    CtrlID = C.V4L2_CID_DIGITAL_GAIN
 )
 
-// TODO add code for the following controls
+// Codec controls are already defined in ext_ctrls_*.go files
+// See: ext_ctrls_h264.go, ext_ctrls_mpeg2.go, ext_ctrls_vp8.go, ext_ctrls_fwht.go
 // Stateless codec controls (h264, vp8, fwht, mpeg2, etc)
