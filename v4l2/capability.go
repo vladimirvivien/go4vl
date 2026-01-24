@@ -329,6 +329,46 @@ func (c Capability) IsDeviceCapabilitiesProvided() bool {
 	return c.Capabilities&CapDeviceCapabilities != 0
 }
 
+// IsM2MSupported checks if the device supports memory-to-memory operations.
+// Returns true if the device supports M2M via either single-planar or multi-planar API.
+// M2M devices include hardware codecs (encoders/decoders), scalers, and format converters.
+func (c Capability) IsM2MSupported() bool {
+	caps := c.GetCapabilities()
+	return caps&CapVideoMem2Mem != 0 || caps&CapVideoMem2MemMPlane != 0
+}
+
+// IsM2MMPlaneSupported checks if the device supports memory-to-memory operations via multi-planar API.
+// Returns true for M2M devices that use the multi-planar buffer API (most hardware codecs).
+func (c Capability) IsM2MMPlaneSupported() bool {
+	return c.GetCapabilities()&CapVideoMem2MemMPlane != 0
+}
+
+// IsEncoderSupported checks if the device can function as a video encoder.
+// Returns true if the device is an M2M device with video output capability.
+// Encoders accept raw video on the output queue and produce compressed video on the capture queue.
+//
+// Note: For stateful encoders, the output queue receives raw frames (NV12, I420, etc.)
+// and the capture queue produces compressed bitstream (H.264, HEVC, etc.).
+func (c Capability) IsEncoderSupported() bool {
+	caps := c.GetCapabilities()
+	hasM2M := caps&CapVideoMem2Mem != 0 || caps&CapVideoMem2MemMPlane != 0
+	hasOutput := caps&CapVideoOutput != 0 || caps&CapVideoOutputMPlane != 0
+	return hasM2M && hasOutput
+}
+
+// IsDecoderSupported checks if the device can function as a video decoder.
+// Returns true if the device is an M2M device with video capture capability.
+// Decoders accept compressed video on the output queue and produce raw video on the capture queue.
+//
+// Note: For stateful decoders, the output queue receives compressed bitstream (H.264, HEVC, etc.)
+// and the capture queue produces raw frames (NV12, I420, etc.).
+func (c Capability) IsDecoderSupported() bool {
+	caps := c.GetCapabilities()
+	hasM2M := caps&CapVideoMem2Mem != 0 || caps&CapVideoMem2MemMPlane != 0
+	hasCapture := caps&CapVideoCapture != 0 || caps&CapVideoCaptureMPlane != 0
+	return hasM2M && hasCapture
+}
+
 // GetDriverCapDescriptions returns human-readable descriptions of all capabilities
 // supported by the physical device (from the Capabilities field).
 //

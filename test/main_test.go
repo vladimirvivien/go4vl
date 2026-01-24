@@ -62,11 +62,11 @@ func findExistingV4L2Devices() []string {
 	return devices
 }
 
-// findExistingLoopbackDevices finds existing v4l2loopback devices specifically
+// findExistingLoopbackDevices finds existing v4l2loopback or vivid devices
 func findExistingLoopbackDevices() []string {
 	var devices []string
 
-	// Check for v4l2loopback devices by reading /sys/class/video4linux/videoX/name
+	// Check for v4l2loopback or vivid devices by reading /sys/class/video4linux/videoX/name
 	for i := 0; i < 100; i++ {
 		devPath := fmt.Sprintf("/dev/video%d", i)
 		sysPath := fmt.Sprintf("/sys/class/video4linux/video%d/name", i)
@@ -76,17 +76,22 @@ func findExistingLoopbackDevices() []string {
 			continue
 		}
 
-		// Check if it's a loopback device
+		// Check if it's a test device (loopback or vivid)
 		nameBytes, err := os.ReadFile(sysPath)
 		if err != nil {
 			continue
 		}
 
 		name := strings.TrimSpace(string(nameBytes))
-		// v4l2loopback devices have names starting with "Dummy" or containing "loopback"
-		if strings.Contains(strings.ToLower(name), "loopback") ||
-			strings.Contains(strings.ToLower(name), "dummy") ||
-			strings.Contains(strings.ToLower(name), "go4vl_test") {
+		nameLower := strings.ToLower(name)
+		// Match v4l2loopback devices
+		if strings.Contains(nameLower, "loopback") ||
+			strings.Contains(nameLower, "dummy") ||
+			strings.Contains(nameLower, "go4vl_test") {
+			devices = append(devices, devPath)
+		}
+		// Match vivid devices (Virtual Video Test Driver)
+		if strings.Contains(nameLower, "vivid") {
 			devices = append(devices, devPath)
 		}
 	}
@@ -112,23 +117,30 @@ func checkRequiredBinaries() []string {
 	return missing
 }
 
+// isCI returns true if running in a CI environment
+func isCI() bool {
+	return os.Getenv("CI") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+}
+
 // TestMain sets up and tears down the testing environment
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	// Check for required binaries first
-	missingBinaries := checkRequiredBinaries()
-	if len(missingBinaries) > 0 {
-		log.Println("WARNING: Missing required tools for full test functionality:")
-		for _, msg := range missingBinaries {
-			log.Println(msg)
+	// Check for required binaries first (skip verbose output in CI)
+	if !isCI() {
+		missingBinaries := checkRequiredBinaries()
+		if len(missingBinaries) > 0 {
+			log.Println("WARNING: Missing required tools for full test functionality:")
+			for _, msg := range missingBinaries {
+				log.Println(msg)
+			}
+			log.Println("")
+			log.Println("To install on Debian/Ubuntu:")
+			log.Println("  sudo apt-get install ffmpeg v4l-utils")
+			log.Println("")
+			log.Println("Some tests and benchmarks may be skipped.")
+			log.Println("")
 		}
-		log.Println("")
-		log.Println("To install on Debian/Ubuntu:")
-		log.Println("  sudo apt-get install ffmpeg v4l-utils")
-		log.Println("")
-		log.Println("Some tests and benchmarks may be skipped.")
-		log.Println("")
 	}
 
 	// Determine which device numbers to use
@@ -157,27 +169,45 @@ func TestMain(m *testing.M) {
 				log.Printf("Selected test devices: %s, %s", testDevice1, testDevice2)
 			}
 		} else {
-			log.Println("Warning: Could not find 2 available device numbers, using defaults")
+			if *verbose {
+				log.Println("Could not find 2 available device numbers, using defaults")
+			}
 			testDevices = []string{"/dev/video42", "/dev/video43"}
 			testDevice1 = testDevices[0]
 			testDevice2 = testDevices[1]
 		}
 	}
 
-	// Setup v4l2loopback if needed
+	// Setup test devices - use vivid if available, otherwise try v4l2loopback
 	var exitCode int
 	if !*skipSetup {
-		if err := setupV4L2Loopback(); err != nil {
-			log.Printf("ERROR: Failed to setup v4l2loopback: %v", err)
-			log.Println("")
-			log.Println("v4l2loopback is REQUIRED for tests and benchmarks.")
-			log.Println("To fix this issue:")
-			log.Println("  1. Install v4l2loopback: sudo apt-get install v4l2loopback-dkms")
-			log.Println("  2. Run tests with sudo: sudo go test -v -tags=integration ./test/...")
-			log.Println("  3. Or manually load module: sudo modprobe v4l2loopback devices=2 video_nr=42,43")
-			log.Println("")
-			log.Println("Tests will be skipped.")
-			// Set devices to empty so all tests/benchmarks skip
+		// Check if vivid is already loaded (e.g., in CI)
+		if isVividLoaded() {
+			if *verbose {
+				log.Println("Using existing vivid devices")
+			}
+			// Find vivid devices
+			vividDevices := findExistingLoopbackDevices()
+			if len(vividDevices) >= 2 {
+				testDevices = vividDevices[:2]
+				testDevice1 = testDevices[0]
+				testDevice2 = testDevices[1]
+			} else if len(vividDevices) >= 1 {
+				testDevice1 = vividDevices[0]
+				testDevices = vividDevices
+			}
+		} else if err := setupV4L2Loopback(); err != nil {
+			if !isCI() {
+				log.Printf("Failed to setup v4l2loopback: %v", err)
+				log.Println("")
+				log.Println("v4l2loopback is required for hardware integration tests.")
+				log.Println("To fix this issue:")
+				log.Println("  1. Install v4l2loopback: sudo apt-get install v4l2loopback-dkms")
+				log.Println("  2. Run tests with sudo: sudo go test -v -tags=integration ./test/...")
+				log.Println("  3. Or manually load module: sudo modprobe v4l2loopback devices=2 video_nr=42,43")
+				log.Println("")
+			}
+			// Set devices to empty so hardware-dependent tests skip
 			testDevice1 = ""
 			testDevice2 = ""
 			testDevices = []string{}
@@ -185,18 +215,24 @@ func TestMain(m *testing.M) {
 		defer teardownV4L2Loopback()
 	} else {
 		// If skipping setup, verify loopback devices exist
-		log.Println("Skipping v4l2loopback setup (-skip-setup flag)")
+		if *verbose {
+			log.Println("Skipping v4l2loopback setup (-skip-setup flag)")
+		}
 		if !isModuleLoaded() {
-			log.Println("WARNING: v4l2loopback module not loaded, tests will skip")
+			if *verbose {
+				log.Println("v4l2loopback module not loaded")
+			}
 			testDevice1 = ""
 			testDevice2 = ""
 			testDevices = []string{}
 		} else if len(findExistingLoopbackDevices()) < 2 {
-			log.Println("WARNING: Not enough v4l2loopback devices found, tests will skip")
+			if *verbose {
+				log.Println("Not enough v4l2loopback devices found")
+			}
 			testDevice1 = ""
 			testDevice2 = ""
 			testDevices = []string{}
-		} else {
+		} else if *verbose {
 			log.Printf("Using existing v4l2loopback devices: %v", testDevices)
 		}
 	}
@@ -353,6 +389,21 @@ func isModuleLoaded() bool {
 		return false
 	}
 	return strings.Contains(string(output), "v4l2loopback")
+}
+
+// isVividLoaded checks if vivid (Virtual Video Test Driver) is loaded
+func isVividLoaded() bool {
+	cmd := exec.Command("lsmod")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), "vivid")
+}
+
+// isAnyTestModuleLoaded checks if any V4L2 test module is loaded
+func isAnyTestModuleLoaded() bool {
+	return isModuleLoaded() || isVividLoaded()
 }
 
 // startTestPatterns starts ffmpeg test patterns for both devices

@@ -46,6 +46,28 @@ func CheckV4L2LoopbackModule(t *testing.T) bool {
 	return strings.Contains(string(output), "v4l2loopback")
 }
 
+// CheckVividModule checks if the vivid (Virtual Video Test Driver) kernel module is loaded
+func CheckVividModule(t *testing.T) bool {
+	cmd := exec.Command("lsmod")
+	output, err := cmd.Output()
+	if err != nil {
+		t.Logf("Failed to run lsmod: %v", err)
+		return false
+	}
+	return strings.Contains(string(output), "vivid")
+}
+
+// CheckAnyTestModule checks if any V4L2 test module (v4l2loopback or vivid) is loaded
+func CheckAnyTestModule(t *testing.T) bool {
+	return CheckV4L2LoopbackModule(t) || CheckVividModule(t)
+}
+
+// CheckAnyV4L2Device checks if any V4L2 video device exists
+func CheckAnyV4L2Device(t *testing.T) bool {
+	devices, _ := filepath.Glob("/dev/video*")
+	return len(devices) > 0
+}
+
 // TestLogger is an interface that both *testing.T and *testing.B satisfy
 type TestLogger interface {
 	Log(args ...interface{})
@@ -75,14 +97,16 @@ func FindTestDevice(t TestLogger) string {
 		}
 	}
 
-	// Common test device paths
+	// Common test device paths (vivid creates devices starting at video0 by default)
 	commonDevices := []string{
+		"/dev/video0",  // vivid default / Real webcam
+		"/dev/video1",
+		"/dev/video2",
+		"/dev/video3",
+		"/dev/video10", // vivid alternate
+		"/dev/video11",
 		"/dev/video20", // v4l2loopback default
 		"/dev/video21",
-		"/dev/video10", // vivid default
-		"/dev/video11",
-		"/dev/video0",  // Real webcam
-		"/dev/video1",
 	}
 
 	// Try with v4l2-ctl if available
@@ -97,14 +121,21 @@ func FindTestDevice(t TestLogger) string {
 			}
 		}
 
-		// Try to find any v4l2loopback device
+		// Try to find any v4l2loopback or vivid device
 		devices, _ := filepath.Glob("/dev/video*")
 		for _, device := range devices {
 			cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
 			output, err := cmd.Output()
-			if err == nil && strings.Contains(string(output), "v4l2loopback") {
-				t.Logf("Found v4l2loopback device: %s", device)
-				return device
+			if err == nil {
+				outputStr := string(output)
+				if strings.Contains(outputStr, "v4l2loopback") {
+					t.Logf("Found v4l2loopback device: %s", device)
+					return device
+				}
+				if strings.Contains(outputStr, "vivid") {
+					t.Logf("Found vivid device: %s", device)
+					return device
+				}
 			}
 		}
 	} else {
@@ -120,32 +151,27 @@ func FindTestDevice(t TestLogger) string {
 	return ""
 }
 
-// SetupV4L2Loopback ensures v4l2loopback is available and returns device path
+// SetupV4L2Loopback ensures a V4L2 test device is available and returns device path
 func SetupV4L2Loopback(t *testing.T) string {
-	// Check if module is loaded
-	if !CheckV4L2LoopbackModule(t) {
-		// Try to load it if we're in CI
-		if os.Getenv("CI") == "true" {
-			t.Log("Attempting to load v4l2loopback module...")
-			cmd := exec.Command("sudo", "modprobe", "v4l2loopback",
-				"devices=1", "video_nr=20", "exclusive_caps=0",
-				"card_label=go4vl_test")
-			if err := cmd.Run(); err != nil {
-				t.Skipf("Failed to load v4l2loopback: %v", err)
-			}
-			time.Sleep(500 * time.Millisecond) // Give kernel time to create device
-		} else {
-			t.Skip("v4l2loopback module not loaded. Run: sudo modprobe v4l2loopback")
+	// First check if test modules are loaded
+	if CheckAnyTestModule(t) {
+		device := FindTestDevice(t)
+		if device != "" {
+			return device
 		}
 	}
 
-	// Find the test device
-	device := FindTestDevice(t)
-	if device == "" {
-		t.Skip("No v4l2loopback device found")
+	// If no test module, check if any V4L2 device exists
+	if CheckAnyV4L2Device(t) {
+		device := FindTestDevice(t)
+		if device != "" {
+			t.Logf("Using existing V4L2 device: %s", device)
+			return device
+		}
 	}
 
-	return device
+	t.Skip("No V4L2 device available")
+	return ""
 }
 
 // Start starts feeding test pattern to the device

@@ -663,24 +663,50 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ---
 
 ### 4.7 Codec Interface
-**Status**: ❌ Not Started
+**Status**: ✅ Complete
 
-- [ ] Stateful codec interface
-- [ ] Encoder setup
-- [ ] Decoder setup
-- [ ] Codec state management
-- [ ] `VIDIOC_ENCODER_CMD` / `VIDIOC_DECODER_CMD`
-- [ ] Drain/flush operations
-- [ ] Dynamic resolution change
+- [x] Stateful codec interface
+- [x] Encoder setup
+- [x] Decoder setup
+- [x] Codec state management
+- [x] `VIDIOC_ENCODER_CMD` / `VIDIOC_DECODER_CMD`
+- [x] Drain/flush operations
+- [x] Dynamic resolution change handling
 
-**Priority**: High (hardware codec support)
+**Implementation**:
+- `v4l2/codec.go` (~730 lines) - Low-level ioctl support and M2M helpers
+  - Encoder/decoder command constants and flags
+  - `SendEncoderCmd`, `TryEncoderCmd`, `SendDecoderCmd`, `TryDecoderCmd`
+  - Convenience wrappers: `StartEncoder`, `StopEncoder`, `FlushDecoder`, etc.
+  - M2M format helpers: `GetPixFormatOutput`, `SetPixFormatCapture`, etc.
+  - M2M buffer helpers: `RequestBuffersOutput`, `MapMemoryBuffersCapture`, etc.
+  - M2M streaming helpers: `StreamOnOutput`, `StreamOffCapture`, etc.
+- `v4l2/codec_state.go` (~340 lines) - Codec state machine
+  - `CodecState` type with states: Uninitialized, Initialized, Streaming, Draining, Paused, Stopped, Flushing, Error
+  - `CodecStateMachine` for managing state transitions
+  - `CodecCallbacks` for state change notifications
+  - Thread-safe state management
+- `v4l2/codec_events.go` (~160 lines) - Event integration
+  - `SubscribeSourceChangeEvent`, `SubscribeEOSEvent`
+  - `IsResolutionChangeEvent`, `IsEOSEvent` helpers
+- `v4l2/capability.go` (+50 lines) - M2M capability checks
+  - `IsM2MSupported`, `IsEncoderSupported`, `IsDecoderSupported`
+- `device/encoder.go` (~450 lines) - High-level encoder abstraction
+  - `OpenEncoder`, `Start`, `Drain`, `Stop`, `Close`
+  - Channel-based I/O: `GetInput()`, `GetOutput()`, `GetError()`
+- `device/decoder.go` (~470 lines) - High-level decoder abstraction
+  - `OpenDecoder`, `Start`, `Flush`, `Drain`, `Stop`, `Close`
+  - Dynamic resolution change via `GetResolutionChanges()` channel
 
-**Deliverables**:
-- Create `v4l2/codec.go`
-- Implement encoder/decoder state machines
-- Add codec command support
-- Create H.264 encoder example
-- Create H.264 decoder example
+**Tests**: ✅ Complete
+- `v4l2/codec_test.go` (~400 lines) - Unit tests for commands, state machine
+- `test/codec_test.go` (~280 lines) - Integration tests (skip if no hardware)
+
+**Examples**: ✅ Complete
+- `examples/h264_encoder/` - Camera capture to H.264 encoding
+- `examples/h264_decoder/` - H.264 file decoding to raw frames
+
+**Total**: ~2,900 lines (implementation + tests + examples)
 
 ---
 
@@ -930,9 +956,9 @@ This is the primary roadmap for go4vl, tracking implementation of V4L2 (Video fo
 ## Summary Statistics
 
 ### By Status
-- ✅ Complete: ~16 items
+- ✅ Complete: ~17 items (including codec interface)
 - 🚧 Partial: ~8 items
-- ❌ Not Started: ~44 items
+- ❌ Not Started: ~43 items
 - 🔴 Out of Scope: ~8 items
 
 ### By Priority
