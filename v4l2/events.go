@@ -17,7 +17,7 @@ package v4l2
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-dqevent.html
 
 /*
-#include <linux/videodev2.h>
+#include "compat.h"
 #include <string.h>
 */
 import "C"
