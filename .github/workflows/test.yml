@@ -38,23 +38,27 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential linux-headers-generic v4l-utils ffmpeg
+        sudo apt-get install -y build-essential linux-headers-generic
 
-    - name: Install kernel headers
+    - name: Install kernel headers and modules
       run: |
-        sudo apt-get install -y linux-headers-$(uname -r)
+        sudo apt-get install -y linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
 
     - name: Build and load v4l2loopback
       run: |
+        # Load the V4L2 subsystem (included in linux-modules-extra for Azure kernel)
+        sudo modprobe videodev
+
         # Clone and build v4l2loopback from source
         git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
         cd /tmp/v4l2loopback
-        make
-        sudo make install
-        sudo depmod -a
+        make KERNEL_DIR=/lib/modules/$(uname -r)/build
 
-        # Load the module
-        sudo modprobe v4l2loopback devices=2 video_nr=10,11 card_label="Test1,Test2" exclusive_caps=0
+        # Load directly from the build directory
+        sudo insmod /tmp/v4l2loopback/v4l2loopback.ko devices=2 video_nr=10,11 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
+
+        # Allow non-root access to loopback devices
+        sudo chmod 666 /dev/video10 /dev/video11
 
         # Verify it loaded
         echo "=== Loaded modules ==="
@@ -63,17 +67,6 @@ jobs:
         echo "=== Video devices ==="
         ls -la /dev/video*
 
-        echo "=== Device info ==="
-        v4l2-ctl --list-devices
-
-    - name: Start test patterns
-      run: |
-        # Start ffmpeg test patterns on the loopback devices
-        ffmpeg -f lavfi -i testsrc=size=640x480:rate=30 -pix_fmt yuyv422 -f v4l2 /dev/video10 &
-        ffmpeg -f lavfi -i smptebars=size=640x480:rate=30 -pix_fmt yuyv422 -f v4l2 /dev/video11 &
-        sleep 2
-        echo "Test patterns started"
-
     - name: Run Integration Tests
       run: |
-        go test -v -tags=integration ./test/...
+        go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11

@@ -722,11 +722,15 @@ func TestDevice_StreamingMutualExclusivity(t *testing.T) {
 			t.Error("Second GetOutput() should return valid channel")
 		}
 
-		// Call to GetFrames() should fail (different mode)
-		framesCh := dev.GetFrames()
-		if framesCh != nil {
-			t.Error("GetFrames() after GetOutput() should return nil channel")
-		}
+		// Call to GetFrames() should panic (different mode)
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("GetFrames() after GetOutput() should panic")
+				}
+			}()
+			dev.GetFrames()
+		}()
 	})
 
 	t.Run("GetFrames_then_GetOutput", func(t *testing.T) {
@@ -748,19 +752,22 @@ func TestDevice_StreamingMutualExclusivity(t *testing.T) {
 			t.Error("Second GetFrames() should return valid channel")
 		}
 
-		// Call to GetOutput() should fail (different mode)
-		outputCh := dev.GetOutput()
-		if outputCh != nil {
-			t.Error("GetOutput() after GetFrames() should return nil channel")
-		}
+		// Call to GetOutput() should panic (different mode)
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("GetOutput() after GetFrames() should panic")
+				}
+			}()
+			dev.GetOutput()
+		}()
 	})
 
 	t.Run("Stop_resets_mode", func(t *testing.T) {
 		dev := Device{}
 		dev.output = make(chan []byte, 2)
-		dev.streaming.Store(true) // Simulate streaming state
 
-		// Set to GetOutput mode
+		// Set to GetOutput mode (without streaming, so capture goroutine is not launched)
 		ch := dev.GetOutput()
 		if ch == nil {
 			t.Error("GetOutput() should succeed initially")

@@ -3,70 +3,12 @@
 package test
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/vladimirvivien/go4vl/device"
 )
-
-// V4L2LoopbackDevice manages a v4l2loopback device for testing
-type V4L2LoopbackDevice struct {
-	Path         string
-	FFmpegCmd    *exec.Cmd
-	TestPattern  string
-	Width        int
-	Height       int
-	FPS          int
-	PixelFormat  string
-}
-
-// NewV4L2LoopbackDevice creates a new test device manager
-func NewV4L2LoopbackDevice(devicePath string) *V4L2LoopbackDevice {
-	return &V4L2LoopbackDevice{
-		Path:        devicePath,
-		TestPattern: "testsrc",
-		Width:       640,
-		Height:      480,
-		FPS:         30,
-		PixelFormat: "yuyv422",
-	}
-}
-
-// CheckV4L2LoopbackModule checks if v4l2loopback kernel module is loaded
-func CheckV4L2LoopbackModule(t *testing.T) bool {
-	cmd := exec.Command("lsmod")
-	output, err := cmd.Output()
-	if err != nil {
-		t.Logf("Failed to run lsmod: %v", err)
-		return false
-	}
-	return strings.Contains(string(output), "v4l2loopback")
-}
-
-// CheckVividModule checks if the vivid (Virtual Video Test Driver) kernel module is loaded
-func CheckVividModule(t *testing.T) bool {
-	cmd := exec.Command("lsmod")
-	output, err := cmd.Output()
-	if err != nil {
-		t.Logf("Failed to run lsmod: %v", err)
-		return false
-	}
-	return strings.Contains(string(output), "vivid")
-}
-
-// CheckAnyTestModule checks if any V4L2 test module (v4l2loopback or vivid) is loaded
-func CheckAnyTestModule(t *testing.T) bool {
-	return CheckV4L2LoopbackModule(t) || CheckVividModule(t)
-}
-
-// CheckAnyV4L2Device checks if any V4L2 video device exists
-func CheckAnyV4L2Device(t *testing.T) bool {
-	devices, _ := filepath.Glob("/dev/video*")
-	return len(devices) > 0
-}
 
 // TestLogger is an interface that both *testing.T and *testing.B satisfy
 type TestLogger interface {
@@ -97,184 +39,54 @@ func FindTestDevice(t TestLogger) string {
 		}
 	}
 
-	// Common test device paths (vivid creates devices starting at video0 by default)
+	// Search common device paths
 	commonDevices := []string{
-		"/dev/video0",  // vivid default / Real webcam
+		"/dev/video0",
 		"/dev/video1",
 		"/dev/video2",
 		"/dev/video3",
-		"/dev/video10", // vivid alternate
+		"/dev/video10",
 		"/dev/video11",
-		"/dev/video20", // v4l2loopback default
-		"/dev/video21",
 	}
 
-	// Try with v4l2-ctl if available
-	if _, err := exec.LookPath("v4l2-ctl"); err == nil {
-		for _, device := range commonDevices {
-			if _, err := os.Stat(device); err == nil {
-				cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
-				if err := cmd.Run(); err == nil {
-					t.Logf("Found test device: %s", device)
-					return device
-				}
-			}
-		}
-
-		// Try to find any v4l2loopback or vivid device
-		devices, _ := filepath.Glob("/dev/video*")
-		for _, device := range devices {
-			cmd := exec.Command("v4l2-ctl", "-d", device, "--info")
-			output, err := cmd.Output()
-			if err == nil {
-				outputStr := string(output)
-				if strings.Contains(outputStr, "v4l2loopback") {
-					t.Logf("Found v4l2loopback device: %s", device)
-					return device
-				}
-				if strings.Contains(outputStr, "vivid") {
-					t.Logf("Found vivid device: %s", device)
-					return device
-				}
-			}
-		}
-	} else {
-		// v4l2-ctl not available, just check if devices exist
-		for _, device := range commonDevices {
-			if _, err := os.Stat(device); err == nil {
-				t.Logf("Found device (without v4l2-ctl validation): %s", device)
-				return device
-			}
+	for _, device := range commonDevices {
+		if _, err := os.Stat(device); err == nil {
+			t.Logf("Found device: %s", device)
+			return device
 		}
 	}
 
 	return ""
 }
 
-// SetupV4L2Loopback ensures a V4L2 test device is available and returns device path
-func SetupV4L2Loopback(t *testing.T) string {
-	// First check if test modules are loaded
-	if CheckAnyTestModule(t) {
-		device := FindTestDevice(t)
-		if device != "" {
-			return device
-		}
-	}
-
-	// If no test module, check if any V4L2 device exists
-	if CheckAnyV4L2Device(t) {
-		device := FindTestDevice(t)
-		if device != "" {
-			t.Logf("Using existing V4L2 device: %s", device)
-			return device
-		}
-	}
-
-	t.Skip("No V4L2 device available")
-	return ""
-}
-
-// Start starts feeding test pattern to the device
-func (d *V4L2LoopbackDevice) Start(t TestLogger) error {
-	// Check if ffmpeg is available
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Logf("ffmpeg not found, skipping test pattern generation")
-		return nil
-	}
-
-	// Build ffmpeg command
-	args := []string{
-		"-re", // Read input at native frame rate
-		"-f", "lavfi",
-		"-i", fmt.Sprintf("%s=size=%dx%d:rate=%d",
-			d.TestPattern, d.Width, d.Height, d.FPS),
-		"-pix_fmt", d.PixelFormat,
-		"-f", "v4l2",
-		d.Path,
-	}
-
-	d.FFmpegCmd = exec.Command("ffmpeg", args...)
-
-	// Start in background
-	if err := d.FFmpegCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start ffmpeg: %w", err)
-	}
-
-	// Give it time to initialize
-	time.Sleep(500 * time.Millisecond)
-
-	t.Logf("Started test pattern on %s (%dx%d @ %d FPS)",
-		d.Path, d.Width, d.Height, d.FPS)
-
-	return nil
-}
-
-// Stop stops the test pattern generator
-func (d *V4L2LoopbackDevice) Stop() error {
-	if d.FFmpegCmd != nil && d.FFmpegCmd.Process != nil {
-		d.FFmpegCmd.Process.Kill()
-		d.FFmpegCmd.Wait()
-		d.FFmpegCmd = nil
-	}
-	return nil
-}
-
-// StartTestPattern is a convenience function to start test pattern on a device
-func StartTestPattern(t TestLogger, devicePath string) func() {
-	device := NewV4L2LoopbackDevice(devicePath)
-
-	if err := device.Start(t); err != nil {
-		t.Logf("Failed to start test pattern: %v", err)
-		return func() {}
-	}
-
-	return func() {
-		device.Stop()
-	}
-}
-
-// RequireV4L2Testing checks all requirements and skips test if not met
+// RequireV4L2Testing finds a test device or skips the test
 func RequireV4L2Testing(t *testing.T) string {
 	t.Helper()
 
-	// Check for v4l2-ctl tool
-	if _, err := exec.LookPath("v4l2-ctl"); err != nil {
-		t.Skip("v4l2-ctl not found. Install with: apt-get install v4l-utils")
+	device := FindTestDevice(t)
+	if device == "" {
+		t.Skip("No V4L2 device available")
 	}
-
-	// Setup and find device
-	return SetupV4L2Loopback(t)
+	return device
 }
 
-// TestPatternType represents different test patterns
-type TestPatternType string
-
-const (
-	TestPatternBars     TestPatternType = "smptebars"
-	TestPatternColor    TestPatternType = "color"
-	TestPatternNoise    TestPatternType = "testsrc"
-	TestPatternMandel   TestPatternType = "mandelbrot"
-	TestPatternLife     TestPatternType = "life"
-)
-
-// GenerateTestVideo generates a test video file for testing
-func GenerateTestVideo(t *testing.T, filename string, duration int) error {
-	cmd := exec.Command("ffmpeg",
-		"-f", "lavfi",
-		"-i", "testsrc=size=640x480:rate=30",
-		"-t", fmt.Sprintf("%d", duration),
-		"-pix_fmt", "yuv420p",
-		"-y", // Overwrite output
-		filename,
-	)
-
-	output, err := cmd.CombinedOutput()
+// OpenDeviceOrSkip opens a V4L2 device and skips the test if the device
+// is busy or permission is denied. Use this instead of device.Open() directly
+// in integration tests to handle transient device contention gracefully.
+func OpenDeviceOrSkip(t *testing.T, path string, options ...device.Option) *device.Device {
+	t.Helper()
+	dev, err := device.Open(path, options...)
 	if err != nil {
-		t.Logf("ffmpeg output: %s", output)
-		return fmt.Errorf("failed to generate test video: %w", err)
+		if strings.Contains(err.Error(), "device or resource busy") ||
+			strings.Contains(err.Error(), "permission denied") {
+			t.Skipf("Device %s unavailable: %v", path, err)
+		}
+		t.Fatalf("Failed to open device %s: %v", path, err)
 	}
-
-	return nil
+	t.Cleanup(func() {
+		dev.Close()
+	})
+	return dev
 }
 
 // CompareFrames compares two frames for testing
@@ -320,7 +132,6 @@ func ValidateYUYVFrame(t TestLogger, frame []byte, width, height uint32) {
 	invalidSamples := 0
 	for i := 0; i < len(frame) && samplesChecked < 100; i += 2 {
 		y := frame[i]
-		// Y should typically be between 16-235 in video range
 		if y < 10 || y > 245 {
 			invalidSamples++
 		}

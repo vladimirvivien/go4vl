@@ -1,7 +1,6 @@
 package device
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	sys "syscall"
@@ -9,10 +8,11 @@ import (
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
-// captureRawBytes implements the legacy streaming loop for GetOutput() API.
+// startRawBytesCapture launches the legacy streaming loop for GetOutput() API.
 // It captures frames from the device and sends them as raw byte slices without pooling.
 // The loop runs in a separate goroutine and uses sys.Select to trigger capture events.
-func (d *Device) captureRawBytes(ctx context.Context) error {
+// Buffer queueing and StreamOn must have been completed by Start() before calling this.
+func (d *Device) startRawBytesCapture() {
 	// Initialize channels
 	if d.output == nil {
 		d.output = make(chan []byte, d.config.bufSize)
@@ -21,17 +21,7 @@ func (d *Device) captureRawBytes(ctx context.Context) error {
 		d.streamErr = make(chan error, 1)
 	}
 
-	// Initial enqueue of buffers for capture
-	for i := 0; i < int(d.config.bufSize); i++ {
-		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i))
-		if err != nil {
-			return fmt.Errorf("device: buffer queueing: %w", err)
-		}
-	}
-
-	if err := v4l2.StreamOn(d); err != nil {
-		return fmt.Errorf("device: stream on: %w", err)
-	}
+	ctx := d.startCtx
 
 	go func() {
 		defer close(d.captureDone) // Signal Stop() that goroutine has exited
@@ -138,6 +128,4 @@ func (d *Device) captureRawBytes(ctx context.Context) error {
 			}
 		}
 	}()
-
-	return nil
 }

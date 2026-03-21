@@ -20,163 +20,88 @@ This comprehensive guide covers all aspects of testing the go4vl library, includ
 The go4vl test suite uses real V4L2 devices (no mock implementations) to ensure authentic testing:
 
 - **Unit Tests** - Test packages in isolation without requiring V4L2 devices
-- **Integration Tests** - Test with v4l2loopback virtual devices or real hardware
+- **Integration Tests** - Test with vivid virtual devices or real hardware
 
 ### Key Features
 
-- **Automatic v4l2loopback setup** - TestMain handles module loading/unloading
-- **Dynamic device selection** - Avoids conflicts with existing devices (starts from /dev/video40)
-- **Fallback to existing devices** - Uses available devices when v4l2loopback setup fails
-- **No environment variables required** - Uses build tags for test selection
-- **No build tools needed** - All commands use standard Go tooling
-- **Graceful degradation** - Tests skip appropriately when devices or permissions aren't available
+- **Two device modes** - Real hardware (`-use-device=auto`) or v4l2loopback emulation (`-use-device-emulation=auto`)
+- **Automatic setup** - TestMain loads v4l2loopback when needed for emulation
+- **Graceful degradation** - Tests skip appropriately when devices or features aren't available
 
 ## Prerequisites
 
 ### 1. Go Installation
 
-Go 1.21 or later is required.
+Go 1.25 or later is required.
 
 ```bash
-# Check Go version
 go version
 ```
 
 ### 2. User Permissions
 
 For integration tests, you need either:
-- Root access to load kernel modules (recommended for automatic setup)
+- Root access to load kernel modules (for vivid setup)
 - Video group membership for existing devices
 
 ```bash
 # Add user to video group
 sudo usermod -a -G video $USER
-
 # Logout and login for changes to take effect
 ```
 
-### 3. Install Testing Tools
+### 3. Testing Tools (for emulated testing)
+
+v4l2loopback emulation is used in CI and on machines without video hardware. If you have a real camera (e.g., on Raspberry Pi), use `--use-device` instead and skip this section.
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y v4l-utils v4l2loopback-dkms ffmpeg
+# Ubuntu/Debian (x86_64)
+sudo apt-get install v4l2loopback-dkms ffmpeg
 
-# Fedora
-sudo dnf install -y v4l-utils v4l2loopback ffmpeg
+# Raspberry Pi OS
+sudo apt install v4l2loopback-dkms v4l2loopback-utils raspberrypi-kernel-headers
 
-# Arch Linux
-sudo pacman -S v4l-utils v4l2loopback-dkms ffmpeg
+# From source (any Linux, requires kernel headers for your running kernel)
+git clone https://github.com/umlaeute/v4l2loopback.git
+cd v4l2loopback && make && sudo make install
+sudo depmod -a
 ```
 
-#### Package Descriptions
-
-- **v4l-utils** - Command-line tools for V4L2 devices (v4l2-ctl, etc.)
-- **v4l2loopback-dkms** - Kernel module for virtual video devices
-- **ffmpeg** - Video processing tool for feeding test patterns
+- **v4l2loopback** - Kernel module for virtual video devices
+- **ffmpeg** - Feeds test patterns to loopback devices
 
 ## Testing Approaches
 
-### 1. v4l2loopback - Virtual Video Device (Recommended)
+### 1. v4l2loopback - Virtual Video Device (Recommended for CI)
 
-**v4l2loopback** is a kernel module that creates virtual V4L2 loopback devices. It's the most realistic way to test V4L2 code without hardware.
-
-#### Installation
+**v4l2loopback** creates virtual V4L2 devices. Combined with ffmpeg to feed test patterns, it provides realistic testing without hardware.
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get install v4l2loopback-dkms v4l2loopback-utils
+# Load the module
+sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
 
-# Fedora
-sudo dnf install v4l2loopback
+# Run tests with specific loopback devices
+go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video42,/dev/video43
 
-# From source
-git clone https://github.com/umlaeute/v4l2loopback
-cd v4l2loopback
-make && sudo make install
+# Or auto-discover existing loopback devices
+go test -v -tags=integration ./test/... -args -use-device-emulation=auto
 ```
 
-#### Manual Setup
-
-```bash
-# Load the module with options (for manual testing)
-sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="Test Camera 1","Test Camera 2" exclusive_caps=1
-
-# Verify devices created
-ls -la /dev/video42 /dev/video43
-v4l2-ctl --list-devices
-
-# Remove module when done
-sudo modprobe -r v4l2loopback
-```
-
-#### Feeding Test Data
-
-```bash
-# Using ffmpeg to feed test pattern
-ffmpeg -re -f lavfi -i testsrc=size=640x480:rate=30 -pix_fmt yuyv422 -f v4l2 /dev/video42
-
-# Using gstreamer
-gst-launch-1.0 videotestsrc ! v4l2sink device=/dev/video42
-
-# Feed an MP4 file
-ffmpeg -re -i test.mp4 -pix_fmt yuyv422 -f v4l2 /dev/video42
-
-# Feed static image
-ffmpeg -loop 1 -i test.jpg -pix_fmt yuyv422 -f v4l2 /dev/video42
-
-# Feed SMPTE color bars
-ffmpeg -f lavfi -i smptebars=size=1280x720:rate=25 -pix_fmt yuyv422 -f v4l2 /dev/video43
-```
-
-### 2. vivid - Virtual Video Test Driver
-
-The **vivid** (Virtual Video Test Driver) is a kernel module that creates virtual video capture and output devices with extensive testing capabilities.
-
-#### Setup
-
-```bash
-# Load vivid module
-sudo modprobe vivid
-
-# Configure vivid with specific options
-sudo modprobe vivid n_devs=2 \
-    vid_cap_nr=10,11 \
-    vid_out_nr=12,13 \
-    node_types=0x1,0x1
-
-# Check created devices
-v4l2-ctl -d /dev/video10 --info
-```
-
-#### Features
-
-- Multiple test patterns
-- Various resolutions and formats
-- Control simulation
-- Error injection capabilities
-
-### 3. Real Hardware
+### 2. Real Hardware
 
 If you have a USB webcam or other V4L2 device:
 
 ```bash
-# List all video devices
-v4l2-ctl --list-devices
+# Auto-discover real devices
+go test -v -tags=integration ./test/... -args -use-device=auto
 
-# Test with specific device
-V4L2_TEST_DEVICE=/dev/video0 go test -v -tags=integration ./test/...
+# Use a specific device
+go test -v -tags=integration ./test/... -args -use-device=/dev/video0
 ```
 
 ## Unit Tests
 
-Unit tests validate the core functionality without requiring V4L2 devices. They test data structures, methods, and business logic in isolation.
-
-### Packages with Unit Tests
-
-- **v4l2** - Core V4L2 API types and operations
-- **device** - High-level device management
-- **imgsupport** - Image format support utilities
+Unit tests validate the core functionality without requiring V4L2 devices.
 
 ### Running Unit Tests
 
@@ -192,161 +117,62 @@ go test -v ./device
 go test -coverprofile=coverage.out ./device ./v4l2 ./imgsupport
 go tool cover -html=coverage.out -o coverage.html
 
-# Run specific test
-go test -v ./v4l2 -run TestCapability_GetCapabilities
-
 # Clean test cache
 go clean -testcache
 ```
 
-### Unit Test Coverage
-
-The unit test suite includes comprehensive coverage:
-
-#### v4l2 Package Tests
-
-1. **capability_test.go** (662 lines) - 15 test functions with 53+ subtests
-   - Capability detection methods
-   - Version parsing
-   - String formatting
-   - 29 capability constants validation
-
-2. **syscalls_test.go** (230 lines) - 7 test functions
-   - WaitForRead context handling
-   - Context cancellation
-   - Goroutine cleanup validation
-
-3. **capability_bench_test.go** (101 lines) - 7 benchmark functions
-   - Performance baselines (~0.26 ns/op with 0 allocations)
-
-4. **format_test.go** (528 lines) - 24 test functions with 95+ subtests
-   - Pixel formats and colorspaces
-   - YCbCr encodings
-   - Quantization and transfer functions
-
-5. **streaming_test.go** (489 lines) - 18 test functions with 75+ subtests
-   - Buffer types and I/O types
-   - Buffer lifecycle management
-   - Keyframe detection
-
-6. **control_test.go** (489 lines) - 16 test functions
-   - Control classes and types
-   - Control value ranges
-   - Menu items
-
-7. **crop_test.go** (585 lines) - 17 test functions
-   - Cropping operations
-   - Aspect ratios
-   - Digital zoom scenarios
-
-#### device Package Tests
-
-1. **device_test.go** (742 lines) - 31 test functions
-   - Device struct methods
-   - Configuration options
-   - Error handling
-   - Concurrent streaming flag operations
-
-2. **frame_pool_test.go** - Frame pooling performance tests
-   - Buffer allocation and reuse
-   - Concurrent pool access
-   - Statistics tracking
-   - Performance benchmarks (~1,245x speedup vs direct allocation)
-
 ## Integration Tests
 
-Integration tests validate the complete streaming pipeline with real or virtual V4L2 devices. See `test/README.md` for detailed information about the integration test suite.
+Integration tests validate the complete streaming pipeline with real or virtual V4L2 devices. See `test/README.md` for detailed information.
 
 ### Running Integration Tests
 
 ```bash
-# Run with automatic setup (requires sudo for module loading)
-sudo go test -v -tags=integration ./test/...
+# With v4l2loopback emulation (auto-discover or load)
+go test -v -tags=integration ./test/... -args -use-device-emulation=auto
 
-# Run without sudo (uses existing devices or skips)
+# With specific loopback devices
+go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video42,/dev/video43
+
+# With real hardware (auto-discover)
+go test -v -tags=integration ./test/... -args -use-device=auto
+
+# With specific real device
+go test -v -tags=integration ./test/... -args -use-device=/dev/video0
+
+# Auto-detect (tries loopback first, then real devices)
 go test -v -tags=integration ./test/...
 
-# Run specific test files
+# Run specific tests
 go test -v -tags=integration ./test/... -run TestDevice
 go test -v -tags=integration ./test/... -run TestV4L2
-
-# Generate coverage report
-go test -tags=integration -coverprofile=coverage-integration.out ./test/...
-go tool cover -html=coverage-integration.out -o coverage-integration.html
-```
-
-### Integration Test Categories
-
-The integration test suite includes:
-
-- **Device package tests** - All exported device functionality
-- **V4L2 package tests** - All exported v4l2 types and constants
-- **Full pipeline tests** - Complete streaming workflows
-- **Simple tests** - Basic tests that work with any available device
-
-### Manual Device Setup (Alternative)
-
-If you prefer manual setup or automatic setup fails:
-
-```bash
-# 1. Load v4l2loopback module with test devices
-sudo modprobe v4l2loopback devices=2 video_nr=42,43 exclusive_caps=1
-
-# 2. Start test patterns
-ffmpeg -f lavfi -i testsrc=size=640x480:rate=30 -pix_fmt yuyv422 -f v4l2 /dev/video42 &
-ffmpeg -f lavfi -i smptebars=size=1280x720:rate=25 -pix_fmt yuyv422 -f v4l2 /dev/video43 &
-
-# 3. Run tests with skip-setup flag
-go test -v -tags=integration ./test/... -skip-setup
-
-# 4. Clean up when done
-killall ffmpeg
-sudo modprobe -r v4l2loopback
 ```
 
 ## Test Flags
 
-The integration test suite supports several command-line flags:
+| Flag | Value | Description |
+|------|-------|-------------|
+| `-use-device` | `auto` | Auto-discover real V4L2 devices |
+| `-use-device` | `/dev/video0` | Use specific real device |
+| `-use-device-emulation` | `auto` | Auto-discover or load v4l2loopback |
+| `-use-device-emulation` | `/dev/video42,/dev/video43` | Use specific loopback devices |
+| `-keep-running` | | Keep v4l2loopback loaded after tests |
+| `-verbose` | | Enable verbose logging |
 
+All flags are passed after `-args`:
 ```bash
-# Skip automatic v4l2loopback setup (use existing devices)
-go test -v -tags=integration ./test/... -skip-setup
-
-# Keep v4l2loopback loaded after tests complete
-go test -v -tags=integration ./test/... -keep-running
-
-# Use existing v4l2loopback if already loaded
-go test -v -tags=integration ./test/... -use-existing
-
-# Enable verbose logging
-go test -v -tags=integration ./test/... -verbose
+go test -v -tags=integration ./test/... -args -use-device=auto
 ```
 
 ## Environment Variables
 
-The test suite supports optional environment variables:
-
 ### V4L2_TEST_DEVICE
 
-Force a specific test device to use (rarely needed):
+Force a specific test device (rarely needed):
 
 ```bash
 V4L2_TEST_DEVICE=/dev/video0 go test -v -tags=integration ./test/...
 ```
-
-### CI
-
-Enable CI mode for automatic v4l2loopback setup in CI environments:
-
-```bash
-export CI=true
-sudo go test -v -tags=integration ./test/...
-```
-
-### Notes
-
-- No `RUN_INTEGRATION` variable is needed - tests are controlled by the `-tags=integration` build tag
-- The test suite automatically selects device numbers starting from `/dev/video40` to avoid conflicts
 
 ## CI/CD Setup
 
@@ -367,21 +193,10 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.25'
 
     - name: Run Unit Tests
       run: go test -v ./device ./v4l2 ./imgsupport
-
-    - name: Generate Coverage Report
-      run: |
-        go test -coverprofile=coverage.out ./device ./v4l2 ./imgsupport
-        go tool cover -html=coverage.out -o coverage.html
-
-    - name: Upload Coverage
-      uses: actions/upload-artifact@v3
-      with:
-        name: coverage
-        path: coverage.html
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -391,136 +206,45 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.25'
 
-    - name: Install Dependencies
+    - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y v4l2loopback-dkms v4l-utils ffmpeg
+        sudo apt-get install -y build-essential linux-headers-generic ffmpeg
+
+    - name: Setup v4l2loopback
+      run: |
+        sudo apt-get install -y linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
+        sudo modprobe videodev
+        git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
+        cd /tmp/v4l2loopback && make KERNEL_DIR=/lib/modules/$(uname -r)/build
+        sudo insmod /tmp/v4l2loopback/v4l2loopback.ko devices=2 video_nr=10,11 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
+        sudo chmod 666 /dev/video10 /dev/video11
 
     - name: Run Integration Tests
       run: |
-        export CI=true
-        # TestMain will handle v4l2loopback setup automatically
-        sudo go test -v -tags=integration ./test/...
-```
-
-### Docker-based Testing
-
-#### Dockerfile
-
-```dockerfile
-# Dockerfile.test
-FROM golang:1.21
-
-# Install V4L2 tools and dependencies
-RUN apt-get update && apt-get install -y \
-    v4l-utils \
-    v4l2loopback-dkms \
-    ffmpeg \
-    build-essential \
-    kmod \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set up working directory
-WORKDIR /app
-
-# Copy source code
-COPY . .
-
-# Test script
-COPY <<'EOF' /test.sh
-#!/bin/bash
-set -e
-
-# Load v4l2loopback if possible (requires privileged mode)
-if [ -w /dev ]; then
-    modprobe v4l2loopback devices=2 video_nr=42,43 exclusive_caps=1 || true
-fi
-
-# Run unit tests
-echo "Running unit tests..."
-go test -v ./device ./v4l2 ./imgsupport
-
-# Run integration tests
-echo "Running integration tests..."
-go test -v -tags=integration ./test/...
-EOF
-
-RUN chmod +x /test.sh
-
-CMD ["/test.sh"]
-```
-
-#### Running Docker Tests
-
-```bash
-# Build test image
-docker build -f Dockerfile.test -t go4vl-test .
-
-# Run tests (privileged needed for kernel modules)
-docker run --privileged go4vl-test
-
-# Run with volume mount for development
-docker run --privileged -v $(pwd):/app go4vl-test
-
-# Run with specific device
-docker run --privileged --device=/dev/video0 go4vl-test
+        go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11
 ```
 
 ## Troubleshooting
 
-### Tests Skip with "Test device not available"
+### Tests Skip with "No V4L2 device available"
 
-The tests automatically skip when devices aren't available. To fix:
+1. **Load v4l2loopback**:
+   ```bash
+   sudo modprobe v4l2loopback devices=2 video_nr=42,43 exclusive_caps=0
+   ```
 
-1. **Check v4l2loopback is installed**:
+2. **Install v4l2loopback** (if not found):
    ```bash
    sudo apt-get install v4l2loopback-dkms
    ```
 
-2. **Check if module loads manually**:
+3. **Check devices exist**:
    ```bash
-   sudo modprobe v4l2loopback devices=1 video_nr=42
-   ls -la /dev/video42
-   sudo modprobe -r v4l2loopback
+   ls -la /dev/video*
    ```
-
-3. **Run tests with sudo** (for automatic setup):
-   ```bash
-   sudo go test -v -tags=integration ./test/...
-   ```
-
-### v4l2loopback not loading
-
-```bash
-# Check kernel module support
-lsmod | grep v4l2loopback
-
-# Check dmesg for errors
-sudo dmesg | grep v4l2loopback
-
-# Ensure headers installed
-sudo apt-get install linux-headers-$(uname -r)
-```
-
-### v4l2loopback Module Not Loading
-
-```
-modprobe: FATAL: Module v4l2loopback not found
-```
-
-**Solutions**:
-```bash
-# Install module
-sudo apt-get install v4l2loopback-dkms
-
-# If still failing, install kernel headers
-sudo apt-get install linux-headers-$(uname -r)
-
-# Rebuild module
-sudo dpkg-reconfigure v4l2loopback-dkms
-```
 
 ### Permission Denied
 
@@ -534,17 +258,6 @@ sudo usermod -a -G video $USER
 # Logout and login again
 ```
 
-### v4l2-ctl Not Found
-
-```
-v4l2-ctl not found. Install with: apt-get install v4l-utils
-```
-
-**Solution**: Install v4l-utils package:
-```bash
-sudo apt-get install v4l-utils
-```
-
 ### Device Busy
 
 ```
@@ -554,37 +267,40 @@ Failed to start streaming: device or resource busy
 **Solutions**:
 1. Check if another application is using the device:
    ```bash
-   fuser /dev/video42
-   lsof /dev/video42
+   fuser /dev/video*
+   lsof /dev/video*
    ```
-2. Use different device numbers:
+2. Ensure tests are not running concurrently on the same device
+3. Reset loopback devices for a clean state:
    ```bash
-   sudo modprobe v4l2loopback video_nr=50,51
+   # Kill any ffmpeg processes holding devices
+   sudo pkill -9 ffmpeg
+
+   # Unload and reload v4l2loopback
+   sudo modprobe -r v4l2loopback
+   sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
+
+   # Clear test cache
+   go clean -testcache
    ```
 
-### No frames received
+### v4l2loopback Not Loading
 
+```
+modprobe: FATAL: Module v4l2loopback not found
+```
+
+**Solution**: Install v4l2loopback:
 ```bash
-# Check if producer is running
-ps aux | grep ffmpeg
-
-# Verify device is readable
-v4l2-ctl -d /dev/video42 --all
-
-# Check device capabilities
-v4l2-ctl -d /dev/video42 --all
-
-# Try reading directly
-ffmpeg -f v4l2 -i /dev/video42 -frames:v 1 test.jpg
+sudo apt-get install v4l2loopback-dkms
+# If still failing, ensure kernel headers are installed
+sudo apt-get install linux-headers-$(uname -r)
 ```
 
 ### Test Cache Issues
 
 ```bash
-# Clean test cache
 go clean -testcache
-
-# Force test re-run
 go test -count=1 -v ./device ./v4l2 ./imgsupport
 ```
 
@@ -592,13 +308,8 @@ go test -count=1 -v ./device ./v4l2 ./imgsupport
 
 ### Frame Pool Benchmarks
 
-The device package includes performance benchmarks for the frame pool implementation:
-
 ```bash
-# Run frame pool benchmarks
 go test -bench=BenchmarkFramePool -benchmem ./device
-
-# Compare pooled vs direct allocation
 go test -bench=Benchmark -benchmem ./device
 ```
 
@@ -607,44 +318,7 @@ Expected results (640x480 YUYV frame, ~614KB):
 ```
 BenchmarkFramePool_Get-4           45,450,000 ops/sec       22 ns/op      26 B/op    1 allocs/op
 BenchmarkDirectAllocation-4            36,260 ops/sec   27,592 ns/op  614,400 B/op    1 allocs/op
-BenchmarkFramePool_GetParallel-4   31,260,670 ops/sec    41.44 ns/op       0 B/op    0 allocs/op
 ```
-
-**Performance improvements:**
-- **~1,245x faster** allocation (27,592 ns → 22 ns)
-- **99.996% reduction** in memory allocated per operation (614,400 B → 26 B)
-- **Effective allocation elimination** after pool warmup (614KB frames reused from pool)
-- **Excellent concurrent performance** (minimal contention)
-
-### Frame API vs Legacy API
-
-To compare the performance of `GetFrames()` (pooled) vs `GetOutput()` (direct allocation):
-
-```bash
-# Integration test with real device
-go test -v -tags=integration ./test/... -run TestFrameAPI
-
-# Monitor pool statistics
-go run ./examples/capture_frames/
-```
-
-Expected production impact at 30 FPS (640x480):
-- **18+ MB/sec reduction** in allocation rate
-- **60-80% reduction** in GC pauses
-- **80-95% pool hit rate** in steady state
-
-## Best Practices
-
-1. **Real V4L2 testing only** - No mock devices, uses v4l2loopback or real hardware
-2. **Automatic setup/teardown** - TestMain handles v4l2loopback lifecycle
-3. **Dynamic device selection** - Avoids conflicts with existing devices
-4. **Build tags for test separation** - Use `-tags=integration` for integration tests
-5. **Graceful degradation** - Tests skip when devices unavailable
-6. **Run unit tests frequently** - They're fast and don't require special setup
-7. **Run integration tests before commits** - Validates complete functionality
-8. **Use coverage reports** - Identify untested code paths
-9. **Test with real hardware** - When possible, test with actual webcams
-10. **Benchmark performance** - Run benchmarks to validate optimization effectiveness
 
 ## Quick Reference
 
@@ -652,29 +326,22 @@ Expected production impact at 30 FPS (640x480):
 # Unit Tests
 go test -v ./device ./v4l2 ./imgsupport
 
-# Integration Tests (automatic setup)
-sudo go test -v -tags=integration ./test/...
+# Integration Tests (v4l2loopback emulation)
+go test -v -tags=integration ./test/... -args -use-device-emulation=auto
 
-# Integration Tests (manual setup)
-sudo modprobe v4l2loopback devices=2 video_nr=42,43 exclusive_caps=1
-ffmpeg -f lavfi -i testsrc=size=640x480:rate=30 -pix_fmt yuyv422 -f v4l2 /dev/video42 &
-go test -v -tags=integration ./test/... -skip-setup
-killall ffmpeg
-sudo modprobe -r v4l2loopback
+# Integration Tests (real device)
+go test -v -tags=integration ./test/... -args -use-device=auto
+
+# Integration Tests (auto-detect)
+go test -v -tags=integration ./test/...
 
 # Coverage Reports
 go test -coverprofile=coverage.out ./device ./v4l2 ./imgsupport
-go test -tags=integration -coverprofile=coverage-integration.out ./test/...
 go tool cover -html=coverage.out -o coverage.html
 
 # Benchmarks
 go test -bench=. -benchmem ./v4l2
 go test -bench=. -benchmem ./device
-go test -bench=. -benchmem -tags=integration ./test/...
-
-# Specific Tests
-go test -v ./v4l2 -run TestCapability
-go test -v -tags=integration ./test/... -run TestDevice
 
 # Clean Cache
 go clean -testcache
@@ -683,7 +350,6 @@ go clean -testcache
 ## References
 
 - [v4l2loopback GitHub](https://github.com/umlaeute/v4l2loopback)
-- [vivid Documentation](https://www.kernel.org/doc/html/latest/admin-guide/media/vivid.html)
 - [V4L2 Testing Tools](https://linuxtv.org/wiki/index.php/V4L2_Test_Suite)
 - [V4L2 API Documentation](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html)
 - [Go Testing Package](https://pkg.go.dev/testing)

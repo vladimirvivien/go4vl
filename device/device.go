@@ -74,6 +74,13 @@ type Device struct {
 	// Used by Stop() to wait for clean goroutine shutdown before unmapping buffers
 	captureDone chan struct{}
 
+	// startCtx is the context passed to Start(), stored for use by capture goroutines
+	// launched later from GetOutput()/GetFrames()
+	startCtx context.Context
+
+	// captureStarted ensures the capture goroutine is launched exactly once per Start() cycle
+	captureStarted atomic.Bool
+
 	// framePool is the pool used for frame buffer allocation
 	framePool *FramePool
 }
@@ -207,9 +214,8 @@ func Open(path string, options ...Option) (*Device, error) {
 			return nil, fmt.Errorf("device open: %s: set fps: %w", path, err)
 		}
 	} else {
-		if dev.config.fps, err = dev.GetFrameRate(); err != nil {
-			return nil, fmt.Errorf("device open: %s: get fps: %w", path, err)
-		}
+		// Best-effort: some devices don't support VIDIOC_G_PARM
+		dev.config.fps, _ = dev.GetFrameRate()
 	}
 
 	return dev, nil
@@ -330,9 +336,11 @@ func (d *Device) GetOutput() <-chan []byte {
 	if d.streamingMode.CompareAndSwap(0, 1) {
 		// Successfully claimed GetOutput mode
 	} else if d.streamingMode.Load() != 1 {
-		// GetFrames() was called first - return nil channel
-		// Reading from nil channel will block forever (user will notice the error)
-		return nil
+		panic("device: GetOutput() called but GetFrames() streaming mode already active")
+	}
+	// Launch capture goroutine on first call after Start()
+	if d.streaming.Load() && d.captureStarted.CompareAndSwap(false, true) {
+		d.startRawBytesCapture()
 	}
 	return d.output
 }
@@ -373,9 +381,11 @@ func (d *Device) GetFrames() <-chan *Frame {
 	if d.streamingMode.CompareAndSwap(0, 2) {
 		// Successfully claimed GetFrames mode
 	} else if d.streamingMode.Load() != 2 {
-		// GetOutput() was called first - return nil channel
-		// Reading from nil channel will block forever (user will notice the error)
-		return nil
+		panic("device: GetFrames() called but GetOutput() streaming mode already active")
+	}
+	// Launch capture goroutine on first call after Start()
+	if d.streaming.Load() && d.captureStarted.CompareAndSwap(false, true) {
+		d.startFramesCapture()
 	}
 	return d.frames
 }
@@ -1578,26 +1588,24 @@ func (d *Device) Start(ctx context.Context) error {
 		return fmt.Errorf("device: make mapped buffers: %s", err)
 	}
 
+	// Queue buffers for capture
+	for i := 0; i < int(d.config.bufSize); i++ {
+		if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
+			d.streaming.Store(false)
+			return fmt.Errorf("device: buffer queueing: %w", err)
+		}
+	}
+
+	// Start the V4L2 stream
+	if err := v4l2.StreamOn(d); err != nil {
+		d.streaming.Store(false)
+		return fmt.Errorf("device: stream on: %w", err)
+	}
+
 	// Create capture done channel for synchronization with Stop()
 	d.captureDone = make(chan struct{})
-
-	// Launch appropriate streaming loop based on which API is in use
-	mode := d.streamingMode.Load()
-	switch mode {
-	case 1: // GetOutput() mode
-		if err := d.captureRawBytes(ctx); err != nil {
-			d.streaming.Store(false)
-			return fmt.Errorf("device: start capture raw bytes: %s", err)
-		}
-	case 2: // GetFrames() mode
-		if err := d.captureFrames(ctx); err != nil {
-			d.streaming.Store(false)
-			return fmt.Errorf("device: start capture frames: %s", err)
-		}
-	default:
-		d.streaming.Store(false)
-		return fmt.Errorf("device: no streaming API selected (call GetOutput() or GetFrames() before Start())")
-	}
+	d.captureStarted.Store(false)
+	d.startCtx = ctx
 
 	return nil
 }
