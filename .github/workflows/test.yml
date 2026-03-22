@@ -17,8 +17,10 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        # Install linux-headers-generic to get the latest available kernel headers
         sudo apt-get install -y build-essential linux-headers-generic
+
+    - name: Build
+      run: go build ./...
 
     - name: Run Unit Tests
       run: go test -v ./v4l2 ./device ./imgsupport
@@ -33,33 +35,38 @@ jobs:
       with:
         go-version: '1.25'
 
-    - name: Update package cache
-      run: sudo apt-get update
-
     - name: Install build dependencies
       run: |
-        # Install linux-headers-generic to get the latest available kernel headers
+        sudo apt-get update
         sudo apt-get install -y build-essential linux-headers-generic
 
-    - name: Install v4l2 dependencies
+    - name: Install kernel headers and modules
       run: |
-        sudo apt-get install -y v4l-utils
-        # Install v4l2loopback-dkms with fallback
-        sudo apt-get install -y v4l2loopback-dkms || echo "v4l2loopback-dkms not available, will try alternative"
+        sudo apt-get install -y linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
 
-    - name: Load v4l2loopback module
+    - name: Build and load v4l2loopback
       run: |
-        # Try to load v4l2loopback if available
-        if [ -f /lib/modules/$(uname -r)/extra/v4l2loopback.ko ] || [ -f /lib/modules/$(uname -r)/kernel/drivers/media/v4l/v4l2loopback.ko ]; then
-          sudo modprobe v4l2loopback video_nr=10,11 card_label="Test Camera,Test Output"
-          v4l2-ctl --list-devices
-        else
-          echo "v4l2loopback module not available, integration tests may be skipped"
-        fi
-      continue-on-error: true
+        # Load the V4L2 subsystem (included in linux-modules-extra for Azure kernel)
+        sudo modprobe videodev
+
+        # Clone and build v4l2loopback from source
+        git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
+        cd /tmp/v4l2loopback
+        make KERNEL_DIR=/lib/modules/$(uname -r)/build
+
+        # Load directly from the build directory
+        sudo insmod /tmp/v4l2loopback/v4l2loopback.ko devices=2 video_nr=10,11 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
+
+        # Allow non-root access to loopback devices
+        sudo chmod 666 /dev/video10 /dev/video11
+
+        # Verify it loaded
+        echo "=== Loaded modules ==="
+        lsmod | grep v4l2loopback
+
+        echo "=== Video devices ==="
+        ls -la /dev/video*
 
     - name: Run Integration Tests
       run: |
-        # TestMain will handle v4l2loopback setup automatically
-        sudo -E go test -v -tags=integration ./test/... || echo "Integration tests skipped (no v4l2 devices)"
-      continue-on-error: true
+        go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11

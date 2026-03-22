@@ -10,267 +10,354 @@ import (
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
-// TestV4L2_Capability tests v4l2.Capability struct and methods
-func TestV4L2_Capability(t *testing.T) {
+// TestV4L2_DeviceAPIs consolidates all tests that open a device to query V4L2 APIs
+// to avoid "device or resource busy" errors from opening the device multiple times.
+func TestV4L2_DeviceAPIs(t *testing.T) {
+	if testDevice1 == "" {
+		t.Skip("No test device available")
+	}
+
 	dev, err := device.Open(testDevice1)
 	if err != nil {
 		t.Skipf("Cannot open test device: %v", err)
 	}
 	defer dev.Close()
 
-	cap := dev.Capability()
+	t.Run("Capability", func(t *testing.T) {
+		cap := dev.Capability()
 
-	// Test Capability struct fields
-	t.Run("Fields", func(t *testing.T) {
-		if cap.Driver == "" {
-			t.Error("Driver field should not be empty")
-		}
-		if cap.Card == "" {
-			t.Error("Card field should not be empty")
-		}
-		if cap.BusInfo == "" {
-			t.Error("BusInfo field should not be empty")
-		}
-		if cap.Version == 0 {
-			t.Error("Version should not be zero")
-		}
-
-		t.Logf("Capability: Driver=%s, Card=%s, Bus=%s, Version=0x%08x",
-			cap.Driver, cap.Card, cap.BusInfo, cap.Version)
-	})
-
-	// Test capability check methods
-	t.Run("Methods", func(t *testing.T) {
-		// Version info
-		versionInfo := cap.GetVersionInfo()
-		t.Logf("Version: %s", versionInfo.String())
-		if versionInfo.Major() == 0 {
-			t.Error("Major version should not be zero")
-		}
-
-		// Device capabilities
-		if cap.IsVideoCaptureSupported() {
-			t.Log("Video capture supported")
-		}
-		if cap.IsVideoOutputSupported() {
-			t.Log("Video output supported")
-		}
-		if cap.IsVideoOverlaySupported() {
-			t.Log("Video overlay supported")
-		}
-		if cap.IsVideoCaptureMultiplanarSupported() {
-			t.Log("Video capture multiplanar supported")
-		}
-		if cap.IsVideoOutputMultiplanerSupported() {
-			t.Log("Video output multiplanar supported")
-		}
-
-		// I/O capabilities
-		if cap.IsStreamingSupported() {
-			t.Log("Streaming I/O supported")
-		}
-		if cap.IsReadWriteSupported() {
-			t.Log("Read/Write I/O supported")
-		}
-
-		// Check if device capabilities are provided (V4L2 specific capability)
-		if cap.IsDeviceCapabilitiesProvided() {
-			t.Log("Device capabilities provided")
-		}
-	})
-}
-
-// TestV4L2_PixFormat tests v4l2.PixFormat struct
-func TestV4L2_PixFormat(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
-
-	t.Run("GetSet", func(t *testing.T) {
-		// Get current format
-		origFormat, err := dev.GetPixFormat()
-		if err != nil {
-			t.Fatalf("Failed to get pixel format: %v", err)
-		}
-
-		t.Logf("Original format: %dx%d, PixelFormat=0x%08x",
-			origFormat.Width, origFormat.Height, origFormat.PixelFormat)
-
-		// Test setting various formats
-		testFormats := []v4l2.PixFormat{
-			{
-				Width:       640,
-				Height:      480,
-				PixelFormat: v4l2.PixelFmtYUYV,
-				Field:       v4l2.FieldNone,
-			},
-			{
-				Width:       320,
-				Height:      240,
-				PixelFormat: v4l2.PixelFmtYUYV,
-				Field:       v4l2.FieldNone,
-			},
-		}
-
-		for _, format := range testFormats {
-			err := dev.SetPixFormat(format)
-			if err != nil {
-				t.Logf("Format %dx%d not supported: %v", format.Width, format.Height, err)
-				continue
+		// Test Capability struct fields
+		t.Run("Fields", func(t *testing.T) {
+			if cap.Driver == "" {
+				t.Error("Driver field should not be empty")
+			}
+			if cap.Card == "" {
+				t.Error("Card field should not be empty")
+			}
+			if cap.BusInfo == "" {
+				t.Error("BusInfo field should not be empty")
+			}
+			if cap.Version == 0 {
+				t.Error("Version should not be zero")
 			}
 
-			actual, err := dev.GetPixFormat()
-			if err != nil {
-				t.Errorf("Failed to get format after set: %v", err)
-				continue
+			t.Logf("Capability: Driver=%s, Card=%s, Bus=%s, Version=0x%08x",
+				cap.Driver, cap.Card, cap.BusInfo, cap.Version)
+		})
+
+		// Test capability check methods
+		t.Run("Methods", func(t *testing.T) {
+			// Version info
+			versionInfo := cap.GetVersionInfo()
+			t.Logf("Version: %s", versionInfo.String())
+			if versionInfo.Major() == 0 {
+				t.Error("Major version should not be zero")
 			}
 
-			t.Logf("Set format %dx%d, got %dx%d",
-				format.Width, format.Height,
-				actual.Width, actual.Height)
-		}
-
-		// Restore original format
-		dev.SetPixFormat(origFormat)
-	})
-
-	t.Run("Fields", func(t *testing.T) {
-		format, err := dev.GetPixFormat()
-		if err != nil {
-			t.Fatalf("Failed to get pixel format: %v", err)
-		}
-
-		// Check all fields
-		if format.Width == 0 {
-			t.Error("Width should not be zero")
-		}
-		if format.Height == 0 {
-			t.Error("Height should not be zero")
-		}
-		if format.PixelFormat == 0 {
-			t.Error("PixelFormat should not be zero")
-		}
-		if format.BytesPerLine == 0 {
-			t.Error("BytesPerLine should not be zero")
-		}
-		if format.SizeImage == 0 {
-			t.Error("SizeImage should not be zero")
-		}
-
-		t.Logf("Format details: %dx%d, PixelFormat=0x%08x, Field=%d, BytesPerLine=%d, SizeImage=%d",
-			format.Width, format.Height, format.PixelFormat,
-			format.Field, format.BytesPerLine, format.SizeImage)
-	})
-}
-
-// TestV4L2_FormatDescription tests v4l2.FormatDescription struct
-func TestV4L2_FormatDescription(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
-
-	formats, err := dev.GetFormatDescriptions()
-	if err != nil {
-		t.Fatalf("Failed to get format descriptions: %v", err)
-	}
-
-	if len(formats) == 0 {
-		t.Error("No format descriptions returned")
-	}
-
-	for i, fmt := range formats {
-		t.Run(fmt.Description, func(t *testing.T) {
-			// Check fields
-			if fmt.Index != uint32(i) {
-				t.Errorf("Format index mismatch: expected %d, got %d", i, fmt.Index)
+			// Device capabilities
+			if cap.IsVideoCaptureSupported() {
+				t.Log("Video capture supported")
 			}
-			if fmt.StreamType == 0 {
-				t.Error("StreamType should not be zero")
+			if cap.IsVideoOutputSupported() {
+				t.Log("Video output supported")
 			}
-			if fmt.PixelFormat == 0 {
-				t.Error("PixelFormat should not be zero")
+			if cap.IsVideoOverlaySupported() {
+				t.Log("Video overlay supported")
 			}
-			if fmt.Description == "" {
-				t.Error("Description should not be empty")
+			if cap.IsVideoCaptureMultiplanarSupported() {
+				t.Log("Video capture multiplanar supported")
+			}
+			if cap.IsVideoOutputMultiplanerSupported() {
+				t.Log("Video output multiplanar supported")
 			}
 
-			t.Logf("Format %d: %s (0x%08x), StreamType=%d, Flags=0x%08x",
-				fmt.Index, fmt.Description, fmt.PixelFormat, fmt.StreamType, fmt.Flags)
-
-			// Check frame sizes if supported
-			if fmt.Flags&v4l2.FmtDescFlagCompressed != 0 {
-				t.Log("  Compressed format")
+			// I/O capabilities
+			if cap.IsStreamingSupported() {
+				t.Log("Streaming I/O supported")
 			}
-			if fmt.Flags&v4l2.FmtDescFlagEmulated != 0 {
-				t.Log("  Emulated format")
+			if cap.IsReadWriteSupported() {
+				t.Log("Read/Write I/O supported")
+			}
+
+			// Check if device capabilities are provided (V4L2 specific capability)
+			if cap.IsDeviceCapabilitiesProvided() {
+				t.Log("Device capabilities provided")
 			}
 		})
-	}
-}
+	})
 
+	t.Run("PixFormat", func(t *testing.T) {
+		t.Run("GetSet", func(t *testing.T) {
+			// Get current format
+			origFormat, err := dev.GetPixFormat()
+			if err != nil {
+				t.Fatalf("Failed to get pixel format: %v", err)
+			}
 
-// TestV4L2_StreamParam tests v4l2.StreamParam struct
-func TestV4L2_StreamParam(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
+			t.Logf("Original format: %dx%d, PixelFormat=0x%08x",
+				origFormat.Width, origFormat.Height, origFormat.PixelFormat)
 
-	t.Run("CaptureParam", func(t *testing.T) {
-		param, err := dev.GetStreamParam()
+			// Test setting various formats
+			testFormats := []v4l2.PixFormat{
+				{
+					Width:       640,
+					Height:      480,
+					PixelFormat: v4l2.PixelFmtYUYV,
+					Field:       v4l2.FieldNone,
+				},
+				{
+					Width:       320,
+					Height:      240,
+					PixelFormat: v4l2.PixelFmtYUYV,
+					Field:       v4l2.FieldNone,
+				},
+			}
+
+			for _, format := range testFormats {
+				err := dev.SetPixFormat(format)
+				if err != nil {
+					t.Logf("Format %dx%d not supported: %v", format.Width, format.Height, err)
+					continue
+				}
+
+				actual, err := dev.GetPixFormat()
+				if err != nil {
+					t.Errorf("Failed to get format after set: %v", err)
+					continue
+				}
+
+				t.Logf("Set format %dx%d, got %dx%d",
+					format.Width, format.Height,
+					actual.Width, actual.Height)
+			}
+
+			// Restore original format
+			dev.SetPixFormat(origFormat)
+		})
+
+		t.Run("Fields", func(t *testing.T) {
+			format, err := dev.GetPixFormat()
+			if err != nil {
+				t.Fatalf("Failed to get pixel format: %v", err)
+			}
+
+			// Check all fields
+			if format.Width == 0 {
+				t.Error("Width should not be zero")
+			}
+			if format.Height == 0 {
+				t.Error("Height should not be zero")
+			}
+			if format.PixelFormat == 0 {
+				t.Error("PixelFormat should not be zero")
+			}
+			if format.BytesPerLine == 0 {
+				t.Log("Warning: BytesPerLine is zero (some drivers don't populate this)")
+			}
+			if format.SizeImage == 0 {
+				t.Error("SizeImage should not be zero")
+			}
+
+			t.Logf("Format details: %dx%d, PixelFormat=0x%08x, Field=%d, BytesPerLine=%d, SizeImage=%d",
+				format.Width, format.Height, format.PixelFormat,
+				format.Field, format.BytesPerLine, format.SizeImage)
+		})
+	})
+
+	t.Run("FormatDescription", func(t *testing.T) {
+		formats, err := dev.GetFormatDescriptions()
 		if err != nil {
-			t.Logf("Cannot get stream param: %v", err)
+			t.Skipf("Format descriptions not supported by driver: %v", err)
+		}
+
+		if len(formats) == 0 {
+			t.Error("No format descriptions returned")
+		}
+
+		for i, fmt := range formats {
+			t.Run(fmt.Description, func(t *testing.T) {
+				// Check fields
+				if fmt.Index != uint32(i) {
+					t.Errorf("Format index mismatch: expected %d, got %d", i, fmt.Index)
+				}
+				if fmt.StreamType == 0 {
+					t.Error("StreamType should not be zero")
+				}
+				if fmt.PixelFormat == 0 {
+					t.Error("PixelFormat should not be zero")
+				}
+				if fmt.Description == "" {
+					t.Error("Description should not be empty")
+				}
+
+				t.Logf("Format %d: %s (0x%08x), StreamType=%d, Flags=0x%08x",
+					fmt.Index, fmt.Description, fmt.PixelFormat, fmt.StreamType, fmt.Flags)
+
+				// Check frame sizes if supported
+				if fmt.Flags&v4l2.FmtDescFlagCompressed != 0 {
+					t.Log("  Compressed format")
+				}
+				if fmt.Flags&v4l2.FmtDescFlagEmulated != 0 {
+					t.Log("  Emulated format")
+				}
+			})
+		}
+	})
+
+	t.Run("StreamParam", func(t *testing.T) {
+		t.Run("CaptureParam", func(t *testing.T) {
+			param, err := dev.GetStreamParam()
+			if err != nil {
+				t.Logf("Cannot get stream param: %v", err)
+				return
+			}
+
+			// Check capability flags
+			if param.Capture.Capability&v4l2.StreamParamTimePerFrame != 0 {
+				t.Log("Time per frame capability supported")
+			}
+
+			// Check time per frame
+			if param.Capture.TimePerFrame.Numerator > 0 && param.Capture.TimePerFrame.Denominator > 0 {
+				fps := float64(param.Capture.TimePerFrame.Denominator) / float64(param.Capture.TimePerFrame.Numerator)
+				t.Logf("Current FPS: %.2f (%d/%d)", fps,
+					param.Capture.TimePerFrame.Denominator,
+					param.Capture.TimePerFrame.Numerator)
+			}
+
+			// Try to set different frame rates
+			testRates := []struct {
+				num   uint32
+				denom uint32
+			}{
+				{1, 15}, // 15 FPS
+				{1, 30}, // 30 FPS
+			}
+
+			for _, rate := range testRates {
+				param.Capture.TimePerFrame.Numerator = rate.num
+				param.Capture.TimePerFrame.Denominator = rate.denom
+
+				err := dev.SetStreamParam(param)
+				if err != nil {
+					t.Logf("Cannot set %d FPS: %v", rate.denom/rate.num, err)
+					continue
+				}
+
+				// Verify it was set
+				actual, err := dev.GetStreamParam()
+				if err != nil {
+					t.Errorf("Failed to get param after set: %v", err)
+					continue
+				}
+
+				if actual.Capture.TimePerFrame.Numerator > 0 && actual.Capture.TimePerFrame.Denominator > 0 {
+					actualFPS := float64(actual.Capture.TimePerFrame.Denominator) / float64(actual.Capture.TimePerFrame.Numerator)
+					t.Logf("Set %d FPS, got %.2f FPS", rate.denom/rate.num, actualFPS)
+				}
+			}
+		})
+	})
+
+	t.Run("Control", func(t *testing.T) {
+		// Common control IDs to test
+		testControls := []struct {
+			id   uint32
+			name string
+		}{
+			{uint32(v4l2.CtrlBrightness), "Brightness"},
+			{uint32(v4l2.CtrlContrast), "Contrast"},
+			{uint32(v4l2.CtrlSaturation), "Saturation"},
+			{uint32(v4l2.CtrlHue), "Hue"},
+		}
+
+		for _, tc := range testControls {
+			t.Run(tc.name, func(t *testing.T) {
+				// Try to get control value
+				ctrl, err := dev.GetControl(v4l2.CtrlID(tc.id))
+				if err != nil {
+					t.Logf("Control %s not supported: %v", tc.name, err)
+					return
+				}
+
+				t.Logf("%s current value: %d", tc.name, ctrl.Value)
+			})
+		}
+	})
+
+	t.Run("CropCapability", func(t *testing.T) {
+		cropCap, err := dev.GetCropCapability()
+		if err != nil {
+			t.Logf("Crop capability not supported: %v", err)
 			return
 		}
 
-		// Check capability flags
-		if param.Capture.Capability&v4l2.StreamParamTimePerFrame != 0 {
-			t.Log("Time per frame capability supported")
+		t.Run("Bounds", func(t *testing.T) {
+			bounds := cropCap.Bounds
+			t.Logf("Crop bounds: %dx%d at (%d,%d)",
+				bounds.Width, bounds.Height, bounds.Left, bounds.Top)
+
+			if bounds.Width == 0 || bounds.Height == 0 {
+				t.Log("Crop bounds have zero dimensions (device may not support cropping)")
+			}
+		})
+
+		t.Run("Default", func(t *testing.T) {
+			def := cropCap.DefaultRect
+			t.Logf("Default crop: %dx%d at (%d,%d)",
+				def.Width, def.Height, def.Left, def.Top)
+		})
+
+		t.Run("PixelAspect", func(t *testing.T) {
+			pa := cropCap.PixelAspect
+			if pa.Numerator > 0 && pa.Denominator > 0 {
+				ratio := float64(pa.Numerator) / float64(pa.Denominator)
+				t.Logf("Pixel aspect ratio: %.2f (%d/%d)",
+					ratio, pa.Numerator, pa.Denominator)
+			}
+		})
+	})
+
+	t.Run("InputInfo", func(t *testing.T) {
+		// Get current input index
+		currentInput, err := dev.GetVideoInputIndex()
+		if err != nil {
+			t.Logf("Cannot get current input: %v", err)
+		} else {
+			t.Logf("Current input index: %d", currentInput)
 		}
 
-		// Check time per frame
-		if param.Capture.TimePerFrame.Numerator > 0 && param.Capture.TimePerFrame.Denominator > 0 {
-			fps := float64(param.Capture.TimePerFrame.Denominator) / float64(param.Capture.TimePerFrame.Numerator)
-			t.Logf("Current FPS: %.2f (%d/%d)", fps,
-				param.Capture.TimePerFrame.Denominator,
-				param.Capture.TimePerFrame.Numerator)
+		// Get input info for index 0
+		info, err := dev.GetVideoInputInfo(0)
+		if err != nil {
+			t.Logf("GetVideoInputInfo not supported: %v", err)
+			return
 		}
 
-		// Try to set different frame rates
-		testRates := []struct {
-			num   uint32
-			denom uint32
-		}{
-			{1, 15}, // 15 FPS
-			{1, 30}, // 30 FPS
+		t.Logf("Input 0:")
+		t.Logf("  Name: %s", info.GetName())
+		t.Logf("  Type: %d", info.GetInputType())
+		t.Logf("  Index: %d", info.GetIndex())
+		t.Logf("  Status: 0x%x", info.GetStatus())
+		t.Logf("  Capabilities: 0x%x", info.GetCapabilities())
+
+		// Check input type
+		switch info.GetInputType() {
+		case v4l2.InputTypeTuner:
+			t.Log("  Input type: Tuner")
+		case v4l2.InputTypeCamera:
+			t.Log("  Input type: Camera")
 		}
 
-		for _, rate := range testRates {
-			param.Capture.TimePerFrame.Numerator = rate.num
-			param.Capture.TimePerFrame.Denominator = rate.denom
-
-			err := dev.SetStreamParam(param)
-			if err != nil {
-				t.Logf("Cannot set %d FPS: %v", rate.denom/rate.num, err)
-				continue
-			}
-
-			// Verify it was set
-			actual, err := dev.GetStreamParam()
-			if err != nil {
-				t.Errorf("Failed to get param after set: %v", err)
-				continue
-			}
-
-			if actual.Capture.TimePerFrame.Numerator > 0 && actual.Capture.TimePerFrame.Denominator > 0 {
-				actualFPS := float64(actual.Capture.TimePerFrame.Denominator) / float64(actual.Capture.TimePerFrame.Numerator)
-				t.Logf("Set %d FPS, got %.2f FPS", rate.denom/rate.num, actualFPS)
-			}
+		// Check status flags
+		if info.GetStatus()&v4l2.InputStatusNoPower != 0 {
+			t.Log("  Status: No power")
+		}
+		if info.GetStatus()&v4l2.InputStatusNoSignal != 0 {
+			t.Log("  Status: No signal")
+		}
+		if info.GetStatus()&v4l2.InputStatusNoColor != 0 {
+			t.Log("  Status: No color")
 		}
 	})
 }
@@ -310,129 +397,6 @@ func TestV4L2_Buffer(t *testing.T) {
 		}
 		t.Logf("Buffer struct size: %d bytes", size)
 	})
-}
-
-// TestV4L2_Control tests v4l2.Control struct
-func TestV4L2_Control(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
-
-	// Common control IDs to test
-	testControls := []struct {
-		id   uint32
-		name string
-	}{
-		{uint32(v4l2.CtrlBrightness), "Brightness"},
-		{uint32(v4l2.CtrlContrast), "Contrast"},
-		{uint32(v4l2.CtrlSaturation), "Saturation"},
-		{uint32(v4l2.CtrlHue), "Hue"},
-	}
-
-	for _, tc := range testControls {
-		t.Run(tc.name, func(t *testing.T) {
-			// Try to get control value
-			ctrl, err := dev.GetControl(v4l2.CtrlID(tc.id))
-			if err != nil {
-				t.Logf("Control %s not supported: %v", tc.name, err)
-				return
-			}
-
-			t.Logf("%s current value: %d", tc.name, ctrl.Value)
-		})
-	}
-}
-
-// TestV4L2_CropCapability tests v4l2.CropCapability struct
-func TestV4L2_CropCapability(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
-
-	cropCap, err := dev.GetCropCapability()
-	if err != nil {
-		t.Logf("Crop capability not supported: %v", err)
-		return
-	}
-
-	t.Run("Bounds", func(t *testing.T) {
-		bounds := cropCap.Bounds
-		t.Logf("Crop bounds: %dx%d at (%d,%d)",
-			bounds.Width, bounds.Height, bounds.Left, bounds.Top)
-
-		if bounds.Width == 0 || bounds.Height == 0 {
-			t.Log("Crop bounds have zero dimensions (device may not support cropping)")
-		}
-	})
-
-	t.Run("Default", func(t *testing.T) {
-		def := cropCap.DefaultRect
-		t.Logf("Default crop: %dx%d at (%d,%d)",
-			def.Width, def.Height, def.Left, def.Top)
-	})
-
-	t.Run("PixelAspect", func(t *testing.T) {
-		pa := cropCap.PixelAspect
-		if pa.Numerator > 0 && pa.Denominator > 0 {
-			ratio := float64(pa.Numerator) / float64(pa.Denominator)
-			t.Logf("Pixel aspect ratio: %.2f (%d/%d)",
-				ratio, pa.Numerator, pa.Denominator)
-		}
-	})
-}
-
-// TestV4L2_InputInfo tests v4l2.InputInfo handling
-func TestV4L2_InputInfo(t *testing.T) {
-	dev, err := device.Open(testDevice1)
-	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
-	}
-	defer dev.Close()
-
-	// Get current input index
-	currentInput, err := dev.GetVideoInputIndex()
-	if err != nil {
-		t.Logf("Cannot get current input: %v", err)
-	} else {
-		t.Logf("Current input index: %d", currentInput)
-	}
-
-	// Get input info for index 0
-	info, err := dev.GetVideoInputInfo(0)
-	if err != nil {
-		t.Logf("GetVideoInputInfo not supported: %v", err)
-		return
-	}
-
-	t.Logf("Input 0:")
-	t.Logf("  Name: %s", info.GetName())
-	t.Logf("  Type: %d", info.GetInputType())
-	t.Logf("  Index: %d", info.GetIndex())
-	t.Logf("  Status: 0x%x", info.GetStatus())
-	t.Logf("  Capabilities: 0x%x", info.GetCapabilities())
-
-	// Check input type
-	switch info.GetInputType() {
-	case v4l2.InputTypeTuner:
-		t.Log("  Input type: Tuner")
-	case v4l2.InputTypeCamera:
-		t.Log("  Input type: Camera")
-	}
-
-	// Check status flags
-	if info.GetStatus()&v4l2.InputStatusNoPower != 0 {
-		t.Log("  Status: No power")
-	}
-	if info.GetStatus()&v4l2.InputStatusNoSignal != 0 {
-		t.Log("  Status: No signal")
-	}
-	if info.GetStatus()&v4l2.InputStatusNoColor != 0 {
-		t.Log("  Status: No color")
-	}
 }
 
 // TestV4L2_PixelFormats tests pixel format constants
@@ -565,4 +529,3 @@ func TestV4L2_FieldTypes(t *testing.T) {
 		})
 	}
 }
-

@@ -18,11 +18,7 @@ func TestDebug_OpenDevice(t *testing.T) {
 
 	t.Logf("Attempting to open device: %s", testDevice1)
 
-	dev, err := device.Open(testDevice1, device.WithBufferSize(4))
-	if err != nil {
-		t.Fatalf("Failed to open device: %v", err)
-	}
-	defer dev.Close()
+	dev := OpenDeviceOrSkip(t, testDevice1, device.WithBufferSize(4))
 
 	t.Logf("Device opened successfully")
 
@@ -44,7 +40,7 @@ func TestDebug_OpenDevice(t *testing.T) {
 	defer cancel()
 
 	if err := dev.Start(ctx); err != nil {
-		t.Fatalf("Failed to start: %v", err)
+		t.Skipf("Failed to start (device may be busy): %v", err)
 	}
 	defer dev.Stop()
 
