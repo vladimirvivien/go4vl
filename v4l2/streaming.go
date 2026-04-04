@@ -1,6 +1,6 @@
 package v4l2
 
-// #include <linux/videodev2.h>
+// #include "compat.h"
 import "C"
 
 import (

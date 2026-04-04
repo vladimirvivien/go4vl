@@ -1,7 +1,7 @@
 package v4l2
 
 /*
-#include <linux/videodev2.h>
+#include "compat.h"
 #include <linux/v4l2-controls.h>
 */
 import "C"
