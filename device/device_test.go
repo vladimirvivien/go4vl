@@ -866,3 +866,34 @@ func TestDevice_ReadFrame_RejectsStreamingMode(t *testing.T) {
 		t.Error("ReadFrame() should return error in streaming mode")
 	}
 }
+
+// TestWithIOType_UserPtr tests that WithIOType sets USERPTR correctly
+func TestWithIOType_UserPtr(t *testing.T) {
+	cfg := config{}
+	WithIOType(v4l2.IOTypeUserPtr)(&cfg)
+	if cfg.ioType != v4l2.IOTypeUserPtr {
+		t.Errorf("ioType = %d, want IOTypeUserPtr (%d)", cfg.ioType, v4l2.IOTypeUserPtr)
+	}
+}
+
+// TestIOType_DefaultIsZero tests that default ioType is zero (resolved to MMAP in Open)
+func TestIOType_DefaultIsZero(t *testing.T) {
+	cfg := config{}
+	if cfg.ioType != 0 {
+		t.Errorf("default ioType = %d, want 0", cfg.ioType)
+	}
+}
+
+// TestUserPtr_WithStreamingMethod tests USERPTR works alongside IOMethodStreaming
+func TestUserPtr_WithStreamingMethod(t *testing.T) {
+	cfg := config{}
+	WithIOMethod(IOMethodStreaming)(&cfg)
+	WithIOType(v4l2.IOTypeUserPtr)(&cfg)
+
+	if cfg.ioMethod != IOMethodStreaming {
+		t.Errorf("ioMethod = %d, want IOMethodStreaming", cfg.ioMethod)
+	}
+	if cfg.ioType != v4l2.IOTypeUserPtr {
+		t.Errorf("ioType = %d, want IOTypeUserPtr", cfg.ioType)
+	}
+}

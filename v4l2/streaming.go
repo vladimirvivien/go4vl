@@ -102,7 +102,7 @@ const (
 
 	// BufFlagError indicates an error occurred during capture/output.
 	// The buffer contents are likely invalid.
-	BufFlagError BufFlag = C.V4L2_BUF_FLAG_ERROR
+	BufFlagError               BufFlag = C.V4L2_BUF_FLAG_ERROR
 	BufFlagInRequest           BufFlag = C.V4L2_BUF_FLAG_IN_REQUEST
 	BufFlagTimeCode            BufFlag = C.V4L2_BUF_FLAG_TIMECODE
 	BufFlagM2MHoldCaptureBuf   BufFlag = C.V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
@@ -228,7 +228,7 @@ func StreamOff(dev StreamingDevice) error {
 // for video capture or video output when using either mem map, user pointer, or DMA buffers.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-reqbufs.html#vidioc-reqbufs
 func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
-	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeDMABuf {
+	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeUserPtr && dev.MemIOType() != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", ErrorUnsupported)
 	}
 	var req C.struct_v4l2_requestbuffers
@@ -247,7 +247,7 @@ func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
 // buffers. Useful when shuttingdown the stream.
 // See https://linuxtv.org/downloads/v4l-dvb-apis-new/userspace-api/v4l/vidioc-reqbufs.html
 func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
-	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeDMABuf {
+	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeUserPtr && dev.MemIOType() != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("reset buffers: %w", ErrorUnsupported)
 	}
 	var req C.struct_v4l2_requestbuffers
@@ -309,6 +309,16 @@ func MapMemoryBuffers(dev StreamingDevice) ([][]byte, error) {
 	return buffers, nil
 }
 
+// AllocateUserBuffers creates application-managed buffers for USERPTR streaming.
+// Each buffer is allocated with the specified size (typically pixFormat.SizeImage).
+func AllocateUserBuffers(count int, size uint32) [][]byte {
+	buffers := make([][]byte, count)
+	for i := range buffers {
+		buffers[i] = make([]byte, size)
+	}
+	return buffers
+}
+
 // unmapMemoryBuffer removes the buffer that was previously mapped.
 func unmapMemoryBuffer(buf []byte) error {
 	if err := sys.Munmap(buf); err != nil {
@@ -342,6 +352,24 @@ func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buff
 
 	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+	}
+
+	return makeBuffer(v4l2Buf), nil
+}
+
+// QueueBufferUserPtr enqueues a user-pointer buffer in the device driver.
+// The application provides the buffer address and length. Used with IOTypeUserPtr streaming.
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
+func QueueBufferUserPtr(fd uintptr, bufType BufType, index uint32, ptr uintptr, length uint32) (Buffer, error) {
+	var v4l2Buf C.struct_v4l2_buffer
+	v4l2Buf._type = C.uint(bufType)
+	v4l2Buf.memory = C.uint(IOTypeUserPtr)
+	v4l2Buf.index = C.uint(index)
+	v4l2Buf.length = C.uint(length)
+	*(*C.ulong)(unsafe.Pointer(&v4l2Buf.m[0])) = C.ulong(ptr)
+
+	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("buffer queue userptr: %w", err)
 	}
 
 	return makeBuffer(v4l2Buf), nil

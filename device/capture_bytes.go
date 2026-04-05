@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	sys "syscall"
+	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
@@ -55,7 +56,8 @@ func (d *Device) startRawBytesCapture() {
 				}
 
 				// Process buffer based on its state
-				isMapped := buff.Flags&v4l2.BufFlagMapped != 0
+				// For USERPTR, buffers are always valid (app-allocated)
+				isMapped := (ioMemType == v4l2.IOTypeUserPtr) || (buff.Flags&v4l2.BufFlagMapped != 0)
 				hasError := buff.Flags&v4l2.BufFlagError != 0
 				hasData := buff.BytesUsed > 0
 
@@ -114,10 +116,17 @@ func (d *Device) startRawBytesCapture() {
 					}
 				}
 
-				if _, err := v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index); err != nil {
-					// Send error and exit gracefully
+				var queueErr error
+				switch ioMemType {
+				case v4l2.IOTypeUserPtr:
+					ptr := uintptr(unsafe.Pointer(&d.buffers[buff.Index][0]))
+					_, queueErr = v4l2.QueueBufferUserPtr(fd, bufType, buff.Index, ptr, uint32(len(d.buffers[buff.Index])))
+				default:
+					_, queueErr = v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index)
+				}
+				if queueErr != nil {
 					select {
-					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", err, buff):
+					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", queueErr, buff):
 					default:
 					}
 					return
