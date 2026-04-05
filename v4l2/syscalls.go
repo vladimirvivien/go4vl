@@ -54,6 +54,16 @@ func closeDev(fd uintptr) error {
 	return sys.Close(int(fd))
 }
 
+// ReadDevice reads frame data from a V4L2 device using the read() syscall.
+// The device must support V4L2_CAP_READWRITE.
+func ReadDevice(fd uintptr, buf []byte) (int, error) {
+	n, err := sys.Read(int(fd), buf)
+	if err != nil {
+		return n, fmt.Errorf("read device: %w", err)
+	}
+	return n, nil
+}
+
 // ioctl is a wrapper for Syscall(SYS_IOCTL)
 func ioctl(fd, req, arg uintptr) (err sys.Errno) {
 	for {

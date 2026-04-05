@@ -4,10 +4,29 @@ import (
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
 
+// IOMethod defines the I/O method used by the device for frame transfer.
+type IOMethod int
+
+const (
+	// IOMethodStreaming uses continuous streaming with memory-mapped buffers.
+	// This is the default. Use Start/GetFrames/GetOutput/Stop to capture frames.
+	// Requires V4L2_CAP_STREAMING.
+	IOMethodStreaming IOMethod = iota
+
+	// IOMethodReadWrite uses direct read()/write() syscalls for frame transfer.
+	// Use Read/ReadFrame methods directly after Open. No Start/Stop needed.
+	// Simpler but less efficient than streaming. Requires V4L2_CAP_READWRITE.
+	IOMethodReadWrite
+)
+
 // config holds the internal configuration for a Device.
 // These settings are applied during device initialization and streaming setup.
 type config struct {
-	// ioType specifies the I/O method for frame transfer (memory-mapped, user pointer, etc.)
+	// ioMethod specifies the I/O method category (streaming or read/write)
+	ioMethod IOMethod
+
+	// ioType specifies the memory type for streaming I/O (MMAP, user pointer, etc.)
+	// Only applies when ioMethod is IOMethodStreaming.
 	ioType v4l2.IOType
 
 	// pixFormat defines the pixel format, frame dimensions, and color space
@@ -40,10 +59,28 @@ type Option func(*config)
 //
 //	device.Open("/dev/video0", device.WithIOType(v4l2.IOTypeMMAP))
 //
-// Note: This option is automatically set to IOTypeMMAP if not specified.
+// Note: This option only applies when using streaming I/O mode (the default).
+// It is ignored in read/write I/O mode. Automatically set to IOTypeMMAP if not specified.
 func WithIOType(ioType v4l2.IOType) Option {
 	return func(o *config) {
 		o.ioType = ioType
+	}
+}
+
+// WithIOMethod sets the I/O method for the device.
+// IOMethodStreaming (default) uses Start/GetFrames/Stop for continuous capture.
+// IOMethodReadWrite uses Read/ReadFrame for direct frame access.
+//
+// Example:
+//
+//	// Read/write mode — simple synchronous reads
+//	device.Open("/dev/video0", device.WithIOMethod(device.IOMethodReadWrite))
+//
+//	// Streaming mode (default) — continuous capture via channels
+//	device.Open("/dev/video0") // or device.WithIOMethod(device.IOMethodStreaming)
+func WithIOMethod(method IOMethod) Option {
+	return func(o *config) {
+		o.ioMethod = method
 	}
 }
 

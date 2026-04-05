@@ -147,18 +147,25 @@ func TestWaitForRead_ConcurrentContextCancellation(t *testing.T) {
 			// Let it run briefly
 			time.Sleep(20 * time.Millisecond)
 
-			// Cancel
+			// Cancel and wait for channel closure.
+			// The goroutine may have sent a signal before seeing the
+			// cancellation, so drain any in-flight signals first.
 			cancel()
 
-			// Verify closure
-			select {
-			case _, ok := <-sigChan:
-				if ok {
-					t.Errorf("Goroutine %d: Expected channel to be closed", id)
+			timeout := time.After(500 * time.Millisecond)
+			for {
+				select {
+				case _, ok := <-sigChan:
+					if !ok {
+						goto closed
+					}
+					// Signal sent before cancel was seen — drain and retry
+				case <-timeout:
+					t.Errorf("Goroutine %d: Channel did not close within timeout", id)
+					goto closed
 				}
-			case <-time.After(200 * time.Millisecond):
-				t.Errorf("Goroutine %d: Channel did not close within timeout", id)
 			}
+		closed:
 
 			done <- true
 		}(i)
