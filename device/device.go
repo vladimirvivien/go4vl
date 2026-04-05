@@ -83,20 +83,28 @@ type Device struct {
 
 	// framePool is the pool used for frame buffer allocation
 	framePool *FramePool
+
+	// readSeq is a monotonically increasing frame counter for ReadFrame()
+	readSeq uint32
 }
 
-// Open opens a V4L2 video device at the specified path and prepares it for streaming.
+// Open opens a V4L2 video device at the specified path and prepares it for use.
 // The device is opened in read-write mode with non-blocking I/O.
+//
+// The I/O method determines which APIs are available after opening:
+//   - IOMethodStreaming (default): Use Start/GetFrames/GetOutput/Stop for continuous capture
+//   - IOMethodReadWrite: Use Read/ReadFrame for synchronous frame access
 //
 // Parameters:
 //   - path: The file system path to the video device (e.g., "/dev/video0")
 //   - options: Optional configuration functions to customize device behavior
 //
 // Available options:
+//   - WithIOMethod(m): Set the I/O method (streaming or read/write)
 //   - WithBufferSize(n): Set the number of buffers for streaming (default: 2)
 //   - WithPixFormat(fmt): Set the pixel format and frame dimensions
 //   - WithFPS(fps): Set the frames per second for capture
-//   - WithIOType(io): Set the I/O method (currently only memory-mapped I/O is supported)
+//   - WithIOType(io): Set the memory type for streaming (only MMAP supported)
 //
 // The function performs the following initialization steps:
 //  1. Opens the device file descriptor
@@ -164,9 +172,16 @@ func Open(path string, options ...Option) (*Device, error) {
 		dev.config.bufSize = 2
 	}
 
-	// only supports streaming IO model right now
-	if !dev.cap.IsStreamingSupported() {
-		return nil, fmt.Errorf("device open: device does not support streamingIO")
+	// validate I/O method capability
+	switch dev.config.ioMethod {
+	case IOMethodReadWrite:
+		if !dev.cap.IsReadWriteSupported() {
+			return nil, fmt.Errorf("device open: device does not support read/write IO")
+		}
+	default: // IOMethodStreaming
+		if !dev.cap.IsStreamingSupported() {
+			return nil, fmt.Errorf("device open: device does not support streaming IO")
+		}
 	}
 
 	switch {
@@ -186,8 +201,10 @@ func Open(path string, options ...Option) (*Device, error) {
 		return nil, fmt.Errorf("device open: does not support buffer stream type")
 	}
 
-	// ensures IOType is set, only MemMap supported now
-	dev.config.ioType = v4l2.IOTypeMMAP
+	// set IOType for streaming mode (read/write mode doesn't use buffer API)
+	if dev.config.ioMethod == IOMethodStreaming {
+		dev.config.ioType = v4l2.IOTypeMMAP
+	}
 
 	// reset crop, only if cropping supported
 	if cropcap, err := v4l2.GetCropCapability(dev.fd, dev.bufType); err == nil {
@@ -1327,14 +1344,15 @@ func (d *Device) GetMediaInfo() (v4l2.MediaDeviceInfo, error) {
 // which is particularly useful for codec controls and compound controls.
 //
 // Example:
-//   ctrls := v4l2.NewExtControls()
-//   ctrls.Add(v4l2.NewExtControl(v4l2.CtrlBrightness))
-//   ctrls.Add(v4l2.NewExtControl(v4l2.CtrlContrast))
-//   if err := device.GetExtControls(ctrls); err != nil {
-//       return err
-//   }
-//   brightness := ctrls.GetControls()[0].GetValue()
-//   contrast := ctrls.GetControls()[1].GetValue()
+//
+//	ctrls := v4l2.NewExtControls()
+//	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlBrightness))
+//	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlContrast))
+//	if err := device.GetExtControls(ctrls); err != nil {
+//	    return err
+//	}
+//	brightness := ctrls.GetControls()[0].GetValue()
+//	contrast := ctrls.GetControls()[1].GetValue()
 func (d *Device) GetExtControls(ctrls *v4l2.ExtControls) error {
 	return v4l2.GetExtControls(d.fd, ctrls)
 }
@@ -1345,12 +1363,13 @@ func (d *Device) GetExtControls(ctrls *v4l2.ExtControls) error {
 // If any control fails, none of the controls are changed.
 //
 // Example:
-//   ctrls := v4l2.NewExtControls()
-//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
-//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlContrast, 100))
-//   if err := device.SetExtControls(ctrls); err != nil {
-//       return err
-//   }
+//
+//	ctrls := v4l2.NewExtControls()
+//	ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
+//	ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlContrast, 100))
+//	if err := device.SetExtControls(ctrls); err != nil {
+//	    return err
+//	}
 func (d *Device) SetExtControls(ctrls *v4l2.ExtControls) error {
 	return v4l2.SetExtControls(d.fd, ctrls)
 }
@@ -1360,13 +1379,14 @@ func (d *Device) SetExtControls(ctrls *v4l2.ExtControls) error {
 // This is useful for validating control values before applying them.
 //
 // Example:
-//   ctrls := v4l2.NewExtControls()
-//   ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
-//   if err := device.TryExtControls(ctrls); err != nil {
-//       // Value would be rejected
-//       return err
-//   }
-//   // Value is valid, safe to apply
+//
+//	ctrls := v4l2.NewExtControls()
+//	ctrls.Add(v4l2.NewExtControlWithValue(v4l2.CtrlBrightness, 128))
+//	if err := device.TryExtControls(ctrls); err != nil {
+//	    // Value would be rejected
+//	    return err
+//	}
+//	// Value is valid, safe to apply
 func (d *Device) TryExtControls(ctrls *v4l2.ExtControls) error {
 	return v4l2.TryExtControls(d.fd, ctrls)
 }
@@ -1376,7 +1396,8 @@ func (d *Device) TryExtControls(ctrls *v4l2.ExtControls) error {
 // SetBrightness sets the brightness control value.
 //
 // Example:
-//   err := device.SetBrightness(128)
+//
+//	err := device.SetBrightness(128)
 func (d *Device) SetBrightness(value int32) error {
 	ctrls := v4l2.NewExtControls()
 	ctrls.AddValue(v4l2.CtrlBrightness, value)
@@ -1386,7 +1407,8 @@ func (d *Device) SetBrightness(value int32) error {
 // GetBrightness gets the current brightness value.
 //
 // Example:
-//   brightness, err := device.GetBrightness()
+//
+//	brightness, err := device.GetBrightness()
 func (d *Device) GetBrightness() (int32, error) {
 	ctrls := v4l2.NewExtControls()
 	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlBrightness))
@@ -1399,7 +1421,8 @@ func (d *Device) GetBrightness() (int32, error) {
 // SetContrast sets the contrast control value.
 //
 // Example:
-//   err := device.SetContrast(100)
+//
+//	err := device.SetContrast(100)
 func (d *Device) SetContrast(value int32) error {
 	ctrls := v4l2.NewExtControls()
 	ctrls.AddValue(v4l2.CtrlContrast, value)
@@ -1409,7 +1432,8 @@ func (d *Device) SetContrast(value int32) error {
 // GetContrast gets the current contrast value.
 //
 // Example:
-//   contrast, err := device.GetContrast()
+//
+//	contrast, err := device.GetContrast()
 func (d *Device) GetContrast() (int32, error) {
 	ctrls := v4l2.NewExtControls()
 	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlContrast))
@@ -1422,7 +1446,8 @@ func (d *Device) GetContrast() (int32, error) {
 // SetSaturation sets the saturation control value.
 //
 // Example:
-//   err := device.SetSaturation(64)
+//
+//	err := device.SetSaturation(64)
 func (d *Device) SetSaturation(value int32) error {
 	ctrls := v4l2.NewExtControls()
 	ctrls.AddValue(v4l2.CtrlSaturation, value)
@@ -1432,7 +1457,8 @@ func (d *Device) SetSaturation(value int32) error {
 // GetSaturation gets the current saturation value.
 //
 // Example:
-//   saturation, err := device.GetSaturation()
+//
+//	saturation, err := device.GetSaturation()
 func (d *Device) GetSaturation() (int32, error) {
 	ctrls := v4l2.NewExtControls()
 	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlSaturation))
@@ -1445,7 +1471,8 @@ func (d *Device) GetSaturation() (int32, error) {
 // SetHue sets the hue control value.
 //
 // Example:
-//   err := device.SetHue(0)
+//
+//	err := device.SetHue(0)
 func (d *Device) SetHue(value int32) error {
 	ctrls := v4l2.NewExtControls()
 	ctrls.AddValue(v4l2.CtrlHue, value)
@@ -1455,7 +1482,8 @@ func (d *Device) SetHue(value int32) error {
 // GetHue gets the current hue value.
 //
 // Example:
-//   hue, err := device.GetHue()
+//
+//	hue, err := device.GetHue()
 func (d *Device) GetHue() (int32, error) {
 	ctrls := v4l2.NewExtControls()
 	ctrls.Add(v4l2.NewExtControl(v4l2.CtrlHue))
@@ -1473,17 +1501,19 @@ func (d *Device) GetHue() (int32, error) {
 // After subscribing, use DequeueEvent() to retrieve events from the device.
 //
 // Example - Subscribe to control change events:
-//   sub := v4l2.NewControlEventSubscription(v4l2.CtrlBrightness)
-//   sub.SetFlags(v4l2.EventSubFlagSendInitial)
-//   if err := device.SubscribeEvent(sub); err != nil {
-//       return err
-//   }
+//
+//	sub := v4l2.NewControlEventSubscription(v4l2.CtrlBrightness)
+//	sub.SetFlags(v4l2.EventSubFlagSendInitial)
+//	if err := device.SubscribeEvent(sub); err != nil {
+//	    return err
+//	}
 //
 // Example - Subscribe to all events:
-//   sub := v4l2.NewEventSubscription(v4l2.EventAll)
-//   if err := device.SubscribeEvent(sub); err != nil {
-//       return err
-//   }
+//
+//	sub := v4l2.NewEventSubscription(v4l2.EventAll)
+//	if err := device.SubscribeEvent(sub); err != nil {
+//	    return err
+//	}
 func (d *Device) SubscribeEvent(sub *v4l2.EventSubscription) error {
 	return v4l2.SubscribeEvent(d.fd, sub)
 }
@@ -1493,10 +1523,11 @@ func (d *Device) SubscribeEvent(sub *v4l2.EventSubscription) error {
 // The subscription parameter should match the original subscription.
 //
 // Example:
-//   sub := v4l2.NewEventSubscription(v4l2.EventCtrl)
-//   if err := device.UnsubscribeEvent(sub); err != nil {
-//       return err
-//   }
+//
+//	sub := v4l2.NewEventSubscription(v4l2.EventCtrl)
+//	if err := device.UnsubscribeEvent(sub); err != nil {
+//	    return err
+//	}
 func (d *Device) UnsubscribeEvent(sub *v4l2.EventSubscription) error {
 	return v4l2.UnsubscribeEvent(d.fd, sub)
 }
@@ -1509,23 +1540,27 @@ func (d *Device) UnsubscribeEvent(sub *v4l2.EventSubscription) error {
 // Returns the event and nil on success, or nil and an error if no event is available.
 //
 // Example:
-//   event, err := device.DequeueEvent()
-//   if err != nil {
-//       return err
-//   }
-//   switch event.GetType() {
-//   case v4l2.EventCtrl:
-//       ctrlData := event.GetCtrlData()
-//       fmt.Printf("Control changed: ID=%d, Value=%d\n", event.GetID(), ctrlData.Value)
-//   case v4l2.EventEOS:
-//       fmt.Println("End of stream")
-//   }
+//
+//	event, err := device.DequeueEvent()
+//	if err != nil {
+//	    return err
+//	}
+//	switch event.GetType() {
+//	case v4l2.EventCtrl:
+//	    ctrlData := event.GetCtrlData()
+//	    fmt.Printf("Control changed: ID=%d, Value=%d\n", event.GetID(), ctrlData.Value)
+//	case v4l2.EventEOS:
+//	    fmt.Println("End of stream")
+//	}
 func (d *Device) DequeueEvent() (*v4l2.Event, error) {
 	return v4l2.DequeueEvent(d.fd)
 }
 
-// Start begins video streaming from the device. This method allocates buffers,
-// memory-maps them, and starts a background goroutine to handle frame capture.
+// Start begins video streaming from the device. Only available in streaming I/O mode
+// (the default). Returns an error if the device was opened with IOMethodReadWrite.
+//
+// This method allocates buffers, memory-maps them, and starts a background
+// goroutine to handle frame capture.
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
@@ -1562,6 +1597,10 @@ func (d *Device) DequeueEvent() (*v4l2.Event, error) {
 func (d *Device) Start(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+
+	if d.config.ioMethod == IOMethodReadWrite {
+		return fmt.Errorf("device: Start() not supported in read/write IO mode; use Read() instead")
 	}
 
 	if !d.cap.IsStreamingSupported() {
@@ -1610,7 +1649,8 @@ func (d *Device) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop halts video streaming and releases streaming resources.
+// Stop halts video streaming and releases streaming resources. Only available in
+// streaming I/O mode. Returns an error if the device was opened with IOMethodReadWrite.
 // This method waits for the capture goroutine to exit, then unmaps buffers and stops the stream.
 //
 // The method ensures proper synchronization:
@@ -1624,6 +1664,10 @@ func (d *Device) Start(ctx context.Context) error {
 //
 // Returns an error if buffer unmapping or stream stopping fails.
 func (d *Device) Stop() error {
+	if d.config.ioMethod == IOMethodReadWrite {
+		return fmt.Errorf("device: Stop() not supported in read/write IO mode")
+	}
+
 	if !d.streaming.Load() {
 		return nil
 	}

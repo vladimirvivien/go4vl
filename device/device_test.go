@@ -791,3 +791,78 @@ func TestDevice_StreamingMutualExclusivity(t *testing.T) {
 		}
 	})
 }
+
+// TestWithIOMethod tests the WithIOMethod option function
+func TestWithIOMethod(t *testing.T) {
+	tests := []struct {
+		name   string
+		method IOMethod
+	}{
+		{"Streaming", IOMethodStreaming},
+		{"ReadWrite", IOMethodReadWrite},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config{}
+			WithIOMethod(tt.method)(&cfg)
+			if cfg.ioMethod != tt.method {
+				t.Errorf("ioMethod = %d, want %d", cfg.ioMethod, tt.method)
+			}
+		})
+	}
+}
+
+// TestIOMethod_DefaultIsStreaming tests that zero value of IOMethod is streaming
+func TestIOMethod_DefaultIsStreaming(t *testing.T) {
+	cfg := config{}
+	if cfg.ioMethod != IOMethodStreaming {
+		t.Errorf("default ioMethod = %d, want IOMethodStreaming (0)", cfg.ioMethod)
+	}
+}
+
+// TestDevice_Start_RejectsReadWriteMode tests that Start() errors in read/write mode
+func TestDevice_Start_RejectsReadWriteMode(t *testing.T) {
+	dev := Device{
+		cap: v4l2.Capability{
+			Capabilities: v4l2.CapVideoCapture | v4l2.CapReadWrite,
+		},
+		config: config{ioMethod: IOMethodReadWrite},
+	}
+	err := dev.Start(context.Background())
+	if err == nil {
+		t.Error("Start() should return error in read/write mode")
+	}
+}
+
+// TestDevice_Stop_RejectsReadWriteMode tests that Stop() errors in read/write mode
+func TestDevice_Stop_RejectsReadWriteMode(t *testing.T) {
+	dev := Device{
+		config: config{ioMethod: IOMethodReadWrite},
+	}
+	err := dev.Stop()
+	if err == nil {
+		t.Error("Stop() should return error in read/write mode")
+	}
+}
+
+// TestDevice_Read_RejectsStreamingMode tests that Read() errors in streaming mode
+func TestDevice_Read_RejectsStreamingMode(t *testing.T) {
+	dev := Device{
+		config: config{ioMethod: IOMethodStreaming},
+	}
+	_, err := dev.Read(make([]byte, 1024))
+	if err == nil {
+		t.Error("Read() should return error in streaming mode")
+	}
+}
+
+// TestDevice_ReadFrame_RejectsStreamingMode tests that ReadFrame() errors in streaming mode
+func TestDevice_ReadFrame_RejectsStreamingMode(t *testing.T) {
+	dev := Device{
+		config: config{ioMethod: IOMethodStreaming},
+	}
+	_, err := dev.ReadFrame()
+	if err == nil {
+		t.Error("ReadFrame() should return error in streaming mode")
+	}
+}

@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package test
@@ -580,4 +581,106 @@ func TestDevice_DeviceInfo(t *testing.T) {
 		}
 		t.Logf("File descriptor: %d", fd)
 	})
+}
+
+// TestDevice_ReadWrite tests the read/write I/O method.
+func TestDevice_ReadWrite(t *testing.T) {
+	devicePath := RequireV4L2Testing(t)
+
+	// Test Start/Stop rejection with a shared device
+	t.Run("Start_Stop_Errors", func(t *testing.T) {
+		dev := OpenDeviceOrSkip(t, devicePath,
+			device.WithIOMethod(device.IOMethodReadWrite),
+		)
+		if !dev.Capability().IsReadWriteSupported() {
+			t.Skip("Device does not support read/write IO")
+		}
+
+		err := dev.Start(context.Background())
+		if err == nil {
+			t.Error("Start() should return error in read/write mode")
+		}
+		t.Logf("Start() correctly returned error: %v", err)
+
+		err = dev.Stop()
+		if err == nil {
+			t.Error("Stop() should return error in read/write mode")
+		}
+		t.Logf("Stop() correctly returned error: %v", err)
+	})
+
+	// Test Read — uses its own device to avoid state contamination
+	t.Run("Read", func(t *testing.T) {
+		dev := OpenDeviceOrSkip(t, devicePath,
+			device.WithIOMethod(device.IOMethodReadWrite),
+		)
+		if !dev.Capability().IsReadWriteSupported() {
+			t.Skip("Device does not support read/write IO")
+		}
+		pixFmt, err := dev.GetPixFormat()
+		if err != nil {
+			t.Fatalf("GetPixFormat() = %v", err)
+		}
+		if pixFmt.SizeImage == 0 {
+			t.Skip("Device reports SizeImage=0")
+		}
+
+		buf := make([]byte, pixFmt.SizeImage)
+		for i := 0; i < 3; i++ {
+			n, err := dev.Read(buf)
+			if err != nil {
+				// v4l2loopback reports CAP_READWRITE but read() returns error
+				// when no producer is feeding data to the loopback device
+				if isDeviceError(err) {
+					t.Skipf("read() not functional (no data source): %v", err)
+				}
+				t.Fatalf("Read() = %v", err)
+			}
+			if n == 0 {
+				t.Error("Read() returned 0 bytes")
+			}
+			t.Logf("Frame %d: %d bytes", i, n)
+		}
+	})
+
+	// Test ReadFrame — uses its own device to avoid state contamination
+	t.Run("ReadFrame", func(t *testing.T) {
+		dev := OpenDeviceOrSkip(t, devicePath,
+			device.WithIOMethod(device.IOMethodReadWrite),
+		)
+		if !dev.Capability().IsReadWriteSupported() {
+			t.Skip("Device does not support read/write IO")
+		}
+
+		var prevSeq uint32
+		for i := 0; i < 3; i++ {
+			frame, err := dev.ReadFrame()
+			if err != nil {
+				if isDeviceError(err) {
+					t.Skipf("read() not functional (no data source): %v", err)
+				}
+				t.Fatalf("ReadFrame() = %v", err)
+			}
+			if len(frame.Data) == 0 {
+				t.Error("ReadFrame() returned empty data")
+			}
+			if frame.Timestamp.IsZero() {
+				t.Error("ReadFrame() returned zero timestamp")
+			}
+			if i > 0 && frame.Sequence <= prevSeq {
+				t.Errorf("Sequence not incrementing: got %d, prev %d", frame.Sequence, prevSeq)
+			}
+			prevSeq = frame.Sequence
+			t.Logf("Frame %d: seq=%d, %d bytes, ts=%v", i, frame.Sequence, len(frame.Data), frame.Timestamp)
+		}
+	})
+}
+
+// isDeviceError returns true for device errors that indicate the read/write
+// I/O method is not functional (e.g., loopback device with no data source).
+func isDeviceError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "input/output error") ||
+		strings.Contains(msg, "device or resource busy") ||
+		strings.Contains(msg, "bad file descriptor")
 }
