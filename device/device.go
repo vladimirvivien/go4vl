@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	sys "syscall"
 	"time"
+	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 )
@@ -203,7 +204,12 @@ func Open(path string, options ...Option) (*Device, error) {
 
 	// set IOType for streaming mode (read/write mode doesn't use buffer API)
 	if dev.config.ioMethod == IOMethodStreaming {
-		dev.config.ioType = v4l2.IOTypeMMAP
+		switch dev.config.ioType {
+		case v4l2.IOTypeUserPtr:
+			// user explicitly selected USERPTR
+		default:
+			dev.config.ioType = v4l2.IOTypeMMAP
+		}
 	}
 
 	// reset crop, only if cropping supported
@@ -1622,16 +1628,30 @@ func (d *Device) Start(ctx context.Context) error {
 	d.config.bufSize = bufReq.Count
 	d.requestedBuf = bufReq
 
-	// for each allocated device buf, map into local space
-	if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
-		return fmt.Errorf("device: make mapped buffers: %s", err)
+	// set up buffers based on I/O type
+	switch d.config.ioType {
+	case v4l2.IOTypeUserPtr:
+		d.buffers = v4l2.AllocateUserBuffers(int(d.config.bufSize), d.config.pixFormat.SizeImage)
+	default: // IOTypeMMAP
+		if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
+			return fmt.Errorf("device: make mapped buffers: %s", err)
+		}
 	}
 
 	// Queue buffers for capture
 	for i := 0; i < int(d.config.bufSize); i++ {
-		if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
-			d.streaming.Store(false)
-			return fmt.Errorf("device: buffer queueing: %w", err)
+		switch d.config.ioType {
+		case v4l2.IOTypeUserPtr:
+			ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
+			if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
+				d.streaming.Store(false)
+				return fmt.Errorf("device: buffer queueing: %w", err)
+			}
+		default:
+			if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
+				d.streaming.Store(false)
+				return fmt.Errorf("device: buffer queueing: %w", err)
+			}
 		}
 	}
 
@@ -1688,8 +1708,10 @@ func (d *Device) Stop() error {
 		}
 	}
 
-	if err := v4l2.UnmapMemoryBuffers(d); err != nil {
-		return fmt.Errorf("device: stop: %w", err)
+	if d.config.ioType == v4l2.IOTypeMMAP {
+		if err := v4l2.UnmapMemoryBuffers(d); err != nil {
+			return fmt.Errorf("device: stop: %w", err)
+		}
 	}
 	if err := v4l2.StreamOff(d); err != nil {
 		return fmt.Errorf("device: stop: %w", err)

@@ -676,11 +676,56 @@ func TestDevice_ReadWrite(t *testing.T) {
 	})
 }
 
-// isDeviceError returns true for device errors that indicate the read/write
-// I/O method is not functional (e.g., loopback device with no data source).
+// TestDevice_UserPtr tests USERPTR streaming I/O.
+func TestDevice_UserPtr(t *testing.T) {
+	devicePath := RequireV4L2Testing(t)
+
+	dev := OpenDeviceOrSkip(t, devicePath,
+		device.WithIOType(v4l2.IOTypeUserPtr),
+		device.WithBufferSize(4),
+	)
+
+	if !dev.Capability().IsStreamingSupported() {
+		t.Skip("Device does not support streaming IO")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := dev.Start(ctx); err != nil {
+		if isDeviceError(err) {
+			t.Skipf("USERPTR not functional on this device: %v", err)
+		}
+		t.Fatalf("Start() = %v", err)
+	}
+	defer dev.Stop()
+
+	t.Run("GetFrames", func(t *testing.T) {
+		count := 0
+		for frame := range dev.GetFrames() {
+			if len(frame.Data) == 0 {
+				continue
+			}
+			t.Logf("Frame %d: seq=%d, %d bytes", count, frame.Sequence, len(frame.Data))
+			frame.Release()
+			count++
+			if count >= 3 {
+				break
+			}
+		}
+		if count < 3 {
+			t.Errorf("Captured %d frames, want at least 3", count)
+		}
+	})
+}
+
+// isDeviceError returns true for device errors that indicate the I/O method
+// is not functional (e.g., loopback device with no data source, or unsupported mode).
 func isDeviceError(err error) bool {
 	msg := err.Error()
 	return strings.Contains(msg, "input/output error") ||
 		strings.Contains(msg, "device or resource busy") ||
-		strings.Contains(msg, "bad file descriptor")
+		strings.Contains(msg, "bad file descriptor") ||
+		strings.Contains(msg, "bad argument") ||
+		strings.Contains(msg, "type not supported")
 }

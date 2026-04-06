@@ -46,13 +46,12 @@ type config struct {
 // Options are applied in the order they are provided to the Open function.
 type Option func(*config)
 
-// WithIOType sets the I/O method for video streaming.
-// Currently, only memory-mapped I/O (IOTypeMMAP) is fully supported.
+// WithIOType sets the buffer memory type for streaming I/O.
+// Only applies when using IOMethodStreaming (the default).
 //
 // Available I/O types:
-//   - IOTypeMMAP: Memory-mapped I/O (recommended, zero-copy)
-//   - IOTypeUserPtr: User pointer I/O (not yet supported)
-//   - IOTypeReadWrite: Read/write I/O (not recommended for streaming)
+//   - IOTypeMMAP: Memory-mapped I/O (default, zero-copy from kernel)
+//   - IOTypeUserPtr: User pointer I/O (application-allocated buffers)
 //   - IOTypeDMABuf: DMA buffer sharing (not yet supported)
 //
 // Example:
