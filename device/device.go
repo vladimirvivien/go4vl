@@ -87,6 +87,10 @@ type Device struct {
 
 	// readSeq is a monotonically increasing frame counter for ReadFrame()
 	readSeq uint32
+
+	// dmabufFDs holds DMA-BUF file descriptors for import mode.
+	// Set via AddDMABufferFDs() before Start().
+	dmabufFDs []int32
 }
 
 // Open opens a V4L2 video device at the specified path and prepares it for use.
@@ -207,6 +211,8 @@ func Open(path string, options ...Option) (*Device, error) {
 		switch dev.config.ioType {
 		case v4l2.IOTypeUserPtr:
 			// user explicitly selected USERPTR
+		case v4l2.IOTypeDMABuf:
+			// user explicitly selected DMABUF
 		default:
 			dev.config.ioType = v4l2.IOTypeMMAP
 		}
@@ -256,6 +262,30 @@ func (d *Device) Close() error {
 		}
 	}
 	return v4l2.CloseDevice(d.fd)
+}
+
+// AddDMABufferFDs provides DMA-BUF file descriptors for import mode.
+// Call this after Open() and before Start(). Each fd corresponds to a buffer
+// index. The number of fds should match the buffer count (WithBufferSize).
+// Can be called multiple times to append fds incrementally.
+//
+// File descriptors typically come from another subsystem (GPU, DRM, another
+// V4L2 device) via their export APIs.
+func (d *Device) AddDMABufferFDs(fds ...int32) {
+	d.dmabufFDs = append(d.dmabufFDs, fds...)
+}
+
+// ExportBuffer exports a MMAP buffer as a DMA-BUF file descriptor.
+// The buffer at the given index must have been allocated via MMAP streaming
+// (the device must be started with Start() first).
+// The returned fd can be passed to other subsystems (GPU, DRM, other V4L2 devices).
+//
+// flags is typically 0 or syscall.O_RDONLY/syscall.O_RDWR for access control.
+func (d *Device) ExportBuffer(index uint32, flags uint32) (int32, error) {
+	if d.config.ioType != v4l2.IOTypeMMAP {
+		return 0, fmt.Errorf("device: ExportBuffer requires MMAP IO type")
+	}
+	return v4l2.ExportBuffer(d.fd, d.bufType, index, flags)
 }
 
 // Name returns the file system path of the device (e.g., "/dev/video0").
@@ -1632,6 +1662,26 @@ func (d *Device) Start(ctx context.Context) error {
 	switch d.config.ioType {
 	case v4l2.IOTypeUserPtr:
 		d.buffers = v4l2.AllocateUserBuffers(int(d.config.bufSize), d.config.pixFormat.SizeImage)
+	case v4l2.IOTypeDMABuf:
+		if len(d.dmabufFDs) == 0 {
+			d.streaming.Store(false)
+			return fmt.Errorf("device: DMA-BUF mode requires file descriptors via AddDMABufferFDs")
+		}
+		if len(d.dmabufFDs) < int(d.config.bufSize) {
+			d.streaming.Store(false)
+			return fmt.Errorf("device: DMA-BUF mode requires %d fds, got %d", d.config.bufSize, len(d.dmabufFDs))
+		}
+		// mmap the DMA-BUF fds so capture loops can read frame data
+		d.buffers = make([][]byte, d.config.bufSize)
+		for i := 0; i < int(d.config.bufSize); i++ {
+			buf, err := sys.Mmap(int(d.dmabufFDs[i]), 0, int(d.config.pixFormat.SizeImage),
+				sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
+			if err != nil {
+				d.streaming.Store(false)
+				return fmt.Errorf("device: mmap dmabuf fd %d: %w", d.dmabufFDs[i], err)
+			}
+			d.buffers[i] = buf
+		}
 	default: // IOTypeMMAP
 		if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
 			return fmt.Errorf("device: make mapped buffers: %s", err)
@@ -1644,6 +1694,11 @@ func (d *Device) Start(ctx context.Context) error {
 		case v4l2.IOTypeUserPtr:
 			ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
 			if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
+				d.streaming.Store(false)
+				return fmt.Errorf("device: buffer queueing: %w", err)
+			}
+		case v4l2.IOTypeDMABuf:
+			if _, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, uint32(i), d.dmabufFDs[i], d.config.pixFormat.SizeImage); err != nil {
 				d.streaming.Store(false)
 				return fmt.Errorf("device: buffer queueing: %w", err)
 			}
@@ -1708,9 +1763,17 @@ func (d *Device) Stop() error {
 		}
 	}
 
-	if d.config.ioType == v4l2.IOTypeMMAP {
+	switch d.config.ioType {
+	case v4l2.IOTypeMMAP:
 		if err := v4l2.UnmapMemoryBuffers(d); err != nil {
 			return fmt.Errorf("device: stop: %w", err)
+		}
+	case v4l2.IOTypeDMABuf:
+		// unmap the mmap'd views of DMA-BUF fds
+		for _, buf := range d.buffers {
+			if buf != nil {
+				sys.Munmap(buf)
+			}
 		}
 	}
 	if err := v4l2.StreamOff(d); err != nil {
