@@ -719,6 +719,76 @@ func TestDevice_UserPtr(t *testing.T) {
 	})
 }
 
+// TestDevice_DMABuf_Export tests exporting MMAP buffers as DMA-BUF fds.
+func TestDevice_DMABuf_Export(t *testing.T) {
+	devicePath := RequireV4L2Testing(t)
+
+	dev := OpenDeviceOrSkip(t, devicePath,
+		device.WithBufferSize(2),
+	)
+
+	if !dev.Capability().IsStreamingSupported() {
+		t.Skip("Device does not support streaming IO")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := dev.Start(ctx); err != nil {
+		if isDeviceError(err) {
+			t.Skipf("Streaming not functional on this device: %v", err)
+		}
+		t.Fatalf("Start() = %v", err)
+	}
+	defer dev.Stop()
+
+	fd, err := dev.ExportBuffer(0, 0)
+	if err != nil {
+		if isDeviceError(err) {
+			t.Skipf("ExportBuffer not functional on this device: %v", err)
+		}
+		t.Fatalf("ExportBuffer() = %v", err)
+	}
+	if fd <= 0 {
+		t.Errorf("ExportBuffer() returned fd=%d, want > 0", fd)
+	}
+	t.Logf("Exported buffer 0 as DMA-BUF fd=%d", fd)
+}
+
+// TestDevice_DMABuf_Import tests DMA-BUF import mode.
+// Likely skips on v4l2loopback which doesn't support DMA-BUF.
+func TestDevice_DMABuf_Import(t *testing.T) {
+	devicePath := RequireV4L2Testing(t)
+
+	dev := OpenDeviceOrSkip(t, devicePath,
+		device.WithIOType(v4l2.IOTypeDMABuf),
+		device.WithBufferSize(2),
+	)
+
+	if !dev.Capability().IsStreamingSupported() {
+		t.Skip("Device does not support streaming IO")
+	}
+
+	// DMA-BUF import requires external fds — we don't have any in CI,
+	// so just verify Start() fails with a clear error about missing fds
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := dev.Start(ctx)
+	if err == nil {
+		dev.Stop()
+		t.Error("Start() should fail without DMA-BUF fds")
+		return
+	}
+	if !strings.Contains(err.Error(), "AddDMABufferFDs") {
+		if isDeviceError(err) {
+			t.Skipf("DMA-BUF not functional on this device: %v", err)
+		}
+		t.Errorf("Start() error = %v, expected error mentioning AddDMABufferFDs", err)
+	}
+	t.Logf("Start() correctly returned: %v", err)
+}
+
 // isDeviceError returns true for device errors that indicate the I/O method
 // is not functional (e.g., loopback device with no data source, or unsupported mode).
 func isDeviceError(err error) bool {
@@ -727,5 +797,6 @@ func isDeviceError(err error) bool {
 		strings.Contains(msg, "device or resource busy") ||
 		strings.Contains(msg, "bad file descriptor") ||
 		strings.Contains(msg, "bad argument") ||
-		strings.Contains(msg, "type not supported")
+		strings.Contains(msg, "type not supported") ||
+		strings.Contains(msg, "system error")
 }

@@ -52,7 +52,7 @@ type Option func(*config)
 // Available I/O types:
 //   - IOTypeMMAP: Memory-mapped I/O (default, zero-copy from kernel)
 //   - IOTypeUserPtr: User pointer I/O (application-allocated buffers)
-//   - IOTypeDMABuf: DMA buffer sharing (not yet supported)
+//   - IOTypeDMABuf: DMA buffer sharing (zero-copy with GPU/DRM via file descriptors)
 //
 // Example:
 //

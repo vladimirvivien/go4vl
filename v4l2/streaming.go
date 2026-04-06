@@ -375,6 +375,40 @@ func QueueBufferUserPtr(fd uintptr, bufType BufType, index uint32, ptr uintptr, 
 	return makeBuffer(v4l2Buf), nil
 }
 
+// QueueBufferDMABuf enqueues a DMA-BUF buffer in the device driver.
+// The application provides the DMA-BUF file descriptor and buffer length.
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
+func QueueBufferDMABuf(fd uintptr, bufType BufType, index uint32, dmabufFD int32, length uint32) (Buffer, error) {
+	var v4l2Buf C.struct_v4l2_buffer
+	v4l2Buf._type = C.uint(bufType)
+	v4l2Buf.memory = C.uint(IOTypeDMABuf)
+	v4l2Buf.index = C.uint(index)
+	v4l2Buf.length = C.uint(length)
+	*(*C.int)(unsafe.Pointer(&v4l2Buf.m[0])) = C.int(dmabufFD)
+
+	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("buffer queue dmabuf: %w", err)
+	}
+
+	return makeBuffer(v4l2Buf), nil
+}
+
+// ExportBuffer exports a V4L2 buffer as a DMA-BUF file descriptor.
+// The buffer must have been allocated with MMAP. The returned fd can be
+// passed to other subsystems (GPU, DRM, other V4L2 devices).
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-expbuf.html
+func ExportBuffer(devFD uintptr, bufType BufType, index uint32, flags uint32) (int32, error) {
+	var exp C.struct_v4l2_exportbuffer
+	exp._type = C.uint(bufType)
+	exp.index = C.uint(index)
+	exp.flags = C.uint(flags)
+
+	if err := send(devFD, C.VIDIOC_EXPBUF, uintptr(unsafe.Pointer(&exp))); err != nil {
+		return 0, fmt.Errorf("export buffer: %w", err)
+	}
+	return int32(exp.fd), nil
+}
+
 // DequeueBuffer dequeues a buffer in the device driver, marking it as consumed by the application,
 // when using either memory map, user pointer, or DMA buffers. Buffer is returned with
 // additional information about the dequeued buffer.

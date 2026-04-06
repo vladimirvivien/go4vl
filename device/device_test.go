@@ -897,3 +897,56 @@ func TestUserPtr_WithStreamingMethod(t *testing.T) {
 		t.Errorf("ioType = %d, want IOTypeUserPtr", cfg.ioType)
 	}
 }
+
+// TestWithIOType_DMABuf tests that WithIOType sets DMABuf correctly
+func TestWithIOType_DMABuf(t *testing.T) {
+	cfg := config{}
+	WithIOType(v4l2.IOTypeDMABuf)(&cfg)
+	if cfg.ioType != v4l2.IOTypeDMABuf {
+		t.Errorf("ioType = %d, want IOTypeDMABuf (%d)", cfg.ioType, v4l2.IOTypeDMABuf)
+	}
+}
+
+// TestDevice_AddDMABufferFDs tests that AddDMABufferFDs appends fds
+func TestDevice_AddDMABufferFDs(t *testing.T) {
+	dev := Device{}
+
+	dev.AddDMABufferFDs(10, 11)
+	if len(dev.dmabufFDs) != 2 {
+		t.Fatalf("dmabufFDs length = %d, want 2", len(dev.dmabufFDs))
+	}
+	if dev.dmabufFDs[0] != 10 || dev.dmabufFDs[1] != 11 {
+		t.Errorf("dmabufFDs = %v, want [10 11]", dev.dmabufFDs)
+	}
+
+	// Append more
+	dev.AddDMABufferFDs(12, 13)
+	if len(dev.dmabufFDs) != 4 {
+		t.Fatalf("dmabufFDs length = %d, want 4", len(dev.dmabufFDs))
+	}
+	if dev.dmabufFDs[2] != 12 || dev.dmabufFDs[3] != 13 {
+		t.Errorf("dmabufFDs = %v, want [10 11 12 13]", dev.dmabufFDs)
+	}
+}
+
+// TestDevice_ExportBuffer_RejectsNonMMAP tests ExportBuffer errors for non-MMAP devices
+func TestDevice_ExportBuffer_RejectsNonMMAP(t *testing.T) {
+	tests := []struct {
+		name   string
+		ioType v4l2.IOType
+	}{
+		{"UserPtr", v4l2.IOTypeUserPtr},
+		{"DMABuf", v4l2.IOTypeDMABuf},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dev := Device{
+				config: config{ioType: tt.ioType},
+			}
+			_, err := dev.ExportBuffer(0, 0)
+			if err == nil {
+				t.Error("ExportBuffer() should return error for non-MMAP IO type")
+			}
+		})
+	}
+}

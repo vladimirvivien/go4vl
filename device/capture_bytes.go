@@ -121,6 +121,8 @@ func (d *Device) startRawBytesCapture() {
 				case v4l2.IOTypeUserPtr:
 					ptr := uintptr(unsafe.Pointer(&d.buffers[buff.Index][0]))
 					_, queueErr = v4l2.QueueBufferUserPtr(fd, bufType, buff.Index, ptr, uint32(len(d.buffers[buff.Index])))
+				case v4l2.IOTypeDMABuf:
+					_, queueErr = v4l2.QueueBufferDMABuf(fd, bufType, buff.Index, d.dmabufFDs[buff.Index], uint32(len(d.buffers[buff.Index])))
 				default:
 					_, queueErr = v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index)
 				}
