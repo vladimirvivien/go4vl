@@ -165,10 +165,11 @@ func Open(path string, options ...Option) (*Device, error) {
 	// get capability
 	cap, err := v4l2.GetCapability(dev.fd)
 	if err != nil {
-		if err := v4l2.CloseDevice(dev.fd); err != nil {
-			return nil, fmt.Errorf("device %s: closing after failure: %s", path, err)
+		err = fmt.Errorf("device open: %s: %w", path, err)
+		if e := v4l2.CloseDevice(dev.fd); e != nil {
+			err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
 		}
-		return nil, fmt.Errorf("device open: %s: %w", path, err)
+		return nil, err
 	}
 	dev.cap = cap
 
@@ -181,11 +182,19 @@ func Open(path string, options ...Option) (*Device, error) {
 	switch dev.config.ioMethod {
 	case IOMethodReadWrite:
 		if !dev.cap.IsReadWriteSupported() {
-			return nil, fmt.Errorf("device open: device does not support read/write IO")
+			err := fmt.Errorf("device open: device does not support read/write IO")
+			if e := v4l2.CloseDevice(dev.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
+			return nil, err
 		}
 	default: // IOMethodStreaming
 		if !dev.cap.IsStreamingSupported() {
-			return nil, fmt.Errorf("device open: device does not support streaming IO")
+			err := fmt.Errorf("device open: device does not support streaming IO")
+			if e := v4l2.CloseDevice(dev.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
+			return nil, err
 		}
 	}
 
@@ -196,14 +205,19 @@ func Open(path string, options ...Option) (*Device, error) {
 	case cap.IsVideoOutputSupported():
 		dev.bufType = v4l2.BufTypeVideoOutput
 	default:
-		if err := v4l2.CloseDevice(dev.fd); err != nil {
-			return nil, fmt.Errorf("device open: %s: closing after failure: %s", path, err)
+		err := fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
+		if e := v4l2.CloseDevice(dev.fd); e != nil {
+			err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
 		}
-		return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
+		return nil, err
 	}
 
 	if dev.config.bufType != 0 && dev.config.bufType != dev.bufType {
-		return nil, fmt.Errorf("device open: does not support buffer stream type")
+		err := fmt.Errorf("device open: does not support buffer stream type")
+		if e := v4l2.CloseDevice(dev.fd); e != nil {
+			err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+		}
+		return nil, err
 	}
 
 	// set IOType for streaming mode (read/write mode doesn't use buffer API)
@@ -228,19 +242,31 @@ func Open(path string, options ...Option) (*Device, error) {
 	// set pix format
 	if dev.config.pixFormat != (v4l2.PixFormat{}) {
 		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
-			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
+			err := fmt.Errorf("device open: %s: set format: %w", path, err)
+			if e := v4l2.CloseDevice(dev.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
+			return nil, err
 		}
 	} else {
 		dev.config.pixFormat, err = v4l2.GetPixFormat(dev.fd)
 		if err != nil {
-			return nil, fmt.Errorf("device open: %s: get default format: %w", path, err)
+			err := fmt.Errorf("device open: %s: get default format: %w", path, err)
+			if e := v4l2.CloseDevice(dev.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
+			return nil, err
 		}
 	}
 
 	// set fps
 	if dev.config.fps != 0 {
 		if err := dev.SetFrameRate(dev.config.fps); err != nil {
-			return nil, fmt.Errorf("device open: %s: set fps: %w", path, err)
+			err := fmt.Errorf("device open: %s: set fps: %w", path, err)
+			if e := v4l2.CloseDevice(dev.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
+			return nil, err
 		}
 	} else {
 		// Best-effort: some devices don't support VIDIOC_G_PARM
@@ -258,6 +284,10 @@ func Open(path string, options ...Option) (*Device, error) {
 func (d *Device) Close() error {
 	if d.streaming.Load() {
 		if err := d.Stop(); err != nil {
+			err := fmt.Errorf("device close: stop streaming: %w", err)
+			if e := v4l2.CloseDevice(d.fd); e != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", e))
+			}
 			return err
 		}
 	}
