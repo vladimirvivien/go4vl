@@ -1744,6 +1744,18 @@ func (d *Device) Stop() error {
 	}
 
 	if !d.streaming.Load() {
+		// Buffers can still be mmap'd here even when the streaming flag is already
+		// false: a caller that cancels the capture context (which clears `streaming`)
+		// before calling Stop() would otherwise hit this early-return and SKIP
+		// UnmapMemoryBuffers. Because closing the fd does not munmap memory on Linux,
+		// the buffer mappings then leak for the lifetime of the process, and the next
+		// Open()'s VIDIOC_S_FMT (and/or VIDIOC_REQBUFS) returns EBUSY. Free any
+		// lingering buffers unconditionally.
+		if len(d.buffers) > 0 {
+			_ = v4l2.UnmapMemoryBuffers(d)
+			_, _ = v4l2.ResetBuffers(d)
+			d.buffers = nil
+		}
 		return nil
 	}
 
