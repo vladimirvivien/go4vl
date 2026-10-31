@@ -145,7 +145,7 @@ type Device struct {
 //	}
 //	defer dev.Close()
 func Open(path string, options ...Option) (*Device, error) {
-	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK|sys.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
