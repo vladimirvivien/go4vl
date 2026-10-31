@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	sys "syscall"
@@ -144,7 +145,7 @@ type Device struct {
 //	}
 //	defer dev.Close()
 func Open(path string, options ...Option) (*Device, error) {
-	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK|sys.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
@@ -256,12 +257,12 @@ func Open(path string, options ...Option) (*Device, error) {
 //
 // Returns an error if stopping the stream or closing the file descriptor fails.
 func (d *Device) Close() error {
-	if d.streaming.Load() {
-		if err := d.Stop(); err != nil {
-			return err
-		}
+	if !d.streaming.Load() {
+		return v4l2.CloseDevice(d.fd)
 	}
-	return v4l2.CloseDevice(d.fd)
+	stopErr := d.Stop()
+	closeErr := v4l2.CloseDevice(d.fd)
+	return errors.Join(stopErr, closeErr)
 }
 
 // AddDMABufferFDs provides DMA-BUF file descriptors for import mode.
