@@ -12,26 +12,20 @@ package v4l2
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-ext-ctrls.html
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/extended-controls.html
 
-/*
-#include <linux/videodev2.h>
-#include <linux/v4l2-controls.h>
-#include <stdlib.h>
-#include <string.h>
-*/
-import "C"
-
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"runtime"
 	"unsafe"
 )
 
 // Additional control classes not defined in control_values.go
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlClassFMTx    CtrlClass = C.V4L2_CTRL_CLASS_FM_TX    // FM Modulator controls
-	CtrlClassFMRx    CtrlClass = C.V4L2_CTRL_CLASS_FM_RX    // FM Receiver controls
-	CtrlClassRFTuner CtrlClass = C.V4L2_CTRL_CLASS_RF_TUNER // RF tuner controls
+	CtrlClassFMTx    CtrlClass = cV4L2_CTRL_CLASS_FM_TX    // FM Modulator controls
+	CtrlClassFMRx    CtrlClass = cV4L2_CTRL_CLASS_FM_RX    // FM Receiver controls
+	CtrlClassRFTuner CtrlClass = cV4L2_CTRL_CLASS_RF_TUNER // RF tuner controls
 )
 
 // ExtControl represents a single extended control.
@@ -199,121 +193,95 @@ func (ec *ExtControls) Count() int {
 	return len(ec.controls)
 }
 
-// prepareForIoctl prepares C structures for ioctl call.
-// Returns cleanup function to free all allocated memory.
-func prepareForIoctl(ec *ExtControls) (*C.struct_v4l2_ext_controls, func(), error) {
+// prepareForIoctl prepares structures for ioctl calls and pins Go-allocated
+// control slices and compound buffers across the syscall.
+func prepareForIoctl(ec *ExtControls) (*cV4L2ExtControls, func(), error) {
 	count := len(ec.controls)
 	if count == 0 {
 		return nil, nil, fmt.Errorf("no controls to process")
 	}
 
-	// Allocate C array for controls using malloc
-	ctrlArray := (*C.struct_v4l2_ext_control)(C.malloc(C.size_t(count) * C.size_t(unsafe.Sizeof(C.struct_v4l2_ext_control{}))))
-	if ctrlArray == nil {
-		return nil, nil, fmt.Errorf("failed to allocate memory for control array")
-	}
+	var pinner runtime.Pinner
+	ctrlSlice := make([]cV4L2ExtControl, count)
+	pinner.Pin(&ctrlSlice[0])
 
-	// Track allocated memory for cleanup
-	allocatedStrings := make([]*C.char, 0)
-	allocatedCompound := make([]unsafe.Pointer, 0)
+	// Retain buffers in a slice so they remain referenced alongside pinning until cleanup runs.
+	var pinnedBufs [][]byte
 
-	// Cleanup function - frees all C memory allocated in this function
-	cleanup := func() {
-		for _, str := range allocatedStrings {
-			C.free(unsafe.Pointer(str))
-		}
-		for _, ptr := range allocatedCompound {
-			C.free(ptr)
-		}
-		C.free(unsafe.Pointer(ctrlArray))
-	}
-
-	// Convert C pointer to Go slice using the "large array trick":
-	// 1 << 30 = 1073741824 elements - we create a very large fixed-size array type
-	// Then immediately slice it to the actual count. This is safe because:
-	// - We only access [:count] elements (which we know exist)
-	// - Go won't bounds-check the large array size (it trusts our unsafe conversion)
-	// - This is a standard Go pattern for C array interop
-	ctrlSlice := (*[1 << 30]C.struct_v4l2_ext_control)(unsafe.Pointer(ctrlArray))[:count:count]
 	for i, ctrl := range ec.controls {
-		ctrlSlice[i].id = C.__u32(ctrl.ID)
-		ctrlSlice[i].size = 0
+		ctrlSlice[i].Id = ctrl.ID
+		ctrlSlice[i].Size = 0
 
-		// Set value based on type
 		switch v := ctrl.Value.(type) {
 		case int32:
-			// Cast union field anon0 to *int32 and set the value
-			*(*C.__s32)(unsafe.Pointer(&ctrlSlice[i].anon0[0])) = C.__s32(v)
+			ctrlSlice[i].Value = v
 		case int64:
-			// Cast union field anon0 to *int64 and set the value
-			*(*C.__s64)(unsafe.Pointer(&ctrlSlice[i].anon0[0])) = C.__s64(v)
+			b := (*[8]byte)(unsafe.Pointer(&ctrlSlice[i].Value))
+			binary.NativeEndian.PutUint64(b[:], uint64(v))
 		case string:
-			// Allocate C string and store pointer in union
-			cstr := C.CString(v)
-			allocatedStrings = append(allocatedStrings, cstr)
-			ctrlSlice[i].size = C.__u32(len(v) + 1)
-			// Cast union field to **char and store the string pointer
-			*(**C.char)(unsafe.Pointer(&ctrlSlice[i].anon0[0])) = cstr
+			buf := make([]byte, len(v)+1)
+			copy(buf, v)
+			pinner.Pin(&buf[0])
+			pinnedBufs = append(pinnedBufs, buf)
+			ctrlSlice[i].Size = uint32(len(buf))
+			b := (*[8]byte)(unsafe.Pointer(&ctrlSlice[i].Value))
+			binary.NativeEndian.PutUint64(b[:], uint64(uintptr(unsafe.Pointer(&buf[0]))))
 		case []byte:
 			if len(v) == 0 {
-				cleanup()
+				pinner.Unpin()
 				return nil, nil, fmt.Errorf("compound data for control %d cannot be empty", ctrl.ID)
 			}
-			// Allocate C memory for compound data
-			ptr := C.malloc(C.size_t(len(v)))
-			if ptr == nil {
-				cleanup()
-				return nil, nil, fmt.Errorf("failed to allocate memory for compound data")
-			}
-			allocatedCompound = append(allocatedCompound, ptr)
-			// Copy Go bytes to C memory
-			C.memcpy(ptr, unsafe.Pointer(&v[0]), C.size_t(len(v)))
-			ctrlSlice[i].size = C.__u32(len(v))
-			// Cast union field to unsafe.Pointer* and store the data pointer
-			*(*unsafe.Pointer)(unsafe.Pointer(&ctrlSlice[i].anon0[0])) = ptr
+			buf := make([]byte, len(v))
+			copy(buf, v)
+			pinner.Pin(&buf[0])
+			pinnedBufs = append(pinnedBufs, buf)
+			ctrlSlice[i].Size = uint32(len(buf))
+			b := (*[8]byte)(unsafe.Pointer(&ctrlSlice[i].Value))
+			binary.NativeEndian.PutUint64(b[:], uint64(uintptr(unsafe.Pointer(&buf[0]))))
 		case nil:
 			// Reading control - no value to set
 		default:
-			cleanup()
+			pinner.Unpin()
 			return nil, nil, fmt.Errorf("unsupported control value type for control %d: %T", ctrl.ID, v)
 		}
 	}
 
-	// Set up v4l2_ext_controls structure
-	var v4l2Ctrls C.struct_v4l2_ext_controls
-	// Access the 'which' field (first field in struct, in union with ctrl_class)
-	*(*C.__u32)(unsafe.Pointer(&v4l2Ctrls)) = C.__u32(ec.Class)
-	v4l2Ctrls.count = C.__u32(count)
-	v4l2Ctrls.controls = ctrlArray
+	cleanup := func() {
+		pinner.Unpin()
+		runtime.KeepAlive(pinnedBufs)
+		runtime.KeepAlive(ctrlSlice)
+	}
+
+	var v4l2Ctrls cV4L2ExtControls
+	v4l2Ctrls.Ctrl_class = ec.Class
+	v4l2Ctrls.Count = uint32(count)
+	v4l2Ctrls.Controls = &ctrlSlice[0]
 
 	return &v4l2Ctrls, cleanup, nil
 }
 
 // updateFromIoctl updates Go structures from C structures after ioctl.
-func updateFromIoctl(ec *ExtControls, v4l2Ctrls *C.struct_v4l2_ext_controls) {
+func updateFromIoctl(ec *ExtControls, v4l2Ctrls *cV4L2ExtControls) {
 	count := len(ec.controls)
-	// Convert C pointer to Go slice using the "large array trick" (see prepareForIoctl for explanation)
-	ctrlSlice := (*[1 << 30]C.struct_v4l2_ext_control)(unsafe.Pointer(v4l2Ctrls.controls))[:count:count]
+	ctrlSlice := unsafe.Slice(v4l2Ctrls.Controls, count)
 
-	// Update error index from C structure
-	ec.errorIdx = uint32(v4l2Ctrls.error_idx)
+	ec.errorIdx = v4l2Ctrls.Error_idx
 
-	// Copy values back from C array
 	for i, ctrl := range ec.controls {
 		cCtrl := &ctrlSlice[i]
 
 		// Only update value if it was a read operation (Value was nil)
 		if ctrl.Value == nil {
-			// Determine value type based on size
-			if cCtrl.size == 0 {
-				// Simple 32-bit value: cast union field to *int32 and read
-				ctrl.Value = int32(*(*C.__s32)(unsafe.Pointer(&cCtrl.anon0[0])))
+			if cCtrl.Size == 0 {
+				ctrl.Value = cCtrl.Value
 			} else {
-				// Could be string or compound - cast union field to unsafe.Pointer* and read pointer
-				ptr := *(*unsafe.Pointer)(unsafe.Pointer(&cCtrl.anon0[0]))
+				var ptr unsafe.Pointer
+				*(*[8]byte)(unsafe.Pointer(&ptr)) = *(*[8]byte)(unsafe.Pointer(&cCtrl.Value))
 				if ptr != nil {
-					// Copy C bytes to Go slice (works for both strings and compound data)
-					ctrl.Value = C.GoBytes(ptr, C.int(cCtrl.size))
+					src := unsafe.Slice((*byte)(ptr), int(cCtrl.Size))
+					dst := make([]byte, len(src))
+					copy(dst, src)
+					ctrl.Value = dst
 				}
 			}
 		}
@@ -331,7 +299,7 @@ func GetExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, C.VIDIOC_G_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_G_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_G_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -351,7 +319,7 @@ func SetExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, C.VIDIOC_S_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_S_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_S_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -371,7 +339,7 @@ func TryExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, C.VIDIOC_TRY_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_TRY_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -451,10 +419,10 @@ func GetExtControl(fd uintptr, id CtrlID) (Control, error) {
 // QueryExtControlInfo queries information about the specified ext control without its current value.
 func QueryExtControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	// query control information
-	var qryCtrl C.struct_v4l2_query_ext_ctrl
-	qryCtrl.id = C.uint(id)
+	var qryCtrl cV4L2QueryExtCtrl
+	qryCtrl.Id = id
 
-	if err := send(fd, C.VIDIOC_QUERY_EXT_CTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
+	if err := send(fd, cVIDIOC_QUERY_EXT_CTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
 		return Control{}, fmt.Errorf("query ext control info: VIDIOC_QUERY_EXT_CTRL: id %d: %w", id, err)
 	}
 	control := makeExtControl(qryCtrl)
@@ -465,7 +433,7 @@ func QueryExtControlInfo(fd uintptr, id CtrlID) (Control, error) {
 // QueryAllExtControls loop through all available ext controls and query the information for
 // all controls without their current values (use GetExtControlValue to get current values).
 func QueryAllExtControls(fd uintptr) (result []Control, err error) {
-	cid := CtrlClassCodec | uint32(C.V4L2_CTRL_FLAG_NEXT_CTRL)
+	cid := CtrlClassCodec | cV4L2_CTRL_FLAG_NEXT_CTRL
 	for {
 		control, err := QueryExtControlInfo(fd, cid)
 		if err != nil {
@@ -476,21 +444,21 @@ func QueryAllExtControls(fd uintptr) (result []Control, err error) {
 		}
 		result = append(result, control)
 		// setup next id
-		cid = control.ID | uint32(C.V4L2_CTRL_FLAG_NEXT_CTRL)
+		cid = control.ID | cV4L2_CTRL_FLAG_NEXT_CTRL
 	}
 
 	return result, nil
 }
 
-func makeExtControl(qryCtrl C.struct_v4l2_query_ext_ctrl) Control {
+func makeExtControl(qryCtrl cV4L2QueryExtCtrl) Control {
 	return Control{
-		Type:    CtrlType(qryCtrl._type),
-		ID:      uint32(qryCtrl.id),
-		Name:    C.GoString((*C.char)(unsafe.Pointer(&qryCtrl.name[0]))),
-		Maximum: int32(qryCtrl.maximum),
-		Minimum: int32(qryCtrl.minimum),
-		Step:    int32(qryCtrl.step),
-		Default: int32(qryCtrl.default_value),
-		Flags:   uint32(qryCtrl.flags),
+		Type:    CtrlType(qryCtrl.Type),
+		ID:      qryCtrl.Id,
+		Name:    cString(qryCtrl.Name[:]),
+		Maximum: int32(qryCtrl.Maximum),
+		Minimum: int32(qryCtrl.Minimum),
+		Step:    int32(qryCtrl.Step),
+		Default: int32(qryCtrl.Default_value),
+		Flags:   qryCtrl.Flags,
 	}
 }

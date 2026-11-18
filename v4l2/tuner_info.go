@@ -17,9 +17,6 @@ package v4l2
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-modulator.html
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-frequency.html
 
-// #include <linux/videodev2.h>
-import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -31,11 +28,11 @@ import (
 type TunerType = uint32
 
 const (
-	TunerTypeRadio     TunerType = C.V4L2_TUNER_RADIO      // Radio tuner (AM/FM)
-	TunerTypeAnalogTV  TunerType = C.V4L2_TUNER_ANALOG_TV  // Analog TV tuner
-	TunerTypeDigitalTV TunerType = C.V4L2_TUNER_DIGITAL_TV // Digital TV tuner
-	TunerTypeSDR       TunerType = C.V4L2_TUNER_SDR        // Software Defined Radio
-	TunerTypeRF        TunerType = C.V4L2_TUNER_RF         // RF tuner
+	TunerTypeRadio     TunerType = cV4L2_TUNER_RADIO      // Radio tuner (AM/FM)
+	TunerTypeAnalogTV  TunerType = cV4L2_TUNER_ANALOG_TV  // Analog TV tuner
+	TunerTypeDigitalTV TunerType = cV4L2_TUNER_DIGITAL_TV // Digital TV tuner
+	TunerTypeSDR       TunerType = cV4L2_TUNER_SDR        // Software Defined Radio
+	TunerTypeRF        TunerType = cV4L2_TUNER_RF         // RF tuner
 )
 
 // TunerTypes maps tuner type constants to human-readable strings
@@ -51,44 +48,44 @@ var TunerTypes = map[TunerType]string{
 type TunerCapability = uint32
 
 const (
-	TunerCapLow            TunerCapability = C.V4L2_TUNER_CAP_LOW             // Freq in 1/16 kHz units (vs 1/16 MHz)
-	TunerCapNorm           TunerCapability = C.V4L2_TUNER_CAP_NORM            // Multi-standard tuner
-	TunerCapHwSeekBounded  TunerCapability = C.V4L2_TUNER_CAP_HWSEEK_BOUNDED  // Hardware seek bounded
-	TunerCapHwSeekWrap     TunerCapability = C.V4L2_TUNER_CAP_HWSEEK_WRAP     // Hardware seek wraps around
-	TunerCapStereo         TunerCapability = C.V4L2_TUNER_CAP_STEREO          // Stereo reception/transmission
-	TunerCapLang2          TunerCapability = C.V4L2_TUNER_CAP_LANG2           // Bilingual mode (LANG2/SAP)
-	TunerCapSAP            TunerCapability = C.V4L2_TUNER_CAP_SAP             // SAP (Second Audio Program)
-	TunerCapLang1          TunerCapability = C.V4L2_TUNER_CAP_LANG1           // Primary language
-	TunerCapRDS            TunerCapability = C.V4L2_TUNER_CAP_RDS             // Radio Data System
-	TunerCapRDSBlockIO     TunerCapability = C.V4L2_TUNER_CAP_RDS_BLOCK_IO    // RDS block I/O interface
-	TunerCapRDSControls    TunerCapability = C.V4L2_TUNER_CAP_RDS_CONTROLS    // RDS controls available
-	TunerCapFreqBands      TunerCapability = C.V4L2_TUNER_CAP_FREQ_BANDS      // Multiple frequency bands
-	TunerCapHwSeekProgLim  TunerCapability = C.V4L2_TUNER_CAP_HWSEEK_PROG_LIM // Programmable hardware seek limits
-	TunerCap1Hz            TunerCapability = C.V4L2_TUNER_CAP_1HZ             // 1 Hz frequency step
+	TunerCapLow            TunerCapability = cV4L2_TUNER_CAP_LOW             // Freq in 1/16 kHz units (vs 1/16 MHz)
+	TunerCapNorm           TunerCapability = cV4L2_TUNER_CAP_NORM            // Multi-standard tuner
+	TunerCapHwSeekBounded  TunerCapability = cV4L2_TUNER_CAP_HWSEEK_BOUNDED  // Hardware seek bounded
+	TunerCapHwSeekWrap     TunerCapability = cV4L2_TUNER_CAP_HWSEEK_WRAP     // Hardware seek wraps around
+	TunerCapStereo         TunerCapability = cV4L2_TUNER_CAP_STEREO          // Stereo reception/transmission
+	TunerCapLang2          TunerCapability = cV4L2_TUNER_CAP_LANG2           // Bilingual mode (LANG2/SAP)
+	TunerCapSAP            TunerCapability = cV4L2_TUNER_CAP_SAP             // SAP (Second Audio Program)
+	TunerCapLang1          TunerCapability = cV4L2_TUNER_CAP_LANG1           // Primary language
+	TunerCapRDS            TunerCapability = cV4L2_TUNER_CAP_RDS             // Radio Data System
+	TunerCapRDSBlockIO     TunerCapability = cV4L2_TUNER_CAP_RDS_BLOCK_IO    // RDS block I/O interface
+	TunerCapRDSControls    TunerCapability = cV4L2_TUNER_CAP_RDS_CONTROLS    // RDS controls available
+	TunerCapFreqBands      TunerCapability = cV4L2_TUNER_CAP_FREQ_BANDS      // Multiple frequency bands
+	TunerCapHwSeekProgLim  TunerCapability = cV4L2_TUNER_CAP_HWSEEK_PROG_LIM // Programmable hardware seek limits
+	TunerCap1Hz            TunerCapability = cV4L2_TUNER_CAP_1HZ             // 1 Hz frequency step
 )
 
 // TunerRxSubchannel represents received audio subchannels
 type TunerRxSubchannel = uint32
 
 const (
-	TunerSubMono   TunerRxSubchannel = C.V4L2_TUNER_SUB_MONO   // Mono audio detected
-	TunerSubStereo TunerRxSubchannel = C.V4L2_TUNER_SUB_STEREO // Stereo audio detected
-	TunerSubLang2  TunerRxSubchannel = C.V4L2_TUNER_SUB_LANG2  // LANG2/SAP detected
-	TunerSubSAP    TunerRxSubchannel = C.V4L2_TUNER_SUB_SAP    // SAP detected
-	TunerSubLang1  TunerRxSubchannel = C.V4L2_TUNER_SUB_LANG1  // LANG1 detected
-	TunerSubRDS    TunerRxSubchannel = C.V4L2_TUNER_SUB_RDS    // RDS data available
+	TunerSubMono   TunerRxSubchannel = cV4L2_TUNER_SUB_MONO   // Mono audio detected
+	TunerSubStereo TunerRxSubchannel = cV4L2_TUNER_SUB_STEREO // Stereo audio detected
+	TunerSubLang2  TunerRxSubchannel = cV4L2_TUNER_SUB_LANG2  // LANG2/SAP detected
+	TunerSubSAP    TunerRxSubchannel = cV4L2_TUNER_SUB_SAP    // SAP detected
+	TunerSubLang1  TunerRxSubchannel = cV4L2_TUNER_SUB_LANG1  // LANG1 detected
+	TunerSubRDS    TunerRxSubchannel = cV4L2_TUNER_SUB_RDS    // RDS data available
 )
 
 // TunerAudioMode represents the audio mode to select
 type TunerAudioMode = uint32
 
 const (
-	TunerModeMono       TunerAudioMode = C.V4L2_TUNER_MODE_MONO        // Mono audio
-	TunerModeStereo     TunerAudioMode = C.V4L2_TUNER_MODE_STEREO      // Stereo audio
-	TunerModeLang2      TunerAudioMode = C.V4L2_TUNER_MODE_LANG2       // LANG2/SAP
-	TunerModeSAP        TunerAudioMode = C.V4L2_TUNER_MODE_SAP         // SAP (same as LANG2)
-	TunerModeLang1      TunerAudioMode = C.V4L2_TUNER_MODE_LANG1       // LANG1
-	TunerModeLang1Lang2 TunerAudioMode = C.V4L2_TUNER_MODE_LANG1_LANG2 // LANG1 + LANG2
+	TunerModeMono       TunerAudioMode = cV4L2_TUNER_MODE_MONO        // Mono audio
+	TunerModeStereo     TunerAudioMode = cV4L2_TUNER_MODE_STEREO      // Stereo audio
+	TunerModeLang2      TunerAudioMode = cV4L2_TUNER_MODE_LANG2       // LANG2/SAP
+	TunerModeSAP        TunerAudioMode = cV4L2_TUNER_MODE_SAP         // SAP (same as LANG2)
+	TunerModeLang1      TunerAudioMode = cV4L2_TUNER_MODE_LANG1       // LANG1
+	TunerModeLang1Lang2 TunerAudioMode = cV4L2_TUNER_MODE_LANG1_LANG2 // LANG1 + LANG2
 )
 
 // TunerAudioModes maps audio mode constants to human-readable strings
@@ -104,58 +101,58 @@ var TunerAudioModes = map[TunerAudioMode]string{
 type BandModulation = uint32
 
 const (
-	BandModulationVSB BandModulation = C.V4L2_BAND_MODULATION_VSB // Vestigial Sideband
-	BandModulationFM  BandModulation = C.V4L2_BAND_MODULATION_FM  // Frequency Modulation
-	BandModulationAM  BandModulation = C.V4L2_BAND_MODULATION_AM  // Amplitude Modulation
+	BandModulationVSB BandModulation = cV4L2_BAND_MODULATION_VSB // Vestigial Sideband
+	BandModulationFM  BandModulation = cV4L2_BAND_MODULATION_FM  // Frequency Modulation
+	BandModulationAM  BandModulation = cV4L2_BAND_MODULATION_AM  // Amplitude Modulation
 )
 
 // TunerInfo wraps v4l2_tuner structure
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-tuner.html
 type TunerInfo struct {
-	v4l2Tuner C.struct_v4l2_tuner
+	v4l2Tuner cV4L2Tuner
 }
 
 // Accessor methods for TunerInfo
 
 func (t TunerInfo) GetIndex() uint32 {
-	return uint32(t.v4l2Tuner.index)
+	return t.v4l2Tuner.Index
 }
 
 func (t TunerInfo) GetName() string {
-	return C.GoString((*C.char)(unsafe.Pointer(&t.v4l2Tuner.name[0])))
+	return cString(t.v4l2Tuner.Name[:])
 }
 
 func (t TunerInfo) GetType() TunerType {
-	return TunerType(t.v4l2Tuner._type)
+	return TunerType(t.v4l2Tuner.Type)
 }
 
 func (t TunerInfo) GetCapability() TunerCapability {
-	return TunerCapability(t.v4l2Tuner.capability)
+	return TunerCapability(t.v4l2Tuner.Capability)
 }
 
 func (t TunerInfo) GetRangeLow() uint32 {
-	return uint32(t.v4l2Tuner.rangelow)
+	return t.v4l2Tuner.Rangelow
 }
 
 func (t TunerInfo) GetRangeHigh() uint32 {
-	return uint32(t.v4l2Tuner.rangehigh)
+	return t.v4l2Tuner.Rangehigh
 }
 
 func (t TunerInfo) GetRxSubchans() TunerRxSubchannel {
-	return TunerRxSubchannel(t.v4l2Tuner.rxsubchans)
+	return TunerRxSubchannel(t.v4l2Tuner.Rxsubchans)
 }
 
 func (t TunerInfo) GetAudioMode() TunerAudioMode {
-	return TunerAudioMode(t.v4l2Tuner.audmode)
+	return TunerAudioMode(t.v4l2Tuner.Audmode)
 }
 
 func (t TunerInfo) GetSignal() int32 {
-	return int32(t.v4l2Tuner.signal)
+	return t.v4l2Tuner.Signal
 }
 
 func (t TunerInfo) GetAFC() int32 {
-	return int32(t.v4l2Tuner.afc)
+	return t.v4l2Tuner.Afc
 }
 
 // Capability check helper methods for TunerInfo
@@ -188,37 +185,37 @@ func (t TunerInfo) SupportsFreqBands() bool {
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-modulator.html
 type ModulatorInfo struct {
-	v4l2Modulator C.struct_v4l2_modulator
+	v4l2Modulator cV4L2Modulator
 }
 
 // Accessor methods for ModulatorInfo
 
 func (m ModulatorInfo) GetIndex() uint32 {
-	return uint32(m.v4l2Modulator.index)
+	return m.v4l2Modulator.Index
 }
 
 func (m ModulatorInfo) GetName() string {
-	return C.GoString((*C.char)(unsafe.Pointer(&m.v4l2Modulator.name[0])))
+	return cString(m.v4l2Modulator.Name[:])
 }
 
 func (m ModulatorInfo) GetCapability() TunerCapability {
-	return TunerCapability(m.v4l2Modulator.capability)
+	return TunerCapability(m.v4l2Modulator.Capability)
 }
 
 func (m ModulatorInfo) GetRangeLow() uint32 {
-	return uint32(m.v4l2Modulator.rangelow)
+	return m.v4l2Modulator.Rangelow
 }
 
 func (m ModulatorInfo) GetRangeHigh() uint32 {
-	return uint32(m.v4l2Modulator.rangehigh)
+	return m.v4l2Modulator.Rangehigh
 }
 
 func (m ModulatorInfo) GetTxSubchans() uint32 {
-	return uint32(m.v4l2Modulator.txsubchans)
+	return m.v4l2Modulator.Txsubchans
 }
 
 func (m ModulatorInfo) GetType() TunerType {
-	return TunerType(m.v4l2Modulator._type)
+	return TunerType(m.v4l2Modulator.Type)
 }
 
 // Capability check helper methods for ModulatorInfo
@@ -247,58 +244,58 @@ func (m ModulatorInfo) SupportsFreqBands() bool {
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-frequency.html
 type FrequencyInfo struct {
-	v4l2Frequency C.struct_v4l2_frequency
+	v4l2Frequency cV4L2Frequency
 }
 
 // Accessor methods for FrequencyInfo
 
 func (f FrequencyInfo) GetTuner() uint32 {
-	return uint32(f.v4l2Frequency.tuner)
+	return f.v4l2Frequency.Tuner
 }
 
 func (f FrequencyInfo) GetType() TunerType {
-	return TunerType(f.v4l2Frequency._type)
+	return TunerType(f.v4l2Frequency.Type)
 }
 
 func (f FrequencyInfo) GetFrequency() uint32 {
-	return uint32(f.v4l2Frequency.frequency)
+	return f.v4l2Frequency.Frequency
 }
 
 // FrequencyBandInfo wraps v4l2_frequency_band structure
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enum-freq-bands.html
 type FrequencyBandInfo struct {
-	v4l2FreqBand C.struct_v4l2_frequency_band
+	v4l2FreqBand cV4L2FrequencyBand
 }
 
 // Accessor methods for FrequencyBandInfo
 
 func (fb FrequencyBandInfo) GetTuner() uint32 {
-	return uint32(fb.v4l2FreqBand.tuner)
+	return fb.v4l2FreqBand.Tuner
 }
 
 func (fb FrequencyBandInfo) GetType() TunerType {
-	return TunerType(fb.v4l2FreqBand._type)
+	return TunerType(fb.v4l2FreqBand.Type)
 }
 
 func (fb FrequencyBandInfo) GetIndex() uint32 {
-	return uint32(fb.v4l2FreqBand.index)
+	return fb.v4l2FreqBand.Index
 }
 
 func (fb FrequencyBandInfo) GetCapability() TunerCapability {
-	return TunerCapability(fb.v4l2FreqBand.capability)
+	return TunerCapability(fb.v4l2FreqBand.Capability)
 }
 
 func (fb FrequencyBandInfo) GetRangeLow() uint32 {
-	return uint32(fb.v4l2FreqBand.rangelow)
+	return fb.v4l2FreqBand.Rangelow
 }
 
 func (fb FrequencyBandInfo) GetRangeHigh() uint32 {
-	return uint32(fb.v4l2FreqBand.rangehigh)
+	return fb.v4l2FreqBand.Rangehigh
 }
 
 func (fb FrequencyBandInfo) GetModulation() BandModulation {
-	return BandModulation(fb.v4l2FreqBand.modulation)
+	return BandModulation(fb.v4l2FreqBand.Modulation)
 }
 
 func (fb FrequencyBandInfo) HasCapability(cap TunerCapability) bool {
@@ -320,10 +317,10 @@ func (fb FrequencyBandInfo) HasCapability(cap TunerCapability) bool {
 //	}
 //	fmt.Printf("Tuner: %s, Type: %s\n", tuner.GetName(), v4l2.TunerTypes[tuner.GetType()])
 func GetTunerInfo(fd uintptr, index uint32) (TunerInfo, error) {
-	var tuner C.struct_v4l2_tuner
-	tuner.index = C.uint(index)
+	var tuner cV4L2Tuner
+	tuner.Index = index
 
-	if err := send(fd, C.VIDIOC_G_TUNER, uintptr(unsafe.Pointer(&tuner))); err != nil {
+	if err := send(fd, cVIDIOC_G_TUNER, uintptr(unsafe.Pointer(&tuner))); err != nil {
 		return TunerInfo{}, fmt.Errorf("v4l2: VIDIOC_G_TUNER failed for index %d: %w", index, err)
 	}
 
@@ -339,7 +336,7 @@ func GetTunerInfo(fd uintptr, index uint32) (TunerInfo, error) {
 //	tuner.v4l2Tuner.audmode = C.V4L2_TUNER_MODE_STEREO
 //	err := v4l2.SetTuner(fd, tuner)
 func SetTuner(fd uintptr, tuner TunerInfo) error {
-	if err := send(fd, C.VIDIOC_S_TUNER, uintptr(unsafe.Pointer(&tuner.v4l2Tuner))); err != nil {
+	if err := send(fd, cVIDIOC_S_TUNER, uintptr(unsafe.Pointer(&tuner.v4l2Tuner))); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_TUNER failed: %w", err)
 	}
 	return nil
@@ -387,10 +384,10 @@ func GetAllTuners(fd uintptr) ([]TunerInfo, error) {
 //	}
 //	fmt.Printf("Modulator: %s\n", mod.GetName())
 func GetModulatorInfo(fd uintptr, index uint32) (ModulatorInfo, error) {
-	var modulator C.struct_v4l2_modulator
-	modulator.index = C.uint(index)
+	var modulator cV4L2Modulator
+	modulator.Index = index
 
-	if err := send(fd, C.VIDIOC_G_MODULATOR, uintptr(unsafe.Pointer(&modulator))); err != nil {
+	if err := send(fd, cVIDIOC_G_MODULATOR, uintptr(unsafe.Pointer(&modulator))); err != nil {
 		return ModulatorInfo{}, fmt.Errorf("v4l2: VIDIOC_G_MODULATOR failed for index %d: %w", index, err)
 	}
 
@@ -406,7 +403,7 @@ func GetModulatorInfo(fd uintptr, index uint32) (ModulatorInfo, error) {
 //	mod.v4l2Modulator.txsubchans = C.V4L2_TUNER_SUB_STEREO
 //	err := v4l2.SetModulator(fd, mod)
 func SetModulator(fd uintptr, modulator ModulatorInfo) error {
-	if err := send(fd, C.VIDIOC_S_MODULATOR, uintptr(unsafe.Pointer(&modulator.v4l2Modulator))); err != nil {
+	if err := send(fd, cVIDIOC_S_MODULATOR, uintptr(unsafe.Pointer(&modulator.v4l2Modulator))); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_MODULATOR failed: %w", err)
 	}
 	return nil
@@ -454,10 +451,10 @@ func GetAllModulators(fd uintptr) ([]ModulatorInfo, error) {
 //	}
 //	fmt.Printf("Current frequency: %d\n", freq.GetFrequency())
 func GetFrequency(fd uintptr, tunerIndex uint32) (FrequencyInfo, error) {
-	var frequency C.struct_v4l2_frequency
-	frequency.tuner = C.uint(tunerIndex)
+	var frequency cV4L2Frequency
+	frequency.Tuner = tunerIndex
 
-	if err := send(fd, C.VIDIOC_G_FREQUENCY, uintptr(unsafe.Pointer(&frequency))); err != nil {
+	if err := send(fd, cVIDIOC_G_FREQUENCY, uintptr(unsafe.Pointer(&frequency))); err != nil {
 		return FrequencyInfo{}, fmt.Errorf("v4l2: VIDIOC_G_FREQUENCY failed for tuner %d: %w", tunerIndex, err)
 	}
 
@@ -473,12 +470,12 @@ func GetFrequency(fd uintptr, tunerIndex uint32) (FrequencyInfo, error) {
 //	// 100.5 MHz = 100500 kHz = 100500 * 16 units = 1608000 units
 //	err := v4l2.SetFrequency(fd, 0, v4l2.TunerTypeRadio, 1608000)
 func SetFrequency(fd uintptr, tunerIndex uint32, tunerType TunerType, frequency uint32) error {
-	var freq C.struct_v4l2_frequency
-	freq.tuner = C.uint(tunerIndex)
-	freq._type = C.uint(tunerType)
-	freq.frequency = C.uint(frequency)
+	var freq cV4L2Frequency
+	freq.Tuner = tunerIndex
+	freq.Type = tunerType
+	freq.Frequency = frequency
 
-	if err := send(fd, C.VIDIOC_S_FREQUENCY, uintptr(unsafe.Pointer(&freq))); err != nil {
+	if err := send(fd, cVIDIOC_S_FREQUENCY, uintptr(unsafe.Pointer(&freq))); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_FREQUENCY failed: %w", err)
 	}
 	return nil
@@ -499,12 +496,12 @@ func SetFrequency(fd uintptr, tunerIndex uint32, tunerType TunerType, frequency 
 //	}
 //	fmt.Printf("Band: %d - %d\n", band.GetRangeLow(), band.GetRangeHigh())
 func GetFrequencyBandInfo(fd uintptr, tunerIndex uint32, tunerType TunerType, bandIndex uint32) (FrequencyBandInfo, error) {
-	var band C.struct_v4l2_frequency_band
-	band.tuner = C.uint(tunerIndex)
-	band._type = C.uint(tunerType)
-	band.index = C.uint(bandIndex)
+	var band cV4L2FrequencyBand
+	band.Tuner = tunerIndex
+	band.Type = tunerType
+	band.Index = bandIndex
 
-	if err := send(fd, C.VIDIOC_ENUM_FREQ_BANDS, uintptr(unsafe.Pointer(&band))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FREQ_BANDS, uintptr(unsafe.Pointer(&band))); err != nil {
 		return FrequencyBandInfo{}, fmt.Errorf("v4l2: VIDIOC_ENUM_FREQ_BANDS failed for tuner %d band %d: %w", tunerIndex, bandIndex, err)
 	}
 

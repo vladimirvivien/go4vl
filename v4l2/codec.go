@@ -16,11 +16,6 @@ package v4l2
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/dev-encoder.html
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/dev-decoder.html
 
-/*
-#include <linux/videodev2.h>
-*/
-import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -32,25 +27,25 @@ import (
 // Reference: https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 const (
 	// EncCmdStart starts the encoder. Encoding will begin with the next queued buffer.
-	EncCmdStart uint32 = C.V4L2_ENC_CMD_START
+	EncCmdStart uint32 = cV4L2_ENC_CMD_START
 
 	// EncCmdStop stops the encoder. The encoder will finish encoding all queued buffers
 	// and then signal end-of-stream on the capture queue.
-	EncCmdStop uint32 = C.V4L2_ENC_CMD_STOP
+	EncCmdStop uint32 = cV4L2_ENC_CMD_STOP
 
 	// EncCmdPause pauses the encoder. Buffers in the queue will not be processed
 	// until the encoder is resumed.
-	EncCmdPause uint32 = C.V4L2_ENC_CMD_PAUSE
+	EncCmdPause uint32 = cV4L2_ENC_CMD_PAUSE
 
 	// EncCmdResume resumes a paused encoder.
-	EncCmdResume uint32 = C.V4L2_ENC_CMD_RESUME
+	EncCmdResume uint32 = cV4L2_ENC_CMD_RESUME
 )
 
 // Encoder command flags for VIDIOC_ENCODER_CMD.
 const (
 	// EncCmdStopAtGOPEnd stops encoding at the next GOP boundary.
 	// If not set, encoding stops immediately after the current frame.
-	EncCmdStopAtGOPEnd uint32 = C.V4L2_ENC_CMD_STOP_AT_GOP_END
+	EncCmdStopAtGOPEnd uint32 = cV4L2_ENC_CMD_STOP_AT_GOP_END
 )
 
 // Decoder command constants for VIDIOC_DECODER_CMD.
@@ -59,46 +54,46 @@ const (
 // Reference: https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 const (
 	// DecCmdStart starts the decoder. Decoding will begin with the next queued buffer.
-	DecCmdStart uint32 = C.V4L2_DEC_CMD_START
+	DecCmdStart uint32 = cV4L2_DEC_CMD_START
 
 	// DecCmdStop stops the decoder. The decoder will finish decoding all queued buffers
 	// and then signal end-of-stream on the capture queue.
-	DecCmdStop uint32 = C.V4L2_DEC_CMD_STOP
+	DecCmdStop uint32 = cV4L2_DEC_CMD_STOP
 
 	// DecCmdPause pauses the decoder. Buffers in the queue will not be processed
 	// until the decoder is resumed.
-	DecCmdPause uint32 = C.V4L2_DEC_CMD_PAUSE
+	DecCmdPause uint32 = cV4L2_DEC_CMD_PAUSE
 
 	// DecCmdResume resumes a paused decoder.
-	DecCmdResume uint32 = C.V4L2_DEC_CMD_RESUME
+	DecCmdResume uint32 = cV4L2_DEC_CMD_RESUME
 
 	// DecCmdFlush flushes the decoder. All pending decoded frames are returned,
 	// and the decoder state is reset for seeking or stream changes.
-	DecCmdFlush uint32 = C.V4L2_DEC_CMD_FLUSH
+	DecCmdFlush uint32 = cV4L2_DEC_CMD_FLUSH
 )
 
 // Decoder command flags for VIDIOC_DECODER_CMD.
 const (
 	// DecCmdStartMuteAudio mutes audio during playback start.
-	DecCmdStartMuteAudio uint32 = C.V4L2_DEC_CMD_START_MUTE_AUDIO
+	DecCmdStartMuteAudio uint32 = cV4L2_DEC_CMD_START_MUTE_AUDIO
 
 	// DecCmdPauseToBlack displays a black frame when pausing.
-	DecCmdPauseToBlack uint32 = C.V4L2_DEC_CMD_PAUSE_TO_BLACK
+	DecCmdPauseToBlack uint32 = cV4L2_DEC_CMD_PAUSE_TO_BLACK
 
 	// DecCmdStopToBlack displays a black frame when stopping.
-	DecCmdStopToBlack uint32 = C.V4L2_DEC_CMD_STOP_TO_BLACK
+	DecCmdStopToBlack uint32 = cV4L2_DEC_CMD_STOP_TO_BLACK
 
 	// DecCmdStopImmediately stops immediately without draining.
-	DecCmdStopImmediately uint32 = C.V4L2_DEC_CMD_STOP_IMMEDIATELY
+	DecCmdStopImmediately uint32 = cV4L2_DEC_CMD_STOP_IMMEDIATELY
 )
 
 // Decoder start format requirements (returned by driver).
 const (
 	// DecStartFmtNone indicates the decoder has no special format requirements.
-	DecStartFmtNone uint32 = C.V4L2_DEC_START_FMT_NONE
+	DecStartFmtNone uint32 = cV4L2_DEC_START_FMT_NONE
 
 	// DecStartFmtGOP indicates the decoder requires full GOPs.
-	DecStartFmtGOP uint32 = C.V4L2_DEC_START_FMT_GOP
+	DecStartFmtGOP uint32 = cV4L2_DEC_START_FMT_GOP
 )
 
 // EncoderCmd represents a V4L2 encoder command (v4l2_encoder_cmd).
@@ -286,17 +281,17 @@ func (dc *DecoderCmd) SetStartFormat(format uint32) {
 // This function issues the VIDIOC_ENCODER_CMD ioctl.
 // Reference: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-encoder-cmd.html
 func SendEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
-	var v4l2Cmd C.struct_v4l2_encoder_cmd
-	v4l2Cmd.cmd = C.__u32(cmd.Cmd)
-	v4l2Cmd.flags = C.__u32(cmd.Flags)
+	var v4l2Cmd cV4L2EncoderCmd
+	v4l2Cmd.Cmd = cmd.Cmd
+	v4l2Cmd.Flags = cmd.Flags
 
-	if err := send(fd, C.VIDIOC_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
 		return fmt.Errorf("encoder cmd: %w", err)
 	}
 
 	// Update command with any values modified by driver
-	cmd.Cmd = uint32(v4l2Cmd.cmd)
-	cmd.Flags = uint32(v4l2Cmd.flags)
+	cmd.Cmd = v4l2Cmd.Cmd
+	cmd.Flags = v4l2Cmd.Flags
 
 	return nil
 }
@@ -313,17 +308,17 @@ func SendEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
 //
 // This function issues the VIDIOC_TRY_ENCODER_CMD ioctl.
 func TryEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
-	var v4l2Cmd C.struct_v4l2_encoder_cmd
-	v4l2Cmd.cmd = C.__u32(cmd.Cmd)
-	v4l2Cmd.flags = C.__u32(cmd.Flags)
+	var v4l2Cmd cV4L2EncoderCmd
+	v4l2Cmd.Cmd = cmd.Cmd
+	v4l2Cmd.Flags = cmd.Flags
 
-	if err := send(fd, C.VIDIOC_TRY_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
 		return fmt.Errorf("try encoder cmd: %w", err)
 	}
 
 	// Update command with any values modified by driver
-	cmd.Cmd = uint32(v4l2Cmd.cmd)
-	cmd.Flags = uint32(v4l2Cmd.flags)
+	cmd.Cmd = v4l2Cmd.Cmd
+	cmd.Flags = v4l2Cmd.Flags
 
 	return nil
 }
@@ -341,42 +336,42 @@ func TryEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
 // This function issues the VIDIOC_DECODER_CMD ioctl.
 // Reference: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-decoder-cmd.html
 func SendDecoderCmd(fd uintptr, cmd *DecoderCmd) error {
-	var v4l2Cmd C.struct_v4l2_decoder_cmd
-	v4l2Cmd.cmd = C.__u32(cmd.Cmd)
-	v4l2Cmd.flags = C.__u32(cmd.Flags)
+	var v4l2Cmd cV4L2DecoderCmd
+	v4l2Cmd.Cmd = cmd.Cmd
+	v4l2Cmd.Flags = cmd.Flags
 
 	// Set union fields based on command type
 	switch cmd.Cmd {
 	case DecCmdStop:
 		// Set stop.pts field
-		stopPtr := (*C.__u64)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		*stopPtr = C.__u64(cmd.StopPts)
+		stopPtr := (*uint64)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		*stopPtr = uint64(cmd.StopPts)
 	case DecCmdStart:
 		// Set start.speed and start.format fields
-		speedPtr := (*C.__s32)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		formatPtr := (*C.__u32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.anon0[0])) + 4))
-		*speedPtr = C.__s32(cmd.StartSpeed)
-		*formatPtr = C.__u32(cmd.StartFormat)
+		speedPtr := (*int32)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		formatPtr := (*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.Stop[0])) + 4))
+		*speedPtr = cmd.StartSpeed
+		*formatPtr = cmd.StartFormat
 	}
 
-	if err := send(fd, C.VIDIOC_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
 		return fmt.Errorf("decoder cmd: %w", err)
 	}
 
 	// Update command with any values modified by driver
-	cmd.Cmd = uint32(v4l2Cmd.cmd)
-	cmd.Flags = uint32(v4l2Cmd.flags)
+	cmd.Cmd = v4l2Cmd.Cmd
+	cmd.Flags = v4l2Cmd.Flags
 
 	// Read back union fields
 	switch cmd.Cmd {
 	case DecCmdStop:
-		stopPtr := (*C.__u64)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
+		stopPtr := (*uint64)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
 		cmd.StopPts = int64(*stopPtr)
 	case DecCmdStart:
-		speedPtr := (*C.__s32)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		formatPtr := (*C.__u32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.anon0[0])) + 4))
-		cmd.StartSpeed = int32(*speedPtr)
-		cmd.StartFormat = uint32(*formatPtr)
+		speedPtr := (*int32)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		formatPtr := (*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.Stop[0])) + 4))
+		cmd.StartSpeed = *speedPtr
+		cmd.StartFormat = *formatPtr
 	}
 
 	return nil
@@ -394,40 +389,40 @@ func SendDecoderCmd(fd uintptr, cmd *DecoderCmd) error {
 //
 // This function issues the VIDIOC_TRY_DECODER_CMD ioctl.
 func TryDecoderCmd(fd uintptr, cmd *DecoderCmd) error {
-	var v4l2Cmd C.struct_v4l2_decoder_cmd
-	v4l2Cmd.cmd = C.__u32(cmd.Cmd)
-	v4l2Cmd.flags = C.__u32(cmd.Flags)
+	var v4l2Cmd cV4L2DecoderCmd
+	v4l2Cmd.Cmd = cmd.Cmd
+	v4l2Cmd.Flags = cmd.Flags
 
 	// Set union fields based on command type
 	switch cmd.Cmd {
 	case DecCmdStop:
-		stopPtr := (*C.__u64)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		*stopPtr = C.__u64(cmd.StopPts)
+		stopPtr := (*uint64)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		*stopPtr = uint64(cmd.StopPts)
 	case DecCmdStart:
-		speedPtr := (*C.__s32)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		formatPtr := (*C.__u32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.anon0[0])) + 4))
-		*speedPtr = C.__s32(cmd.StartSpeed)
-		*formatPtr = C.__u32(cmd.StartFormat)
+		speedPtr := (*int32)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		formatPtr := (*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.Stop[0])) + 4))
+		*speedPtr = cmd.StartSpeed
+		*formatPtr = cmd.StartFormat
 	}
 
-	if err := send(fd, C.VIDIOC_TRY_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
 		return fmt.Errorf("try decoder cmd: %w", err)
 	}
 
 	// Update command with any values modified by driver
-	cmd.Cmd = uint32(v4l2Cmd.cmd)
-	cmd.Flags = uint32(v4l2Cmd.flags)
+	cmd.Cmd = v4l2Cmd.Cmd
+	cmd.Flags = v4l2Cmd.Flags
 
 	// Read back union fields
 	switch cmd.Cmd {
 	case DecCmdStop:
-		stopPtr := (*C.__u64)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
+		stopPtr := (*uint64)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
 		cmd.StopPts = int64(*stopPtr)
 	case DecCmdStart:
-		speedPtr := (*C.__s32)(unsafe.Pointer(&v4l2Cmd.anon0[0]))
-		formatPtr := (*C.__u32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.anon0[0])) + 4))
-		cmd.StartSpeed = int32(*speedPtr)
-		cmd.StartFormat = uint32(*formatPtr)
+		speedPtr := (*int32)(unsafe.Pointer(&v4l2Cmd.Stop[0]))
+		formatPtr := (*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2Cmd.Stop[0])) + 4))
+		cmd.StartSpeed = *speedPtr
+		cmd.StartFormat = *formatPtr
 	}
 
 	return nil
@@ -549,45 +544,45 @@ func SetPixFormatCapture(fd uintptr, pixFmt PixFormat) error {
 
 // getPixFormatForType retrieves the pixel format for a specific buffer type.
 func getPixFormatForType(fd uintptr, bufType BufType) (PixFormat, error) {
-	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(bufType)
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = bufType
 
-	if err := send(fd, C.VIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return PixFormat{}, fmt.Errorf("get pix format: %w", err)
 	}
 
-	v4l2PixFmt := *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Format.fmt[0]))
+	v4l2PixFmt := *(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
 	return PixFormat{
-		Width:        uint32(v4l2PixFmt.width),
-		Height:       uint32(v4l2PixFmt.height),
-		PixelFormat:  uint32(v4l2PixFmt.pixelformat),
-		Field:        uint32(v4l2PixFmt.field),
-		BytesPerLine: uint32(v4l2PixFmt.bytesperline),
-		SizeImage:    uint32(v4l2PixFmt.sizeimage),
-		Colorspace:   uint32(v4l2PixFmt.colorspace),
-		Priv:         uint32(v4l2PixFmt.priv),
-		Flags:        uint32(v4l2PixFmt.flags),
-		YcbcrEnc:     *(*uint32)(unsafe.Pointer(&v4l2PixFmt.anon0[0])),
-		Quantization: uint32(v4l2PixFmt.quantization),
-		XferFunc:     uint32(v4l2PixFmt.xfer_func),
+		Width:        v4l2PixFmt.Width,
+		Height:       v4l2PixFmt.Height,
+		PixelFormat:  v4l2PixFmt.Pixelformat,
+		Field:        v4l2PixFmt.Field,
+		BytesPerLine: v4l2PixFmt.Bytesperline,
+		SizeImage:    v4l2PixFmt.Sizeimage,
+		Colorspace:   v4l2PixFmt.Colorspace,
+		Priv:         v4l2PixFmt.Priv,
+		Flags:        v4l2PixFmt.Flags,
+		YcbcrEnc:     v4l2PixFmt.Ycbcr_enc,
+		Quantization: v4l2PixFmt.Quantization,
+		XferFunc:     v4l2PixFmt.Xfer_func,
 	}, nil
 }
 
 // setPixFormatForType sets the pixel format for a specific buffer type.
 func setPixFormatForType(fd uintptr, bufType BufType, pixFmt PixFormat) error {
-	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(bufType)
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = bufType
 
-	v4l2PixFmt := (*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Format.fmt[0]))
-	v4l2PixFmt.width = C.uint(pixFmt.Width)
-	v4l2PixFmt.height = C.uint(pixFmt.Height)
-	v4l2PixFmt.pixelformat = C.uint(pixFmt.PixelFormat)
-	v4l2PixFmt.field = C.uint(pixFmt.Field)
-	v4l2PixFmt.bytesperline = C.uint(pixFmt.BytesPerLine)
-	v4l2PixFmt.sizeimage = C.uint(pixFmt.SizeImage)
-	v4l2PixFmt.colorspace = C.uint(pixFmt.Colorspace)
+	v4l2PixFmt := (*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
+	v4l2PixFmt.Width = pixFmt.Width
+	v4l2PixFmt.Height = pixFmt.Height
+	v4l2PixFmt.Pixelformat = pixFmt.PixelFormat
+	v4l2PixFmt.Field = pixFmt.Field
+	v4l2PixFmt.Bytesperline = pixFmt.BytesPerLine
+	v4l2PixFmt.Sizeimage = pixFmt.SizeImage
+	v4l2PixFmt.Colorspace = pixFmt.Colorspace
 
-	if err := send(fd, C.VIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return fmt.Errorf("set pix format: %w", err)
 	}
 	return nil
@@ -605,12 +600,12 @@ func RequestBuffersCapture(fd uintptr, count uint32, ioType IOType) (RequestBuff
 
 // requestBuffersForType allocates buffers for a specific buffer type.
 func requestBuffersForType(fd uintptr, bufType BufType, count uint32, ioType IOType) (RequestBuffers, error) {
-	var req C.struct_v4l2_requestbuffers
-	req.count = C.uint(count)
-	req._type = C.uint(bufType)
-	req.memory = C.uint(ioType)
+	var req cV4L2RequestBuffers
+	req.Count = count
+	req.Type = bufType
+	req.Memory = ioType
 
-	if err := send(fd, C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(fd, cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 
@@ -631,17 +626,17 @@ func MapMemoryBuffersCapture(fd uintptr, count uint32) ([][]byte, error) {
 func mapMemoryBuffersForType(fd uintptr, bufType BufType, count uint32) ([][]byte, error) {
 	buffers := make([][]byte, count)
 	for i := uint32(0); i < count; i++ {
-		var v4l2Buf C.struct_v4l2_buffer
-		v4l2Buf._type = C.uint(bufType)
-		v4l2Buf.memory = C.uint(IOTypeMMAP)
-		v4l2Buf.index = C.uint(i)
+		var v4l2Buf cV4L2Buffer
+		v4l2Buf.Type = bufType
+		v4l2Buf.Memory = IOTypeMMAP
+		v4l2Buf.Index = i
 
-		if err := send(fd, C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 			return nil, fmt.Errorf("query buffer %d: %w", i, err)
 		}
 
-		offset := *(*uint32)(unsafe.Pointer(&v4l2Buf.m[0]))
-		length := uint32(v4l2Buf.length)
+		offset := *(*uint32)(unsafe.Pointer(&v4l2Buf.M[0]))
+		length := v4l2Buf.Length
 
 		data, err := mapMemoryBuffer(fd, int64(offset), int(length))
 		if err != nil {
@@ -654,13 +649,13 @@ func mapMemoryBuffersForType(fd uintptr, bufType BufType, count uint32) ([][]byt
 
 // QueueBufferOutput queues a buffer on the OUTPUT queue with data.
 func QueueBufferOutput(fd uintptr, ioType IOType, index uint32, bytesUsed uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoOutput)
-	v4l2Buf.memory = C.uint(ioType)
-	v4l2Buf.index = C.uint(index)
-	v4l2Buf.bytesused = C.uint(bytesUsed)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = BufTypeVideoOutput
+	v4l2Buf.Memory = ioType
+	v4l2Buf.Index = index
+	v4l2Buf.Bytesused = bytesUsed
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("queue buffer: %w", err)
 	}
 
@@ -669,12 +664,12 @@ func QueueBufferOutput(fd uintptr, ioType IOType, index uint32, bytesUsed uint32
 
 // QueueBufferCapture queues a buffer on the CAPTURE queue.
 func QueueBufferCapture(fd uintptr, ioType IOType, index uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(BufTypeVideoCapture)
-	v4l2Buf.memory = C.uint(ioType)
-	v4l2Buf.index = C.uint(index)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = BufTypeVideoCapture
+	v4l2Buf.Memory = ioType
+	v4l2Buf.Index = index
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("queue buffer: %w", err)
 	}
 
@@ -694,7 +689,7 @@ func DequeueBufferCapture(fd uintptr, ioType IOType) (Buffer, error) {
 // StreamOnOutput starts streaming on the OUTPUT queue.
 func StreamOnOutput(fd uintptr) error {
 	bufType := BufTypeVideoOutput
-	if err := send(fd, C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream on output: %w", err)
 	}
 	return nil
@@ -703,7 +698,7 @@ func StreamOnOutput(fd uintptr) error {
 // StreamOnCapture starts streaming on the CAPTURE queue.
 func StreamOnCapture(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := send(fd, C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream on capture: %w", err)
 	}
 	return nil
@@ -712,7 +707,7 @@ func StreamOnCapture(fd uintptr) error {
 // StreamOffOutput stops streaming on the OUTPUT queue.
 func StreamOffOutput(fd uintptr) error {
 	bufType := BufTypeVideoOutput
-	if err := send(fd, C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream off output: %w", err)
 	}
 	return nil
@@ -721,7 +716,7 @@ func StreamOffOutput(fd uintptr) error {
 // StreamOffCapture stops streaming on the CAPTURE queue.
 func StreamOffCapture(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := send(fd, C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream off capture: %w", err)
 	}
 	return nil

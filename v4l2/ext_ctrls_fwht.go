@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-#include <linux/v4l2-controls.h>
-*/
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -27,7 +22,7 @@ type ControlFWHTParams struct {
 // FWHT Stateless Codec Control IDs
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlFWHTParams CtrlID = C.V4L2_CID_STATELESS_FWHT_PARAMS
+	CtrlFWHTParams CtrlID = cV4L2_CID_STATELESS_FWHT_PARAMS
 )
 
 // Type-safe helper methods for ExtControls

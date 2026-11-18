@@ -1,14 +1,27 @@
 package v4l2
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"unsafe"
 
 	sys "golang.org/x/sys/unix"
 )
+
+func cString[T ~int8 | ~uint8](b []T) string {
+	if len(b) == 0 {
+		return ""
+	}
+	raw := unsafe.Slice((*byte)(unsafe.Pointer(&b[0])), len(b))
+	if i := bytes.IndexByte(raw, 0); i >= 0 {
+		return string(raw[:i])
+	}
+	return string(raw)
+}
 
 // OpenDevice offers a simpler file-open operation than the Go API's os.OpenFile  (the Go API's
 // operation causes some drivers to return busy). It also applies file validation prior to opening the device.

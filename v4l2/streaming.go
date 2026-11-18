@@ -1,8 +1,5 @@
 package v4l2
 
-// #include "compat.h"
-import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -26,15 +23,15 @@ type BufType = uint32
 const (
 	// BufTypeVideoCapture is for video capture buffers (camera/tuner input).
 	// Used when reading frames from a video source.
-	BufTypeVideoCapture BufType = C.V4L2_BUF_TYPE_VIDEO_CAPTURE
+	BufTypeVideoCapture BufType = cV4L2_BUF_TYPE_VIDEO_CAPTURE
 
 	// BufTypeVideoOutput is for video output buffers (display/encoder output).
 	// Used when sending frames to a video sink.
-	BufTypeVideoOutput BufType = C.V4L2_BUF_TYPE_VIDEO_OUTPUT
+	BufTypeVideoOutput BufType = cV4L2_BUF_TYPE_VIDEO_OUTPUT
 
 	// BufTypeOverlay is for video overlay buffers.
 	// Used for hardware overlay onto a display.
-	BufTypeOverlay BufType = C.V4L2_BUF_TYPE_VIDEO_OVERLAY
+	BufTypeOverlay BufType = cV4L2_BUF_TYPE_VIDEO_OVERLAY
 )
 
 // IOType specifies the I/O method for transferring data between userspace and the V4L2 device.
@@ -51,21 +48,21 @@ const (
 	// IOTypeMMAP uses memory-mapped buffers for zero-copy data transfer.
 	// This is the most efficient and commonly supported I/O method.
 	// Buffers are allocated by the driver and mapped into userspace.
-	IOTypeMMAP IOType = C.V4L2_MEMORY_MMAP
+	IOTypeMMAP IOType = cV4L2_MEMORY_MMAP
 
 	// IOTypeUserPtr uses application-allocated buffers.
 	// The application provides memory pointers to the driver.
 	// Requires contiguous physical memory in some cases.
-	IOTypeUserPtr IOType = C.V4L2_MEMORY_USERPTR
+	IOTypeUserPtr IOType = cV4L2_MEMORY_USERPTR
 
 	// IOTypeOverlay writes directly to video memory for display.
 	// Deprecated in newer kernels.
-	IOTypeOverlay IOType = C.V4L2_MEMORY_OVERLAY
+	IOTypeOverlay IOType = cV4L2_MEMORY_OVERLAY
 
 	// IOTypeDMABuf uses DMA buffer sharing for inter-device communication.
 	// Allows zero-copy sharing between V4L2 and other subsystems like DRM.
 	// Requires DMABUF support in both driver and hardware.
-	IOTypeDMABuf IOType = C.V4L2_MEMORY_DMABUF
+	IOTypeDMABuf IOType = cV4L2_MEMORY_DMABUF
 )
 
 // BufFlag represents buffer status flags that indicate the state of a V4L2 buffer.
@@ -77,47 +74,47 @@ type BufFlag = uint32
 const (
 	// BufFlagMapped indicates the buffer is memory-mapped into userspace.
 	// Set when the buffer has been successfully mapped with mmap().
-	BufFlagMapped BufFlag = C.V4L2_BUF_FLAG_MAPPED
+	BufFlagMapped BufFlag = cV4L2_BUF_FLAG_MAPPED
 
 	// BufFlagQueued indicates the buffer is queued for I/O.
 	// The buffer is owned by the driver and should not be accessed by the application.
-	BufFlagQueued BufFlag = C.V4L2_BUF_FLAG_QUEUED
+	BufFlagQueued BufFlag = cV4L2_BUF_FLAG_QUEUED
 
 	// BufFlagDone indicates the buffer has been processed and contains valid data.
 	// For capture: buffer contains a captured frame.
 	// For output: buffer has been displayed/transmitted.
-	BufFlagDone BufFlag = C.V4L2_BUF_FLAG_DONE
+	BufFlagDone BufFlag = cV4L2_BUF_FLAG_DONE
 
 	// BufFlagKeyFrame indicates the buffer contains a keyframe (I-frame).
 	// Used with compressed video streams.
-	BufFlagKeyFrame BufFlag = C.V4L2_BUF_FLAG_KEYFRAME
+	BufFlagKeyFrame BufFlag = cV4L2_BUF_FLAG_KEYFRAME
 
 	// BufFlagPFrame indicates the buffer contains a P-frame (predicted frame).
 	// Used with compressed video streams.
-	BufFlagPFrame BufFlag = C.V4L2_BUF_FLAG_PFRAME
+	BufFlagPFrame BufFlag = cV4L2_BUF_FLAG_PFRAME
 
 	// BufFlagBFrame indicates the buffer contains a B-frame (bi-directional predicted frame).
 	// Used with compressed video streams.
-	BufFlagBFrame BufFlag = C.V4L2_BUF_FLAG_BFRAME
+	BufFlagBFrame BufFlag = cV4L2_BUF_FLAG_BFRAME
 
 	// BufFlagError indicates an error occurred during capture/output.
 	// The buffer contents are likely invalid.
-	BufFlagError               BufFlag = C.V4L2_BUF_FLAG_ERROR
-	BufFlagInRequest           BufFlag = C.V4L2_BUF_FLAG_IN_REQUEST
-	BufFlagTimeCode            BufFlag = C.V4L2_BUF_FLAG_TIMECODE
-	BufFlagM2MHoldCaptureBuf   BufFlag = C.V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
-	BufFlagPrepared            BufFlag = C.V4L2_BUF_FLAG_PREPARED
-	BufFlagNoCacheInvalidate   BufFlag = C.V4L2_BUF_FLAG_NO_CACHE_INVALIDATE
-	BufFlagNoCacheClean        BufFlag = C.V4L2_BUF_FLAG_NO_CACHE_CLEAN
-	BufFlagTimestampMask       BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_MASK
-	BufFlagTimestampUnknown    BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_UNKNOWN
-	BufFlagTimestampMonotonic  BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
-	BufFlagTimestampCopy       BufFlag = C.V4L2_BUF_FLAG_TIMESTAMP_COPY
-	BufFlagTimestampSourceMask BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_MASK
-	BufFlagTimestampSourceEOF  BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_EOF
-	BufFlagTimestampSourceSOE  BufFlag = C.V4L2_BUF_FLAG_TSTAMP_SRC_SOE
-	BufFlagLast                BufFlag = C.V4L2_BUF_FLAG_LAST
-	BufFlagRequestFD           BufFlag = C.V4L2_BUF_FLAG_REQUEST_FD
+	BufFlagError               BufFlag = cV4L2_BUF_FLAG_ERROR
+	BufFlagInRequest           BufFlag = cV4L2_BUF_FLAG_IN_REQUEST
+	BufFlagTimeCode            BufFlag = cV4L2_BUF_FLAG_TIMECODE
+	BufFlagM2MHoldCaptureBuf   BufFlag = cV4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
+	BufFlagPrepared            BufFlag = cV4L2_BUF_FLAG_PREPARED
+	BufFlagNoCacheInvalidate   BufFlag = cV4L2_BUF_FLAG_NO_CACHE_INVALIDATE
+	BufFlagNoCacheClean        BufFlag = cV4L2_BUF_FLAG_NO_CACHE_CLEAN
+	BufFlagTimestampMask       BufFlag = cV4L2_BUF_FLAG_TIMESTAMP_MASK
+	BufFlagTimestampUnknown    BufFlag = cV4L2_BUF_FLAG_TIMESTAMP_UNKNOWN
+	BufFlagTimestampMonotonic  BufFlag = cV4L2_BUF_FLAG_TIMESTAMP_MONOTONIC
+	BufFlagTimestampCopy       BufFlag = cV4L2_BUF_FLAG_TIMESTAMP_COPY
+	BufFlagTimestampSourceMask BufFlag = cV4L2_BUF_FLAG_TSTAMP_SRC_MASK
+	BufFlagTimestampSourceEOF  BufFlag = cV4L2_BUF_FLAG_TSTAMP_SRC_EOF
+	BufFlagTimestampSourceSOE  BufFlag = cV4L2_BUF_FLAG_TSTAMP_SRC_SOE
+	BufFlagLast                BufFlag = cV4L2_BUF_FLAG_LAST
+	BufFlagRequestFD           BufFlag = cV4L2_BUF_FLAG_REQUEST_FD
 )
 
 // TODO implement vl42_create_buffers
@@ -154,22 +151,22 @@ type Buffer struct {
 	RequestFD int32
 }
 
-// makeBuffer makes a Buffer value from C.struct_v4l2_buffer
-func makeBuffer(v4l2Buf C.struct_v4l2_buffer) Buffer {
+// makeBuffer makes a Buffer value from cV4L2Buffer
+func makeBuffer(v4l2Buf cV4L2Buffer) Buffer {
 	return Buffer{
-		Index:     uint32(v4l2Buf.index),
-		Type:      uint32(v4l2Buf._type),
-		BytesUsed: uint32(v4l2Buf.bytesused),
-		Flags:     uint32(v4l2Buf.flags),
-		Field:     uint32(v4l2Buf.field),
-		Timestamp: *(*sys.Timeval)(unsafe.Pointer(&v4l2Buf.timestamp)),
-		Timecode:  *(*Timecode)(unsafe.Pointer(&v4l2Buf.timecode)),
-		Sequence:  uint32(v4l2Buf.sequence),
-		Memory:    uint32(v4l2Buf.memory),
-		Info:      *(*BufferInfo)(unsafe.Pointer(&v4l2Buf.m[0])),
-		Length:    uint32(v4l2Buf.length),
-		Reserved2: uint32(v4l2Buf.reserved2),
-		RequestFD: *(*int32)(unsafe.Pointer(&v4l2Buf.anon0[0])),
+		Index:     v4l2Buf.Index,
+		Type:      v4l2Buf.Type,
+		BytesUsed: v4l2Buf.Bytesused,
+		Flags:     v4l2Buf.Flags,
+		Field:     v4l2Buf.Field,
+		Timestamp: sys.Timeval{Sec: v4l2Buf.Timestamp.Sec, Usec: v4l2Buf.Timestamp.Usec},
+		Timecode:  *(*Timecode)(unsafe.Pointer(&v4l2Buf.Timecode)),
+		Sequence:  v4l2Buf.Sequence,
+		Memory:    v4l2Buf.Memory,
+		Info:      *(*BufferInfo)(unsafe.Pointer(&v4l2Buf.M[0])),
+		Length:    v4l2Buf.Length,
+		Reserved2: v4l2Buf.Reserved2,
+		RequestFD: v4l2Buf.Fd,
 	}
 }
 
@@ -207,7 +204,7 @@ type PlaneInfo struct {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOn(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.Fd(), C.VIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
@@ -218,7 +215,7 @@ func StreamOn(dev StreamingDevice) error {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOff(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.Fd(), C.VIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
 		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
@@ -231,12 +228,12 @@ func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeUserPtr && dev.MemIOType() != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", ErrorUnsupported)
 	}
-	var req C.struct_v4l2_requestbuffers
-	req.count = C.uint(dev.BufferCount())
-	req._type = C.uint(dev.BufferType())
-	req.memory = C.uint(dev.MemIOType())
+	var req cV4L2RequestBuffers
+	req.Count = dev.BufferCount()
+	req.Type = dev.BufferType()
+	req.Memory = dev.MemIOType()
 
-	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w: type not supported", err)
 	}
 
@@ -250,12 +247,12 @@ func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	if dev.MemIOType() != IOTypeMMAP && dev.MemIOType() != IOTypeUserPtr && dev.MemIOType() != IOTypeDMABuf {
 		return RequestBuffers{}, fmt.Errorf("reset buffers: %w", ErrorUnsupported)
 	}
-	var req C.struct_v4l2_requestbuffers
-	req.count = C.uint(0)
-	req._type = C.uint(dev.BufferType())
-	req.memory = C.uint(dev.MemIOType())
+	var req cV4L2RequestBuffers
+	req.Count = 0
+	req.Type = dev.BufferType()
+	req.Memory = dev.MemIOType()
 
-	if err := send(dev.Fd(), C.VIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
 		return RequestBuffers{}, fmt.Errorf("reset buffers VIDIOC_REQBUFS(0): %w", err)
 	}
 
@@ -265,12 +262,12 @@ func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
 // GetBuffer retrieves buffer info for allocated buffers at provided index.
 // This call should take place after buffers are allocated with RequestBuffers (for mmap for instance).
 func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(dev.BufferType())
-	v4l2Buf.memory = C.uint(dev.MemIOType())
-	v4l2Buf.index = C.uint(index)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = dev.BufferType()
+	v4l2Buf.Memory = dev.MemIOType()
+	v4l2Buf.Index = index
 
-	if err := send(dev.Fd(), C.VIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("query buffer: type not supported: %w", err)
 	}
 
@@ -345,12 +342,12 @@ func UnmapMemoryBuffers(dev StreamingDevice) error {
 // additional information about the queued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
 func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(ioType)
-	v4l2Buf.index = C.uint(index)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = ioType
+	v4l2Buf.Index = index
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
 	}
 
@@ -361,14 +358,14 @@ func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buff
 // The application provides the buffer address and length. Used with IOTypeUserPtr streaming.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
 func QueueBufferUserPtr(fd uintptr, bufType BufType, index uint32, ptr uintptr, length uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(IOTypeUserPtr)
-	v4l2Buf.index = C.uint(index)
-	v4l2Buf.length = C.uint(length)
-	*(*C.ulong)(unsafe.Pointer(&v4l2Buf.m[0])) = C.ulong(ptr)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = IOTypeUserPtr
+	v4l2Buf.Index = index
+	v4l2Buf.Length = length
+	*(*uintptr)(unsafe.Pointer(&v4l2Buf.M[0])) = ptr
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue userptr: %w", err)
 	}
 
@@ -379,14 +376,14 @@ func QueueBufferUserPtr(fd uintptr, bufType BufType, index uint32, ptr uintptr, 
 // The application provides the DMA-BUF file descriptor and buffer length.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
 func QueueBufferDMABuf(fd uintptr, bufType BufType, index uint32, dmabufFD int32, length uint32) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(IOTypeDMABuf)
-	v4l2Buf.index = C.uint(index)
-	v4l2Buf.length = C.uint(length)
-	*(*C.int)(unsafe.Pointer(&v4l2Buf.m[0])) = C.int(dmabufFD)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = IOTypeDMABuf
+	v4l2Buf.Index = index
+	v4l2Buf.Length = length
+	*(*int32)(unsafe.Pointer(&v4l2Buf.M[0])) = dmabufFD
 
-	if err := send(fd, C.VIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue dmabuf: %w", err)
 	}
 
@@ -398,15 +395,15 @@ func QueueBufferDMABuf(fd uintptr, bufType BufType, index uint32, dmabufFD int32
 // passed to other subsystems (GPU, DRM, other V4L2 devices).
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-expbuf.html
 func ExportBuffer(devFD uintptr, bufType BufType, index uint32, flags uint32) (int32, error) {
-	var exp C.struct_v4l2_exportbuffer
-	exp._type = C.uint(bufType)
-	exp.index = C.uint(index)
-	exp.flags = C.uint(flags)
+	var exp cV4L2ExportBuffer
+	exp.Type = bufType
+	exp.Index = index
+	exp.Flags = flags
 
-	if err := send(devFD, C.VIDIOC_EXPBUF, uintptr(unsafe.Pointer(&exp))); err != nil {
+	if err := send(devFD, cVIDIOC_EXPBUF, uintptr(unsafe.Pointer(&exp))); err != nil {
 		return 0, fmt.Errorf("export buffer: %w", err)
 	}
-	return int32(exp.fd), nil
+	return exp.Fd, nil
 }
 
 // DequeueBuffer dequeues a buffer in the device driver, marking it as consumed by the application,
@@ -414,11 +411,11 @@ func ExportBuffer(devFD uintptr, bufType BufType, index uint32, flags uint32) (i
 // additional information about the dequeued buffer.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-qbuf.html#vidioc-qbuf
 func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
-	var v4l2Buf C.struct_v4l2_buffer
-	v4l2Buf._type = C.uint(bufType)
-	v4l2Buf.memory = C.uint(ioType)
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = ioType
 
-	err := send(fd, C.VIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
+	err := send(fd, cVIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
 	if err != nil {
 		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
 	}

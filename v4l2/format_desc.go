@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-*/
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -17,16 +12,16 @@ import (
 type FmtDescFlag = uint32
 
 const (
-	FmtDescFlagCompressed                  FmtDescFlag = C.V4L2_FMT_FLAG_COMPRESSED
-	FmtDescFlagEmulated                    FmtDescFlag = C.V4L2_FMT_FLAG_EMULATED
-	FmtDescFlagContinuousBytestream        FmtDescFlag = C.V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
-	FmtDescFlagDynResolution               FmtDescFlag = C.V4L2_FMT_FLAG_DYN_RESOLUTION
-	FmtDescFlagEncodedCaptureFrameInterval FmtDescFlag = C.V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
-	FmtDescFlagConfigColorspace            FmtDescFlag = C.V4L2_FMT_FLAG_CSC_COLORSPACE
-	FmtDescFlagConfigXferFunc              FmtDescFlag = C.V4L2_FMT_FLAG_CSC_XFER_FUNC
-	FmtDescFlagConfigYcbcrEnc              FmtDescFlag = C.V4L2_FMT_FLAG_CSC_YCBCR_ENC
-	FmtDescFlagConfigHsvEnc                FmtDescFlag = C.V4L2_FMT_FLAG_CSC_HSV_ENC
-	FmtDescFlagConfigQuantization          FmtDescFlag = C.V4L2_FMT_FLAG_CSC_QUANTIZATION
+	FmtDescFlagCompressed                  FmtDescFlag = cV4L2_FMT_FLAG_COMPRESSED
+	FmtDescFlagEmulated                    FmtDescFlag = cV4L2_FMT_FLAG_EMULATED
+	FmtDescFlagContinuousBytestream        FmtDescFlag = cV4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
+	FmtDescFlagDynResolution               FmtDescFlag = cV4L2_FMT_FLAG_DYN_RESOLUTION
+	FmtDescFlagEncodedCaptureFrameInterval FmtDescFlag = cV4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
+	FmtDescFlagConfigColorspace            FmtDescFlag = cV4L2_FMT_FLAG_CSC_COLORSPACE
+	FmtDescFlagConfigXferFunc              FmtDescFlag = cV4L2_FMT_FLAG_CSC_XFER_FUNC
+	FmtDescFlagConfigYcbcrEnc              FmtDescFlag = cV4L2_FMT_FLAG_CSC_YCBCR_ENC
+	FmtDescFlagConfigHsvEnc                FmtDescFlag = cV4L2_FMT_FLAG_CSC_HSV_ENC
+	FmtDescFlagConfigQuantization          FmtDescFlag = cV4L2_FMT_FLAG_CSC_QUANTIZATION
 )
 
 var FormatDescriptionFlags = map[FmtDescFlag]string{
@@ -68,24 +63,24 @@ func (d FormatDescription) String() string {
 		PixelFormats[d.PixelFormat],
 	)
 }
-func makeFormatDescription(fmtDesc C.struct_v4l2_fmtdesc) FormatDescription {
+func makeFormatDescription(fmtDesc cV4L2FmtDesc) FormatDescription {
 	return FormatDescription{
-		Index:       uint32(fmtDesc.index),
-		StreamType:  uint32(fmtDesc._type),
-		Flags:       uint32(fmtDesc.flags),
-		Description: C.GoString((*C.char)(unsafe.Pointer(&fmtDesc.description[0]))),
-		PixelFormat: uint32(fmtDesc.pixelformat),
-		MBusCode:    uint32(fmtDesc.mbus_code),
+		Index:       fmtDesc.Index,
+		StreamType:  fmtDesc.Type,
+		Flags:       fmtDesc.Flags,
+		Description: cString(fmtDesc.Description[:]),
+		PixelFormat: fmtDesc.Pixelformat,
+		MBusCode:    fmtDesc.Code,
 	}
 }
 
 // GetFormatDescription returns a device format description at index
 func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
-	var fmtDesc C.struct_v4l2_fmtdesc
-	fmtDesc.index = C.uint(index)
-	fmtDesc._type = C.uint(BufTypeVideoCapture)
+	var fmtDesc cV4L2FmtDesc
+	fmtDesc.Index = index
+	fmtDesc.Type = BufTypeVideoCapture
 
-	if err := send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
 
 	}
@@ -99,11 +94,11 @@ func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
 	index := uint32(0)
 	for {
-		var fmtDesc C.struct_v4l2_fmtdesc
-		fmtDesc.index = C.uint(index)
-		fmtDesc._type = C.uint(BufTypeVideoCapture)
+		var fmtDesc cV4L2FmtDesc
+		fmtDesc.Index = index
+		fmtDesc.Type = BufTypeVideoCapture
 
-		if err = send(fd, C.VIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
+		if err = send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break
 			}

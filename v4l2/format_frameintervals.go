@@ -1,9 +1,5 @@
 package v4l2
 
-/*
-#include <linux/videodev2.h>
-*/
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -14,9 +10,9 @@ import (
 type FrameIntervalType = uint32
 
 const (
-	FrameIntervalTypeDiscrete   FrameIntervalType = C.V4L2_FRMIVAL_TYPE_DISCRETE
-	FrameIntervalTypeContinuous FrameIntervalType = C.V4L2_FRMIVAL_TYPE_CONTINUOUS
-	FrameIntervalTypeStepwise   FrameIntervalType = C.V4L2_FRMIVAL_TYPE_STEPWISE
+	FrameIntervalTypeDiscrete   FrameIntervalType = cV4L2_FRMIVAL_TYPE_DISCRETE
+	FrameIntervalTypeContinuous FrameIntervalType = cV4L2_FRMIVAL_TYPE_CONTINUOUS
+	FrameIntervalTypeStepwise   FrameIntervalType = cV4L2_FRMIVAL_TYPE_STEPWISE
 )
 
 // FrameIntervalEnum is used to store v4l2_frmivalenum values.
@@ -48,25 +44,25 @@ type FrameInterval struct {
 //	}
 
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-frameintervals.html
-func getFrameInterval(interval C.struct_v4l2_frmivalenum) (FrameIntervalEnum, error) {
+func getFrameInterval(interval cV4L2FrmIvalEnum) (FrameIntervalEnum, error) {
 	frmInterval := FrameIntervalEnum{
-		Index:       uint32(interval.index),
-		Type:        FrameIntervalType(interval._type),
-		PixelFormat: FourCCType(interval.pixel_format),
-		Width:       uint32(interval.width),
-		Height:      uint32(interval.height),
+		Index:       interval.Index,
+		Type:        FrameIntervalType(interval.Type),
+		PixelFormat: FourCCType(interval.Format),
+		Width:       interval.Width,
+		Height:      interval.Height,
 	}
-	intervalType := uint32(interval._type)
+	intervalType := interval.Type
 	switch intervalType {
 	case FrameIntervalTypeDiscrete:
-		fiDiscrete := *(*Fract)(unsafe.Pointer(&interval.anon0[0]))
+		fiDiscrete := *(*Fract)(unsafe.Pointer(&interval.Discrete))
 		frmInterval.Interval.Min = fiDiscrete
 		frmInterval.Interval.Max = fiDiscrete
 		frmInterval.Interval.Step.Numerator = 1
 		frmInterval.Interval.Step.Denominator = 1
 	case FrameIntervalTypeStepwise, FrameIntervalTypeContinuous:
-		// Calculate pointer to stepwise member of union
-		frmInterval.Interval = *(*FrameInterval)(unsafe.Pointer(uintptr(unsafe.Pointer(&interval.anon0[0])) + unsafe.Sizeof(Fract{})))
+		// Stepwise union member starts at offset 0 of the discrete/stepwise union.
+		frmInterval.Interval = *(*FrameInterval)(unsafe.Pointer(&interval.Discrete))
 	default:
 		return FrameIntervalEnum{}, fmt.Errorf("unsupported frame interval type: %d", intervalType)
 	}
@@ -75,13 +71,13 @@ func getFrameInterval(interval C.struct_v4l2_frmivalenum) (FrameIntervalEnum, er
 
 // GetFormatFrameInterval returns a supported device frame interval for a specified encoding at index and format
 func GetFormatFrameInterval(fd uintptr, index uint32, encoding FourCCType, width, height uint32) (FrameIntervalEnum, error) {
-	var interval C.struct_v4l2_frmivalenum
-	interval.index = C.uint(index)
-	interval.pixel_format = C.uint(encoding)
-	interval.width = C.uint(width)
-	interval.height = C.uint(height)
+	var interval cV4L2FrmIvalEnum
+	interval.Index = index
+	interval.Format = encoding
+	interval.Width = width
+	interval.Height = height
 
-	if err := send(fd, C.VIDIOC_ENUM_FRAMEINTERVALS, uintptr(unsafe.Pointer(&interval))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FRAMEINTERVALS, uintptr(unsafe.Pointer(&interval))); err != nil {
 		return FrameIntervalEnum{}, fmt.Errorf("frame interval: index %d: %w", index, err)
 	}
 	return getFrameInterval(interval)

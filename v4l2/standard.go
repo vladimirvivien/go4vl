@@ -23,9 +23,6 @@ package v4l2
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/standard.html
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enumstd.html
 
-// #include <linux/videodev2.h>
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -39,73 +36,73 @@ type StdId = StandardId
 
 // Video standard constants - Individual PAL variants
 const (
-	StdPAL_B  StdId = C.V4L2_STD_PAL_B  // PAL B
-	StdPAL_B1 StdId = C.V4L2_STD_PAL_B1 // PAL B1
-	StdPAL_G  StdId = C.V4L2_STD_PAL_G  // PAL G
-	StdPAL_H  StdId = C.V4L2_STD_PAL_H  // PAL H
-	StdPAL_I  StdId = C.V4L2_STD_PAL_I  // PAL I
-	StdPAL_D  StdId = C.V4L2_STD_PAL_D  // PAL D
-	StdPAL_D1 StdId = C.V4L2_STD_PAL_D1 // PAL D1
-	StdPAL_K  StdId = C.V4L2_STD_PAL_K  // PAL K
-	StdPAL_M  StdId = C.V4L2_STD_PAL_M  // PAL M (Brazil)
-	StdPAL_N  StdId = C.V4L2_STD_PAL_N  // PAL N (Argentina, Paraguay, Uruguay)
-	StdPAL_Nc StdId = C.V4L2_STD_PAL_Nc // PAL Nc (Argentina)
-	StdPAL_60 StdId = C.V4L2_STD_PAL_60 // PAL 60
+	StdPAL_B  StdId = cV4L2_STD_PAL_B  // PAL B
+	StdPAL_B1 StdId = cV4L2_STD_PAL_B1 // PAL B1
+	StdPAL_G  StdId = cV4L2_STD_PAL_G  // PAL G
+	StdPAL_H  StdId = cV4L2_STD_PAL_H  // PAL H
+	StdPAL_I  StdId = cV4L2_STD_PAL_I  // PAL I
+	StdPAL_D  StdId = cV4L2_STD_PAL_D  // PAL D
+	StdPAL_D1 StdId = cV4L2_STD_PAL_D1 // PAL D1
+	StdPAL_K  StdId = cV4L2_STD_PAL_K  // PAL K
+	StdPAL_M  StdId = cV4L2_STD_PAL_M  // PAL M (Brazil)
+	StdPAL_N  StdId = cV4L2_STD_PAL_N  // PAL N (Argentina, Paraguay, Uruguay)
+	StdPAL_Nc StdId = cV4L2_STD_PAL_Nc // PAL Nc (Argentina)
+	StdPAL_60 StdId = cV4L2_STD_PAL_60 // PAL 60
 )
 
 // Video standard constants - Individual NTSC variants
 const (
-	StdNTSC_M    StdId = C.V4L2_STD_NTSC_M      // NTSC M (USA, BTSC)
-	StdNTSC_M_JP StdId = C.V4L2_STD_NTSC_M_JP   // NTSC M Japan (EIA-J)
-	StdNTSC_443  StdId = C.V4L2_STD_NTSC_443    // NTSC 443
-	StdNTSC_M_KR StdId = C.V4L2_STD_NTSC_M_KR   // NTSC M Korea (FM A2)
+	StdNTSC_M    StdId = cV4L2_STD_NTSC_M      // NTSC M (USA, BTSC)
+	StdNTSC_M_JP StdId = cV4L2_STD_NTSC_M_JP   // NTSC M Japan (EIA-J)
+	StdNTSC_443  StdId = cV4L2_STD_NTSC_443    // NTSC 443
+	StdNTSC_M_KR StdId = cV4L2_STD_NTSC_M_KR   // NTSC M Korea (FM A2)
 )
 
 // Video standard constants - Individual SECAM variants
 const (
-	StdSECAM_B  StdId = C.V4L2_STD_SECAM_B  // SECAM B
-	StdSECAM_D  StdId = C.V4L2_STD_SECAM_D  // SECAM D
-	StdSECAM_G  StdId = C.V4L2_STD_SECAM_G  // SECAM G
-	StdSECAM_H  StdId = C.V4L2_STD_SECAM_H  // SECAM H
-	StdSECAM_K  StdId = C.V4L2_STD_SECAM_K  // SECAM K
-	StdSECAM_K1 StdId = C.V4L2_STD_SECAM_K1 // SECAM K1
-	StdSECAM_L  StdId = C.V4L2_STD_SECAM_L  // SECAM L
-	StdSECAM_LC StdId = C.V4L2_STD_SECAM_LC // SECAM L'
+	StdSECAM_B  StdId = cV4L2_STD_SECAM_B  // SECAM B
+	StdSECAM_D  StdId = cV4L2_STD_SECAM_D  // SECAM D
+	StdSECAM_G  StdId = cV4L2_STD_SECAM_G  // SECAM G
+	StdSECAM_H  StdId = cV4L2_STD_SECAM_H  // SECAM H
+	StdSECAM_K  StdId = cV4L2_STD_SECAM_K  // SECAM K
+	StdSECAM_K1 StdId = cV4L2_STD_SECAM_K1 // SECAM K1
+	StdSECAM_L  StdId = cV4L2_STD_SECAM_L  // SECAM L
+	StdSECAM_LC StdId = cV4L2_STD_SECAM_LC // SECAM L'
 )
 
 // Video standard constants - ATSC digital standards
 const (
-	StdATSC_8_VSB  StdId = C.V4L2_STD_ATSC_8_VSB  // ATSC 8-VSB
-	StdATSC_16_VSB StdId = C.V4L2_STD_ATSC_16_VSB // ATSC 16-VSB
+	StdATSC_8_VSB  StdId = cV4L2_STD_ATSC_8_VSB  // ATSC 8-VSB
+	StdATSC_16_VSB StdId = cV4L2_STD_ATSC_16_VSB // ATSC 16-VSB
 )
 
 // Video standard constants - Common groupings
 const (
-	StdPAL_BG StdId = C.V4L2_STD_PAL_BG // PAL B/G (Western Europe)
-	StdPAL_DK StdId = C.V4L2_STD_PAL_DK // PAL D/K (Eastern Europe, China)
-	StdPAL    StdId = C.V4L2_STD_PAL    // All PAL standards
+	StdPAL_BG StdId = cV4L2_STD_PAL_BG // PAL B/G (Western Europe)
+	StdPAL_DK StdId = cV4L2_STD_PAL_DK // PAL D/K (Eastern Europe, China)
+	StdPAL    StdId = cV4L2_STD_PAL    // All PAL standards
 
-	StdNTSC StdId = C.V4L2_STD_NTSC // All NTSC standards
+	StdNTSC StdId = cV4L2_STD_NTSC // All NTSC standards
 
-	StdSECAM_DK StdId = C.V4L2_STD_SECAM_DK // SECAM D/K
-	StdSECAM    StdId = C.V4L2_STD_SECAM    // All SECAM standards
+	StdSECAM_DK StdId = cV4L2_STD_SECAM_DK // SECAM D/K
+	StdSECAM    StdId = cV4L2_STD_SECAM    // All SECAM standards
 
-	StdB  StdId = C.V4L2_STD_B  // PAL/SECAM B
-	StdG  StdId = C.V4L2_STD_G  // PAL/SECAM G
-	StdH  StdId = C.V4L2_STD_H  // PAL/SECAM H
-	StdL  StdId = C.V4L2_STD_L  // SECAM L/L'
-	StdGH StdId = C.V4L2_STD_GH // PAL/SECAM G/H
-	StdDK StdId = C.V4L2_STD_DK // PAL/SECAM D/K
-	StdBG StdId = C.V4L2_STD_BG // PAL/SECAM B/G
-	StdMN StdId = C.V4L2_STD_MN // PAL/NTSC M/N
+	StdB  StdId = cV4L2_STD_B  // PAL/SECAM B
+	StdG  StdId = cV4L2_STD_G  // PAL/SECAM G
+	StdH  StdId = cV4L2_STD_H  // PAL/SECAM H
+	StdL  StdId = cV4L2_STD_L  // SECAM L/L'
+	StdGH StdId = cV4L2_STD_GH // PAL/SECAM G/H
+	StdDK StdId = cV4L2_STD_DK // PAL/SECAM D/K
+	StdBG StdId = cV4L2_STD_BG // PAL/SECAM B/G
+	StdMN StdId = cV4L2_STD_MN // PAL/NTSC M/N
 
-	Std525_60 StdId = C.V4L2_STD_525_60 // 525 lines, 60 Hz (NTSC)
-	Std625_50 StdId = C.V4L2_STD_625_50 // 625 lines, 50 Hz (PAL/SECAM)
+	Std525_60 StdId = cV4L2_STD_525_60 // 525 lines, 60 Hz (NTSC)
+	Std625_50 StdId = cV4L2_STD_625_50 // 625 lines, 50 Hz (PAL/SECAM)
 
-	StdATSC StdId = C.V4L2_STD_ATSC // All ATSC standards
+	StdATSC StdId = cV4L2_STD_ATSC // All ATSC standards
 
-	StdUnknown StdId = C.V4L2_STD_UNKNOWN // Unknown standard
-	StdAll     StdId = C.V4L2_STD_ALL     // All standards
+	StdUnknown StdId = cV4L2_STD_UNKNOWN // Unknown standard
+	StdAll     StdId = cV4L2_STD_ALL     // All standards
 )
 
 // Standard name mappings for common standards
@@ -162,46 +159,46 @@ var StdNames = map[StdId]string{
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enumstd.html
 type Standard struct {
-	v4l2Standard C.struct_v4l2_standard
+	v4l2Standard cV4L2Standard
 }
 
 // NewStandard creates a new Standard for the given index
 func NewStandard(index uint32) Standard {
-	var std C.struct_v4l2_standard
-	std.index = C.__u32(index)
+	var std cV4L2Standard
+	std.Index = index
 	return Standard{v4l2Standard: std}
 }
 
 // Index returns the enumeration index (0-based)
 func (s *Standard) Index() uint32 {
-	return uint32(s.v4l2Standard.index)
+	return s.v4l2Standard.Index
 }
 
 // SetIndex sets the enumeration index
 func (s *Standard) SetIndex(index uint32) {
-	s.v4l2Standard.index = C.__u32(index)
+	s.v4l2Standard.Index = index
 }
 
 // ID returns the standard identifier(s)
 func (s *Standard) ID() StdId {
-	return StdId(s.v4l2Standard.id)
+	return StdId(s.v4l2Standard.Id)
 }
 
 // SetID sets the standard identifier
 func (s *Standard) SetID(id StdId) {
-	s.v4l2Standard.id = C.v4l2_std_id(id)
+	s.v4l2Standard.Id = uint64(id)
 }
 
 // Name returns the standard name (e.g., "PAL-B/G", "NTSC-M")
 func (s *Standard) Name() string {
-	return C.GoString((*C.char)(unsafe.Pointer(&s.v4l2Standard.name[0])))
+	return cString(s.v4l2Standard.Name[:])
 }
 
 // FramePeriod returns the frame period (inverse of frame rate)
 func (s *Standard) FramePeriod() Fract {
 	return Fract{
-		Numerator:   uint32(s.v4l2Standard.frameperiod.numerator),
-		Denominator: uint32(s.v4l2Standard.frameperiod.denominator),
+		Numerator:   s.v4l2Standard.Frameperiod.Numerator,
+		Denominator: s.v4l2Standard.Frameperiod.Denominator,
 	}
 }
 
@@ -212,7 +209,7 @@ func (s *Standard) FrameRate() float64 {
 
 // FrameLines returns the number of lines per frame
 func (s *Standard) FrameLines() uint32 {
-	return uint32(s.v4l2Standard.framelines)
+	return s.v4l2Standard.Framelines
 }
 
 // String returns a formatted string representation of the standard
@@ -237,9 +234,9 @@ func (s *Standard) String() string {
 //
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-std.html
 func GetStandard(fd uintptr) (StdId, error) {
-	var stdId C.v4l2_std_id
+	var stdId uint64
 
-	if err := send(fd, C.VIDIOC_G_STD, uintptr(unsafe.Pointer(&stdId))); err != nil {
+	if err := send(fd, cVIDIOC_G_STD, uintptr(unsafe.Pointer(&stdId))); err != nil {
 		return 0, fmt.Errorf("v4l2: VIDIOC_G_STD failed: %w", err)
 	}
 
@@ -256,9 +253,9 @@ func GetStandard(fd uintptr) (StdId, error) {
 //
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-std.html
 func SetStandard(fd uintptr, stdId StdId) error {
-	cStdId := C.v4l2_std_id(stdId)
+	cStdId := uint64(stdId)
 
-	if err := send(fd, C.VIDIOC_S_STD, uintptr(unsafe.Pointer(&cStdId))); err != nil {
+	if err := send(fd, cVIDIOC_S_STD, uintptr(unsafe.Pointer(&cStdId))); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_STD failed: %w", err)
 	}
 
@@ -276,9 +273,9 @@ func SetStandard(fd uintptr, stdId StdId) error {
 //
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-querystd.html
 func QueryStandard(fd uintptr) (StdId, error) {
-	var stdId C.v4l2_std_id
+	var stdId uint64
 
-	if err := send(fd, C.VIDIOC_QUERYSTD, uintptr(unsafe.Pointer(&stdId))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYSTD, uintptr(unsafe.Pointer(&stdId))); err != nil {
 		return 0, fmt.Errorf("v4l2: VIDIOC_QUERYSTD failed: %w", err)
 	}
 
@@ -295,7 +292,7 @@ func QueryStandard(fd uintptr) (StdId, error) {
 func EnumStandard(fd uintptr, index uint32) (Standard, error) {
 	std := NewStandard(index)
 
-	if err := send(fd, C.VIDIOC_ENUMSTD, uintptr(unsafe.Pointer(&std.v4l2Standard))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMSTD, uintptr(unsafe.Pointer(&std.v4l2Standard))); err != nil {
 		return Standard{}, fmt.Errorf("v4l2: VIDIOC_ENUMSTD failed for index %d: %w", index, err)
 	}
 

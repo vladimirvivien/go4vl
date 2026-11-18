@@ -1,9 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-*/
-import "C"
 import (
 	"encoding/binary"
 	"errors"
@@ -23,20 +19,20 @@ type CtrlFlag = uint32
 // Control flags
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 const (
-	CtrlFlagDisabled        CtrlFlag = C.V4L2_CTRL_FLAG_DISABLED
-	CtrlFlagGrabbed         CtrlFlag = C.V4L2_CTRL_FLAG_GRABBED
-	CtrlFlagReadOnly        CtrlFlag = C.V4L2_CTRL_FLAG_READ_ONLY
-	CtrlFlagUpdate          CtrlFlag = C.V4L2_CTRL_FLAG_UPDATE
-	CtrlFlagInactive        CtrlFlag = C.V4L2_CTRL_FLAG_INACTIVE
-	CtrlFlagSlider          CtrlFlag = C.V4L2_CTRL_FLAG_SLIDER
-	CtrlFlagWriteOnly       CtrlFlag = C.V4L2_CTRL_FLAG_WRITE_ONLY
-	CtrlFlagVolatile        CtrlFlag = C.V4L2_CTRL_FLAG_VOLATILE
-	CtrlFlagHasPayload      CtrlFlag = C.V4L2_CTRL_FLAG_HAS_PAYLOAD
-	CtrlFlagExecuteOnWrite  CtrlFlag = C.V4L2_CTRL_FLAG_EXECUTE_ON_WRITE
-	CtrlFlagModifyLayout    CtrlFlag = C.V4L2_CTRL_FLAG_MODIFY_LAYOUT
-	CtrlFlagDynamicArray    CtrlFlag = C.V4L2_CTRL_FLAG_DYNAMIC_ARRAY
-	CtrlFlagNextCtrl        CtrlFlag = C.V4L2_CTRL_FLAG_NEXT_CTRL
-	CtrlFlagNextCompound    CtrlFlag = C.V4L2_CTRL_FLAG_NEXT_COMPOUND
+	CtrlFlagDisabled        CtrlFlag = cV4L2_CTRL_FLAG_DISABLED
+	CtrlFlagGrabbed         CtrlFlag = cV4L2_CTRL_FLAG_GRABBED
+	CtrlFlagReadOnly        CtrlFlag = cV4L2_CTRL_FLAG_READ_ONLY
+	CtrlFlagUpdate          CtrlFlag = cV4L2_CTRL_FLAG_UPDATE
+	CtrlFlagInactive        CtrlFlag = cV4L2_CTRL_FLAG_INACTIVE
+	CtrlFlagSlider          CtrlFlag = cV4L2_CTRL_FLAG_SLIDER
+	CtrlFlagWriteOnly       CtrlFlag = cV4L2_CTRL_FLAG_WRITE_ONLY
+	CtrlFlagVolatile        CtrlFlag = cV4L2_CTRL_FLAG_VOLATILE
+	CtrlFlagHasPayload      CtrlFlag = cV4L2_CTRL_FLAG_HAS_PAYLOAD
+	CtrlFlagExecuteOnWrite  CtrlFlag = cV4L2_CTRL_FLAG_EXECUTE_ON_WRITE
+	CtrlFlagModifyLayout    CtrlFlag = cV4L2_CTRL_FLAG_MODIFY_LAYOUT
+	CtrlFlagDynamicArray    CtrlFlag = cV4L2_CTRL_FLAG_DYNAMIC_ARRAY
+	CtrlFlagNextCtrl        CtrlFlag = cV4L2_CTRL_FLAG_NEXT_CTRL
+	CtrlFlagNextCompound    CtrlFlag = cV4L2_CTRL_FLAG_NEXT_COMPOUND
 )
 
 // Control (v4l2_control)
@@ -87,10 +83,10 @@ func (c Control) GetMenuItems() (result []ControlMenuItem, err error) {
 	}
 
 	for idx := c.Minimum; idx <= c.Maximum; idx++ {
-		var qryMenu C.struct_v4l2_querymenu
-		qryMenu.id = C.uint(c.ID)
-		qryMenu.index = C.uint(idx)
-		if err = send(c.fd, C.VIDIOC_QUERYMENU, uintptr(unsafe.Pointer(&qryMenu))); err != nil {
+		var qryMenu cV4L2QueryMenu
+		qryMenu.Id = c.ID
+		qryMenu.Index = uint32(idx)
+		if err = send(c.fd, cVIDIOC_QUERYMENU, uintptr(unsafe.Pointer(&qryMenu))); err != nil {
 			continue
 		}
 		result = append(result, makeCtrlMenu(c.Type, qryMenu))
@@ -103,14 +99,14 @@ func (c Control) GetMenuItems() (result []ControlMenuItem, err error) {
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/control.html
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L1740
 func GetControlValue(fd uintptr, id CtrlID) (CtrlValue, error) {
-	var ctrl C.struct_v4l2_control
-	ctrl.id = C.uint(id)
+	var ctrl cV4L2Control
+	ctrl.Id = id
 
-	if err := send(fd, C.VIDIOC_G_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
+	if err := send(fd, cVIDIOC_G_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
 		return 0, fmt.Errorf("get control value: VIDIOC_G_CTRL: id %d: %w", id, err)
 	}
 
-	return CtrlValue(ctrl.value), nil
+	return CtrlValue(ctrl.Value), nil
 }
 
 // SetControlValue sets the value for a user control with the specified id.
@@ -126,11 +122,11 @@ func SetControlValue(fd uintptr, id CtrlID, val CtrlValue) error {
 		return fmt.Errorf("set control value: out-of-range failure: val %d: expected ctrl.Min %d, ctrl.Max %d", val, ctrlInfo.Minimum, ctrlInfo.Maximum)
 	}
 
-	var ctrl C.struct_v4l2_control
-	ctrl.id = C.uint(id)
-	ctrl.value = C.int(val)
+	var ctrl cV4L2Control
+	ctrl.Id = id
+	ctrl.Value = val
 
-	if err := send(fd, C.VIDIOC_S_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
+	if err := send(fd, cVIDIOC_S_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
 		return fmt.Errorf("set control value: id %d: %w", id, err)
 	}
 
@@ -140,10 +136,10 @@ func SetControlValue(fd uintptr, id CtrlID, val CtrlValue) error {
 // QueryControlInfo queries information about the specified control without the current value.
 func QueryControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	// query control information
-	var qryCtrl C.struct_v4l2_queryctrl
-	qryCtrl.id = C.uint(id)
+	var qryCtrl cV4L2QueryCtrl
+	qryCtrl.Id = id
 
-	if err := send(fd, C.VIDIOC_QUERYCTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYCTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
 		return Control{}, fmt.Errorf("query control info: VIDIOC_QUERYCTRL: id %d: %w", id, err)
 	}
 	control := makeControl(qryCtrl)
@@ -174,7 +170,7 @@ func GetControl(fd uintptr, id CtrlID) (Control, error) {
 // all controls without their current values (use GetControlValue to get current values).
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/control.html
 func QueryAllControls(fd uintptr) (result []Control, err error) {
-	cid := uint32(C.V4L2_CTRL_FLAG_NEXT_CTRL)
+	cid := uint32(cV4L2_CTRL_FLAG_NEXT_CTRL)
 	for {
 		control, err := QueryControlInfo(fd, cid)
 		if err != nil {
@@ -185,34 +181,34 @@ func QueryAllControls(fd uintptr) (result []Control, err error) {
 		}
 		result = append(result, control)
 		// setup next id
-		cid = control.ID | uint32(C.V4L2_CTRL_FLAG_NEXT_CTRL)
+		cid = control.ID | cV4L2_CTRL_FLAG_NEXT_CTRL
 	}
 	return result, nil
 }
 
-func makeControl(qryCtrl C.struct_v4l2_queryctrl) Control {
+func makeControl(qryCtrl cV4L2QueryCtrl) Control {
 	return Control{
-		Type:    CtrlType(qryCtrl._type),
-		ID:      uint32(qryCtrl.id),
-		Name:    C.GoString((*C.char)(unsafe.Pointer(&qryCtrl.name[0]))),
-		Maximum: int32(qryCtrl.maximum),
-		Minimum: int32(qryCtrl.minimum),
-		Step:    int32(qryCtrl.step),
-		Default: int32(qryCtrl.default_value),
-		Flags:   uint32(qryCtrl.flags),
+		Type:    CtrlType(qryCtrl.Type),
+		ID:      qryCtrl.Id,
+		Name:    cString(qryCtrl.Name[:]),
+		Maximum: qryCtrl.Maximum,
+		Minimum: qryCtrl.Minimum,
+		Step:    qryCtrl.Step,
+		Default: qryCtrl.Value,
+		Flags:   qryCtrl.Flags,
 	}
 }
 
-func makeCtrlMenu(cType CtrlType, qryMenu C.struct_v4l2_querymenu) ControlMenuItem {
+func makeCtrlMenu(cType CtrlType, qryMenu cV4L2QueryMenu) ControlMenuItem {
 	item := ControlMenuItem{
-		ID:    uint32(qryMenu.id),
-		Index: uint32(qryMenu.index),
+		ID:    qryMenu.Id,
+		Index: qryMenu.Index,
 	}
 	if cType == CtrlTypeIntegerMenu {
-		val := binary.LittleEndian.Uint64((*[8]byte)(unsafe.Pointer(&qryMenu.anon0[0]))[:])
+		val := binary.LittleEndian.Uint64(qryMenu.Name[:8])
 		item.Name = strconv.FormatInt(int64(val), 10)
 	} else {
-		item.Name = C.GoString((*C.char)(unsafe.Pointer(&qryMenu.anon0[0])))
+		item.Name = cString(qryMenu.Name[:])
 	}
 
 	return item

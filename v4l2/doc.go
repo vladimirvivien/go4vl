@@ -118,5 +118,7 @@
 //
 //   - V4L2 API Specification: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html
 //   - Linux Media Subsystem: https://linuxtv.org/
+
+//go:generate go run ./internal/gen
 //   - Kernel Headers: /usr/include/linux/videodev2.h
 package v4l2

@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-#include <linux/v4l2-controls.h>
-*/
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -145,14 +140,14 @@ type ControlH264DecodeParams struct {
 // H.264 Stateless Codec Control IDs
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlH264SPS            CtrlID = C.V4L2_CID_STATELESS_H264_SPS
-	CtrlH264PPS            CtrlID = C.V4L2_CID_STATELESS_H264_PPS
-	CtrlH264ScalingMatrix  CtrlID = C.V4L2_CID_STATELESS_H264_SCALING_MATRIX
-	CtrlH264SliceParams    CtrlID = C.V4L2_CID_STATELESS_H264_SLICE_PARAMS
-	CtrlH264DecodeParams   CtrlID = C.V4L2_CID_STATELESS_H264_DECODE_PARAMS
-	CtrlH264PredWeights    CtrlID = C.V4L2_CID_STATELESS_H264_PRED_WEIGHTS
-	CtrlH264DecodeMode     CtrlID = C.V4L2_CID_STATELESS_H264_DECODE_MODE
-	CtrlH264StartCode      CtrlID = C.V4L2_CID_STATELESS_H264_START_CODE
+	CtrlH264SPS            CtrlID = cV4L2_CID_STATELESS_H264_SPS
+	CtrlH264PPS            CtrlID = cV4L2_CID_STATELESS_H264_PPS
+	CtrlH264ScalingMatrix  CtrlID = cV4L2_CID_STATELESS_H264_SCALING_MATRIX
+	CtrlH264SliceParams    CtrlID = cV4L2_CID_STATELESS_H264_SLICE_PARAMS
+	CtrlH264DecodeParams   CtrlID = cV4L2_CID_STATELESS_H264_DECODE_PARAMS
+	CtrlH264PredWeights    CtrlID = cV4L2_CID_STATELESS_H264_PRED_WEIGHTS
+	CtrlH264DecodeMode     CtrlID = cV4L2_CID_STATELESS_H264_DECODE_MODE
+	CtrlH264StartCode      CtrlID = cV4L2_CID_STATELESS_H264_START_CODE
 )
 
 // Type-safe helper methods for ExtControls

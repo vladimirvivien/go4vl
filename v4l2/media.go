@@ -1,7 +1,5 @@
 package v4l2
 
-// #include <linux/media.h>
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -22,17 +20,17 @@ type MediaDeviceInfo struct {
 
 // GetMediaDeviceInfo retrieves media information for specified device, if supported.
 func GetMediaDeviceInfo(fd uintptr) (MediaDeviceInfo, error) {
-	var mdi C.struct_media_device_info
-	if err := send(fd, C.MEDIA_IOC_DEVICE_INFO, uintptr(unsafe.Pointer(&mdi))); err != nil {
+	var mdi cMediaDeviceInfo
+	if err := send(fd, cMEDIA_IOC_DEVICE_INFO, uintptr(unsafe.Pointer(&mdi))); err != nil {
 		return MediaDeviceInfo{}, fmt.Errorf("media device info: %w", err)
 	}
 	return MediaDeviceInfo{
-		Driver:           C.GoString((*C.char)(&mdi.driver[0])),
-		Model:            C.GoString((*C.char)(&mdi.model[0])),
-		Serial:           C.GoString((*C.char)(&mdi.serial[0])),
-		BusInfo:          C.GoString((*C.char)(&mdi.bus_info[0])),
-		MediaVersion:     VersionInfo{value: uint32(mdi.media_version)},
-		HardwareRevision: uint32(mdi.hw_revision),
-		DriverVersion:    VersionInfo{value: uint32(mdi.driver_version)},
+		Driver:           cString(mdi.Driver[:]),
+		Model:            cString(mdi.Model[:]),
+		Serial:           cString(mdi.Serial[:]),
+		BusInfo:          cString(mdi.Bus_info[:]),
+		MediaVersion:     VersionInfo{value: mdi.Media_version},
+		HardwareRevision: mdi.Hw_revision,
+		DriverVersion:    VersionInfo{value: mdi.Driver_version},
 	}, nil
 }

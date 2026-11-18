@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include <linux/videodev2.h>
-*/
-import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -20,124 +15,124 @@ const (
 
 	// CapVideoCapture indicates the device supports video capture via the single-planar API.
 	// This is the most common capability for webcams and capture cards.
-	CapVideoCapture uint32 = C.V4L2_CAP_VIDEO_CAPTURE
+	CapVideoCapture uint32 = cV4L2_CAP_VIDEO_CAPTURE
 
 	// CapVideoOutput indicates the device supports video output via the single-planar API.
 	// Used for video output devices like displays or video encoders.
-	CapVideoOutput uint32 = C.V4L2_CAP_VIDEO_OUTPUT
+	CapVideoOutput uint32 = cV4L2_CAP_VIDEO_OUTPUT
 
 	// CapVideoOverlay indicates the device supports video overlay onto a display.
 	// Allows direct overlay of video onto the screen without going through system memory.
-	CapVideoOverlay uint32 = C.V4L2_CAP_VIDEO_OVERLAY
+	CapVideoOverlay uint32 = cV4L2_CAP_VIDEO_OVERLAY
 
 	// VBI (Vertical Blanking Interval) capabilities
 
 	// CapVBICapture indicates support for raw VBI data capture.
 	// VBI is used for transmitting data like closed captions in analog TV signals.
-	CapVBICapture uint32 = C.V4L2_CAP_VBI_CAPTURE
+	CapVBICapture uint32 = cV4L2_CAP_VBI_CAPTURE
 
 	// CapVBIOutput indicates support for raw VBI data output.
-	CapVBIOutput uint32 = C.V4L2_CAP_VBI_OUTPUT
+	CapVBIOutput uint32 = cV4L2_CAP_VBI_OUTPUT
 
 	// CapSlicedVBICapture indicates support for sliced (parsed) VBI data capture.
 	// Provides decoded VBI services like teletext or closed captions.
-	CapSlicedVBICapture uint32 = C.V4L2_CAP_SLICED_VBI_CAPTURE
+	CapSlicedVBICapture uint32 = cV4L2_CAP_SLICED_VBI_CAPTURE
 
 	// CapSlicedVBIOutput indicates support for sliced VBI data output.
-	CapSlicedVBIOutput uint32 = C.V4L2_CAP_SLICED_VBI_OUTPUT
+	CapSlicedVBIOutput uint32 = cV4L2_CAP_SLICED_VBI_OUTPUT
 
 	// Radio and RDS capabilities
 
 	// CapRDSCapture indicates support for RDS (Radio Data System) data capture.
 	// RDS provides digital information in FM radio broadcasts.
-	CapRDSCapture uint32 = C.V4L2_CAP_RDS_CAPTURE
+	CapRDSCapture uint32 = cV4L2_CAP_RDS_CAPTURE
 
 	// CapVideoOutputOverlay indicates support for video output overlay (OSD).
 	// Allows overlaying graphics on video output.
-	CapVideoOutputOverlay uint32 = C.V4L2_CAP_VIDEO_OUTPUT_OVERLAY
+	CapVideoOutputOverlay uint32 = cV4L2_CAP_VIDEO_OUTPUT_OVERLAY
 
 	// CapHWFrequencySeek indicates hardware supports automatic frequency seeking.
 	// Used in radio tuners for scanning to the next station.
-	CapHWFrequencySeek uint32 = C.V4L2_CAP_HW_FREQ_SEEK
+	CapHWFrequencySeek uint32 = cV4L2_CAP_HW_FREQ_SEEK
 
 	// CapRDSOutput indicates support for RDS data output.
-	CapRDSOutput uint32 = C.V4L2_CAP_RDS_OUTPUT
+	CapRDSOutput uint32 = cV4L2_CAP_RDS_OUTPUT
 
 	// Multi-planar API capabilities
 
 	// CapVideoCaptureMPlane indicates video capture support via the multi-planar API.
 	// Used for formats where color components are stored in separate memory planes.
-	CapVideoCaptureMPlane uint32 = C.V4L2_CAP_VIDEO_CAPTURE_MPLANE
+	CapVideoCaptureMPlane uint32 = cV4L2_CAP_VIDEO_CAPTURE_MPLANE
 
 	// CapVideoOutputMPlane indicates video output support via the multi-planar API.
-	CapVideoOutputMPlane uint32 = C.V4L2_CAP_VIDEO_OUTPUT_MPLANE
+	CapVideoOutputMPlane uint32 = cV4L2_CAP_VIDEO_OUTPUT_MPLANE
 
 	// CapVideoMem2MemMPlane indicates memory-to-memory device support via multi-planar API.
 	// Used for hardware codecs and format converters.
-	CapVideoMem2MemMPlane uint32 = C.V4L2_CAP_VIDEO_M2M_MPLANE
+	CapVideoMem2MemMPlane uint32 = cV4L2_CAP_VIDEO_M2M_MPLANE
 
 	// CapVideoMem2Mem indicates memory-to-memory device support via single-planar API.
-	CapVideoMem2Mem uint32 = C.V4L2_CAP_VIDEO_M2M
+	CapVideoMem2Mem uint32 = cV4L2_CAP_VIDEO_M2M
 
 	// Tuner and audio capabilities
 
 	// CapTuner indicates the device has a TV or radio tuner.
-	CapTuner uint32 = C.V4L2_CAP_TUNER
+	CapTuner uint32 = cV4L2_CAP_TUNER
 
 	// CapAudio indicates the device has audio inputs or outputs.
-	CapAudio uint32 = C.V4L2_CAP_AUDIO
+	CapAudio uint32 = cV4L2_CAP_AUDIO
 
 	// CapRadio indicates the device is a radio receiver.
-	CapRadio uint32 = C.V4L2_CAP_RADIO
+	CapRadio uint32 = cV4L2_CAP_RADIO
 
 	// CapModulator indicates the device has a radio frequency modulator.
 	// Used for FM transmitters.
-	CapModulator uint32 = C.V4L2_CAP_MODULATOR
+	CapModulator uint32 = cV4L2_CAP_MODULATOR
 
 	// SDR and metadata capabilities
 
 	// CapSDRCapture indicates support for Software Defined Radio capture.
-	CapSDRCapture uint32 = C.V4L2_CAP_SDR_CAPTURE
+	CapSDRCapture uint32 = cV4L2_CAP_SDR_CAPTURE
 
 	// CapExtendedPixFormat indicates the device supports extended pixel format fields.
 	// Enables use of additional format flags and modifiers.
-	CapExtendedPixFormat uint32 = C.V4L2_CAP_EXT_PIX_FORMAT
+	CapExtendedPixFormat uint32 = cV4L2_CAP_EXT_PIX_FORMAT
 
 	// CapSDROutput indicates support for Software Defined Radio output.
-	CapSDROutput uint32 = C.V4L2_CAP_SDR_OUTPUT
+	CapSDROutput uint32 = cV4L2_CAP_SDR_OUTPUT
 
 	// CapMetadataCapture indicates the device can capture metadata.
 	// Used for sensors that provide metadata alongside video frames.
-	CapMetadataCapture uint32 = C.V4L2_CAP_META_CAPTURE
+	CapMetadataCapture uint32 = cV4L2_CAP_META_CAPTURE
 
 	// I/O method capabilities
 
 	// CapReadWrite indicates support for read() and write() I/O methods.
 	// Simple but less efficient than streaming I/O.
-	CapReadWrite uint32 = C.V4L2_CAP_READWRITE
+	CapReadWrite uint32 = cV4L2_CAP_READWRITE
 
 	// CapAsyncIO indicates support for asynchronous I/O.
-	CapAsyncIO uint32 = C.V4L2_CAP_ASYNCIO
+	CapAsyncIO uint32 = cV4L2_CAP_ASYNCIO
 
 	// CapStreaming indicates support for streaming I/O using memory mapping or user pointers.
 	// This is the most efficient I/O method for continuous video streaming.
-	CapStreaming uint32 = C.V4L2_CAP_STREAMING
+	CapStreaming uint32 = cV4L2_CAP_STREAMING
 
 	// Additional capabilities
 
 	// CapMetadataOutput indicates the device can output metadata.
-	CapMetadataOutput uint32 = C.V4L2_CAP_META_OUTPUT
+	CapMetadataOutput uint32 = cV4L2_CAP_META_OUTPUT
 
 	// CapTouch indicates the device is a touch device.
-	CapTouch uint32 = C.V4L2_CAP_TOUCH
+	CapTouch uint32 = cV4L2_CAP_TOUCH
 
 	// CapIOMediaController indicates the device supports the Media Controller API.
 	// Used for complex devices with configurable media pipelines.
-	CapIOMediaController uint32 = C.V4L2_CAP_IO_MC
+	CapIOMediaController uint32 = cV4L2_CAP_IO_MC
 
 	// CapDeviceCapabilities indicates the device provides device-specific capabilities.
 	// When set, DeviceCapabilities field should be used instead of Capabilities.
-	CapDeviceCapabilities uint32 = C.V4L2_CAP_DEVICE_CAPS
+	CapDeviceCapabilities uint32 = cV4L2_CAP_DEVICE_CAPS
 )
 
 // CapabilityDesc provides a human-readable description for a capability flag.
@@ -241,17 +236,17 @@ type Capability struct {
 //
 // This function issues the VIDIOC_QUERYCAP ioctl to retrieve device information.
 func GetCapability(fd uintptr) (Capability, error) {
-	var v4l2Cap C.struct_v4l2_capability
-	if err := send(fd, C.VIDIOC_QUERYCAP, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
+	var v4l2Cap cV4L2Capability
+	if err := send(fd, cVIDIOC_QUERYCAP, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
 		return Capability{}, fmt.Errorf("capability: %w", err)
 	}
 	return Capability{
-		Driver:             C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.driver[0]))),
-		Card:               C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.card[0]))),
-		BusInfo:            C.GoString((*C.char)(unsafe.Pointer(&v4l2Cap.bus_info[0]))),
-		Version:            uint32(v4l2Cap.version),
-		Capabilities:       uint32(v4l2Cap.capabilities),
-		DeviceCapabilities: uint32(v4l2Cap.device_caps),
+		Driver:             cString(v4l2Cap.Driver[:]),
+		Card:               cString(v4l2Cap.Card[:]),
+		BusInfo:            cString(v4l2Cap.Bus_info[:]),
+		Version:            v4l2Cap.Version,
+		Capabilities:       v4l2Cap.Capabilities,
+		DeviceCapabilities: v4l2Cap.Device_caps,
 	}, nil
 }
 

@@ -1,8 +1,5 @@
 package v4l2
 
-// #include "compat.h"
-import "C"
-
 import (
 	"fmt"
 	"unsafe"
@@ -17,191 +14,191 @@ type FourCCType = uint32
 
 // RGB Formats
 var (
-	PixelFmtRGB332  FourCCType = C.V4L2_PIX_FMT_RGB332
-	PixelFmtARGB444 FourCCType = C.V4L2_PIX_FMT_ARGB444
-	PixelFmtXRGB444 FourCCType = C.V4L2_PIX_FMT_XRGB444
-	PixelFmtRGB555  FourCCType = C.V4L2_PIX_FMT_RGB555
-	PixelFmtARGB555 FourCCType = C.V4L2_PIX_FMT_ARGB555
-	PixelFmtXRGB555 FourCCType = C.V4L2_PIX_FMT_XRGB555
-	PixelFmtRGB565  FourCCType = C.V4L2_PIX_FMT_RGB565
-	PixelFmtRGB555X FourCCType = C.V4L2_PIX_FMT_RGB555X
-	PixelFmtRGB565X FourCCType = C.V4L2_PIX_FMT_RGB565X
-	PixelFmtBGR666  FourCCType = C.V4L2_PIX_FMT_BGR666
-	PixelFmtBGR24   FourCCType = C.V4L2_PIX_FMT_BGR24
-	PixelFmtRGB24   FourCCType = C.V4L2_PIX_FMT_RGB24
-	PixelFmtBGR32   FourCCType = C.V4L2_PIX_FMT_BGR32
-	PixelFmtABGR32  FourCCType = C.V4L2_PIX_FMT_ABGR32
-	PixelFmtXBGR32  FourCCType = C.V4L2_PIX_FMT_XBGR32
-	PixelFmtRGB32   FourCCType = C.V4L2_PIX_FMT_RGB32
-	PixelFmtARGB32  FourCCType = C.V4L2_PIX_FMT_ARGB32
-	PixelFmtXRGB32  FourCCType = C.V4L2_PIX_FMT_XRGB32
+	PixelFmtRGB332  FourCCType = cV4L2_PIX_FMT_RGB332
+	PixelFmtARGB444 FourCCType = cV4L2_PIX_FMT_ARGB444
+	PixelFmtXRGB444 FourCCType = cV4L2_PIX_FMT_XRGB444
+	PixelFmtRGB555  FourCCType = cV4L2_PIX_FMT_RGB555
+	PixelFmtARGB555 FourCCType = cV4L2_PIX_FMT_ARGB555
+	PixelFmtXRGB555 FourCCType = cV4L2_PIX_FMT_XRGB555
+	PixelFmtRGB565  FourCCType = cV4L2_PIX_FMT_RGB565
+	PixelFmtRGB555X FourCCType = cV4L2_PIX_FMT_RGB555X
+	PixelFmtRGB565X FourCCType = cV4L2_PIX_FMT_RGB565X
+	PixelFmtBGR666  FourCCType = cV4L2_PIX_FMT_BGR666
+	PixelFmtBGR24   FourCCType = cV4L2_PIX_FMT_BGR24
+	PixelFmtRGB24   FourCCType = cV4L2_PIX_FMT_RGB24
+	PixelFmtBGR32   FourCCType = cV4L2_PIX_FMT_BGR32
+	PixelFmtABGR32  FourCCType = cV4L2_PIX_FMT_ABGR32
+	PixelFmtXBGR32  FourCCType = cV4L2_PIX_FMT_XBGR32
+	PixelFmtRGB32   FourCCType = cV4L2_PIX_FMT_RGB32
+	PixelFmtARGB32  FourCCType = cV4L2_PIX_FMT_ARGB32
+	PixelFmtXRGB32  FourCCType = cV4L2_PIX_FMT_XRGB32
 )
 
 // Greyscale Formats
 var (
-	PixelFmtGrey   FourCCType = C.V4L2_PIX_FMT_GREY
-	PixelFmtY4     FourCCType = C.V4L2_PIX_FMT_Y4
-	PixelFmtY6     FourCCType = C.V4L2_PIX_FMT_Y6
-	PixelFmtY10    FourCCType = C.V4L2_PIX_FMT_Y10
-	PixelFmtY12    FourCCType = C.V4L2_PIX_FMT_Y12
-	PixelFmtY14    FourCCType = C.V4L2_PIX_FMT_Y14
-	PixelFmtY16    FourCCType = C.V4L2_PIX_FMT_Y16
-	PixelFmtY16BE  FourCCType = C.V4L2_PIX_FMT_Y16_BE
-	PixelFmtY10BPACK FourCCType = C.V4L2_PIX_FMT_Y10BPACK
+	PixelFmtGrey   FourCCType = cV4L2_PIX_FMT_GREY
+	PixelFmtY4     FourCCType = cV4L2_PIX_FMT_Y4
+	PixelFmtY6     FourCCType = cV4L2_PIX_FMT_Y6
+	PixelFmtY10    FourCCType = cV4L2_PIX_FMT_Y10
+	PixelFmtY12    FourCCType = cV4L2_PIX_FMT_Y12
+	PixelFmtY14    FourCCType = cV4L2_PIX_FMT_Y14
+	PixelFmtY16    FourCCType = cV4L2_PIX_FMT_Y16
+	PixelFmtY16BE  FourCCType = cV4L2_PIX_FMT_Y16_BE
+	PixelFmtY10BPACK FourCCType = cV4L2_PIX_FMT_Y10BPACK
 )
 
 // YUV Packed Formats
 var (
-	PixelFmtYUYV   FourCCType = C.V4L2_PIX_FMT_YUYV
-	PixelFmtYYUV   FourCCType = C.V4L2_PIX_FMT_YYUV
-	PixelFmtYVYU   FourCCType = C.V4L2_PIX_FMT_YVYU
-	PixelFmtUYVY   FourCCType = C.V4L2_PIX_FMT_UYVY
-	PixelFmtVYUY   FourCCType = C.V4L2_PIX_FMT_VYUY
-	PixelFmtY41P   FourCCType = C.V4L2_PIX_FMT_Y41P
-	PixelFmtYUV444 FourCCType = C.V4L2_PIX_FMT_YUV444
-	PixelFmtYUV555 FourCCType = C.V4L2_PIX_FMT_YUV555
-	PixelFmtYUV565 FourCCType = C.V4L2_PIX_FMT_YUV565
-	PixelFmtYUV32  FourCCType = C.V4L2_PIX_FMT_YUV32
-	PixelFmtAYUV32 FourCCType = C.V4L2_PIX_FMT_AYUV32
-	PixelFmtXYUV32 FourCCType = C.V4L2_PIX_FMT_XYUV32
-	PixelFmtVUYA32 FourCCType = C.V4L2_PIX_FMT_VUYA32
-	PixelFmtVUYX32 FourCCType = C.V4L2_PIX_FMT_VUYX32
+	PixelFmtYUYV   FourCCType = cV4L2_PIX_FMT_YUYV
+	PixelFmtYYUV   FourCCType = cV4L2_PIX_FMT_YYUV
+	PixelFmtYVYU   FourCCType = cV4L2_PIX_FMT_YVYU
+	PixelFmtUYVY   FourCCType = cV4L2_PIX_FMT_UYVY
+	PixelFmtVYUY   FourCCType = cV4L2_PIX_FMT_VYUY
+	PixelFmtY41P   FourCCType = cV4L2_PIX_FMT_Y41P
+	PixelFmtYUV444 FourCCType = cV4L2_PIX_FMT_YUV444
+	PixelFmtYUV555 FourCCType = cV4L2_PIX_FMT_YUV555
+	PixelFmtYUV565 FourCCType = cV4L2_PIX_FMT_YUV565
+	PixelFmtYUV32  FourCCType = cV4L2_PIX_FMT_YUV32
+	PixelFmtAYUV32 FourCCType = cV4L2_PIX_FMT_AYUV32
+	PixelFmtXYUV32 FourCCType = cV4L2_PIX_FMT_XYUV32
+	PixelFmtVUYA32 FourCCType = cV4L2_PIX_FMT_VUYA32
+	PixelFmtVUYX32 FourCCType = cV4L2_PIX_FMT_VUYX32
 )
 
 // YUV Planar Formats
 var (
-	PixelFmtYUV410  FourCCType = C.V4L2_PIX_FMT_YUV410
-	PixelFmtYVU410  FourCCType = C.V4L2_PIX_FMT_YVU410
-	PixelFmtYUV411P FourCCType = C.V4L2_PIX_FMT_YUV411P
-	PixelFmtYUV420  FourCCType = C.V4L2_PIX_FMT_YUV420
-	PixelFmtYVU420  FourCCType = C.V4L2_PIX_FMT_YVU420
-	PixelFmtYUV422P FourCCType = C.V4L2_PIX_FMT_YUV422P
-	PixelFmtYUV444M FourCCType = C.V4L2_PIX_FMT_YUV444M
-	PixelFmtYVU444M FourCCType = C.V4L2_PIX_FMT_YVU444M
-	PixelFmtYUV420M FourCCType = C.V4L2_PIX_FMT_YUV420M
-	PixelFmtYVU420M FourCCType = C.V4L2_PIX_FMT_YVU420M
-	PixelFmtYUV422M FourCCType = C.V4L2_PIX_FMT_YUV422M
-	PixelFmtYVU422M FourCCType = C.V4L2_PIX_FMT_YVU422M
+	PixelFmtYUV410  FourCCType = cV4L2_PIX_FMT_YUV410
+	PixelFmtYVU410  FourCCType = cV4L2_PIX_FMT_YVU410
+	PixelFmtYUV411P FourCCType = cV4L2_PIX_FMT_YUV411P
+	PixelFmtYUV420  FourCCType = cV4L2_PIX_FMT_YUV420
+	PixelFmtYVU420  FourCCType = cV4L2_PIX_FMT_YVU420
+	PixelFmtYUV422P FourCCType = cV4L2_PIX_FMT_YUV422P
+	PixelFmtYUV444M FourCCType = cV4L2_PIX_FMT_YUV444M
+	PixelFmtYVU444M FourCCType = cV4L2_PIX_FMT_YVU444M
+	PixelFmtYUV420M FourCCType = cV4L2_PIX_FMT_YUV420M
+	PixelFmtYVU420M FourCCType = cV4L2_PIX_FMT_YVU420M
+	PixelFmtYUV422M FourCCType = cV4L2_PIX_FMT_YUV422M
+	PixelFmtYVU422M FourCCType = cV4L2_PIX_FMT_YVU422M
 )
 
 // YUV Semi-Planar (NV) Formats
 var (
-	PixelFmtNV12    FourCCType = C.V4L2_PIX_FMT_NV12
-	PixelFmtNV21    FourCCType = C.V4L2_PIX_FMT_NV21
-	PixelFmtNV16    FourCCType = C.V4L2_PIX_FMT_NV16
-	PixelFmtNV61    FourCCType = C.V4L2_PIX_FMT_NV61
-	PixelFmtNV24    FourCCType = C.V4L2_PIX_FMT_NV24
-	PixelFmtNV42    FourCCType = C.V4L2_PIX_FMT_NV42
-	PixelFmtNV12M   FourCCType = C.V4L2_PIX_FMT_NV12M
-	PixelFmtNV21M   FourCCType = C.V4L2_PIX_FMT_NV21M
-	PixelFmtNV16M   FourCCType = C.V4L2_PIX_FMT_NV16M
-	PixelFmtNV61M   FourCCType = C.V4L2_PIX_FMT_NV61M
-	PixelFmtP010    FourCCType = C.V4L2_PIX_FMT_P010
-	PixelFmtP012    FourCCType = C.V4L2_PIX_FMT_P012
+	PixelFmtNV12    FourCCType = cV4L2_PIX_FMT_NV12
+	PixelFmtNV21    FourCCType = cV4L2_PIX_FMT_NV21
+	PixelFmtNV16    FourCCType = cV4L2_PIX_FMT_NV16
+	PixelFmtNV61    FourCCType = cV4L2_PIX_FMT_NV61
+	PixelFmtNV24    FourCCType = cV4L2_PIX_FMT_NV24
+	PixelFmtNV42    FourCCType = cV4L2_PIX_FMT_NV42
+	PixelFmtNV12M   FourCCType = cV4L2_PIX_FMT_NV12M
+	PixelFmtNV21M   FourCCType = cV4L2_PIX_FMT_NV21M
+	PixelFmtNV16M   FourCCType = cV4L2_PIX_FMT_NV16M
+	PixelFmtNV61M   FourCCType = cV4L2_PIX_FMT_NV61M
+	PixelFmtP010    FourCCType = cV4L2_PIX_FMT_P010
+	PixelFmtP012    FourCCType = cV4L2_PIX_FMT_P012
 )
 
 // Compressed Formats - JPEG
 var (
-	PixelFmtMJPEG FourCCType = C.V4L2_PIX_FMT_MJPEG
-	PixelFmtJPEG  FourCCType = C.V4L2_PIX_FMT_JPEG
+	PixelFmtMJPEG FourCCType = cV4L2_PIX_FMT_MJPEG
+	PixelFmtJPEG  FourCCType = cV4L2_PIX_FMT_JPEG
 )
 
 // Compressed Formats - H.26x
 var (
-	PixelFmtH263      FourCCType = C.V4L2_PIX_FMT_H263
-	PixelFmtH264      FourCCType = C.V4L2_PIX_FMT_H264
-	PixelFmtH264NoSC  FourCCType = C.V4L2_PIX_FMT_H264_NO_SC
-	PixelFmtH264MVC   FourCCType = C.V4L2_PIX_FMT_H264_MVC
-	PixelFmtH264Slice FourCCType = C.V4L2_PIX_FMT_H264_SLICE
-	PixelFmtHEVC      FourCCType = C.V4L2_PIX_FMT_HEVC
-	PixelFmtHEVCSlice FourCCType = C.V4L2_PIX_FMT_HEVC_SLICE
+	PixelFmtH263      FourCCType = cV4L2_PIX_FMT_H263
+	PixelFmtH264      FourCCType = cV4L2_PIX_FMT_H264
+	PixelFmtH264NoSC  FourCCType = cV4L2_PIX_FMT_H264_NO_SC
+	PixelFmtH264MVC   FourCCType = cV4L2_PIX_FMT_H264_MVC
+	PixelFmtH264Slice FourCCType = cV4L2_PIX_FMT_H264_SLICE
+	PixelFmtHEVC      FourCCType = cV4L2_PIX_FMT_HEVC
+	PixelFmtHEVCSlice FourCCType = cV4L2_PIX_FMT_HEVC_SLICE
 )
 
 // Compressed Formats - MPEG
 var (
-	PixelFmtMPEG      FourCCType = C.V4L2_PIX_FMT_MPEG
-	PixelFmtMPEG1     FourCCType = C.V4L2_PIX_FMT_MPEG1
-	PixelFmtMPEG2     FourCCType = C.V4L2_PIX_FMT_MPEG2
-	PixelFmtMPEG2Slice FourCCType = C.V4L2_PIX_FMT_MPEG2_SLICE
-	PixelFmtMPEG4     FourCCType = C.V4L2_PIX_FMT_MPEG4
-	PixelFmtXVID      FourCCType = C.V4L2_PIX_FMT_XVID
+	PixelFmtMPEG      FourCCType = cV4L2_PIX_FMT_MPEG
+	PixelFmtMPEG1     FourCCType = cV4L2_PIX_FMT_MPEG1
+	PixelFmtMPEG2     FourCCType = cV4L2_PIX_FMT_MPEG2
+	PixelFmtMPEG2Slice FourCCType = cV4L2_PIX_FMT_MPEG2_SLICE
+	PixelFmtMPEG4     FourCCType = cV4L2_PIX_FMT_MPEG4
+	PixelFmtXVID      FourCCType = cV4L2_PIX_FMT_XVID
 )
 
 // Compressed Formats - VP
 var (
-	PixelFmtVP8      FourCCType = C.V4L2_PIX_FMT_VP8
-	PixelFmtVP8Frame FourCCType = C.V4L2_PIX_FMT_VP8_FRAME
-	PixelFmtVP9      FourCCType = C.V4L2_PIX_FMT_VP9
-	PixelFmtVP9Frame FourCCType = C.V4L2_PIX_FMT_VP9_FRAME
+	PixelFmtVP8      FourCCType = cV4L2_PIX_FMT_VP8
+	PixelFmtVP8Frame FourCCType = cV4L2_PIX_FMT_VP8_FRAME
+	PixelFmtVP9      FourCCType = cV4L2_PIX_FMT_VP9
+	PixelFmtVP9Frame FourCCType = cV4L2_PIX_FMT_VP9_FRAME
 )
 
 // Compressed Formats - Other
 var (
-	PixelFmtAV1Frame      FourCCType = C.V4L2_PIX_FMT_AV1_FRAME
-	PixelFmtVC1Annex      FourCCType = C.V4L2_PIX_FMT_VC1_ANNEX_G
-	PixelFmtVC1AnnexL     FourCCType = C.V4L2_PIX_FMT_VC1_ANNEX_L
-	PixelFmtFWHT          FourCCType = C.V4L2_PIX_FMT_FWHT
-	PixelFmtFWHTStateless FourCCType = C.V4L2_PIX_FMT_FWHT_STATELESS
+	PixelFmtAV1Frame      FourCCType = cV4L2_PIX_FMT_AV1_FRAME
+	PixelFmtVC1Annex      FourCCType = cV4L2_PIX_FMT_VC1_ANNEX_G
+	PixelFmtVC1AnnexL     FourCCType = cV4L2_PIX_FMT_VC1_ANNEX_L
+	PixelFmtFWHT          FourCCType = cV4L2_PIX_FMT_FWHT
+	PixelFmtFWHTStateless FourCCType = cV4L2_PIX_FMT_FWHT_STATELESS
 )
 
 // Bayer Formats - 8-bit
 var (
-	PixelFmtSBGGR8 FourCCType = C.V4L2_PIX_FMT_SBGGR8
-	PixelFmtSGBRG8 FourCCType = C.V4L2_PIX_FMT_SGBRG8
-	PixelFmtSGRBG8 FourCCType = C.V4L2_PIX_FMT_SGRBG8
-	PixelFmtSRGGB8 FourCCType = C.V4L2_PIX_FMT_SRGGB8
+	PixelFmtSBGGR8 FourCCType = cV4L2_PIX_FMT_SBGGR8
+	PixelFmtSGBRG8 FourCCType = cV4L2_PIX_FMT_SGBRG8
+	PixelFmtSGRBG8 FourCCType = cV4L2_PIX_FMT_SGRBG8
+	PixelFmtSRGGB8 FourCCType = cV4L2_PIX_FMT_SRGGB8
 )
 
 // Bayer Formats - 10-bit
 var (
-	PixelFmtSBGGR10      FourCCType = C.V4L2_PIX_FMT_SBGGR10
-	PixelFmtSGBRG10      FourCCType = C.V4L2_PIX_FMT_SGBRG10
-	PixelFmtSGRBG10      FourCCType = C.V4L2_PIX_FMT_SGRBG10
-	PixelFmtSRGGB10      FourCCType = C.V4L2_PIX_FMT_SRGGB10
-	PixelFmtSBGGR10ALAW8 FourCCType = C.V4L2_PIX_FMT_SBGGR10ALAW8
-	PixelFmtSGBRG10ALAW8 FourCCType = C.V4L2_PIX_FMT_SGBRG10ALAW8
-	PixelFmtSGRBG10ALAW8 FourCCType = C.V4L2_PIX_FMT_SGRBG10ALAW8
-	PixelFmtSRGGB10ALAW8 FourCCType = C.V4L2_PIX_FMT_SRGGB10ALAW8
-	PixelFmtSBGGR10DPCM8 FourCCType = C.V4L2_PIX_FMT_SBGGR10DPCM8
-	PixelFmtSGBRG10DPCM8 FourCCType = C.V4L2_PIX_FMT_SGBRG10DPCM8
-	PixelFmtSGRBG10DPCM8 FourCCType = C.V4L2_PIX_FMT_SGRBG10DPCM8
-	PixelFmtSRGGB10DPCM8 FourCCType = C.V4L2_PIX_FMT_SRGGB10DPCM8
-	PixelFmtSBGGR10P     FourCCType = C.V4L2_PIX_FMT_SBGGR10P
-	PixelFmtSGBRG10P     FourCCType = C.V4L2_PIX_FMT_SGBRG10P
-	PixelFmtSGRBG10P     FourCCType = C.V4L2_PIX_FMT_SGRBG10P
-	PixelFmtSRGGB10P     FourCCType = C.V4L2_PIX_FMT_SRGGB10P
+	PixelFmtSBGGR10      FourCCType = cV4L2_PIX_FMT_SBGGR10
+	PixelFmtSGBRG10      FourCCType = cV4L2_PIX_FMT_SGBRG10
+	PixelFmtSGRBG10      FourCCType = cV4L2_PIX_FMT_SGRBG10
+	PixelFmtSRGGB10      FourCCType = cV4L2_PIX_FMT_SRGGB10
+	PixelFmtSBGGR10ALAW8 FourCCType = cV4L2_PIX_FMT_SBGGR10ALAW8
+	PixelFmtSGBRG10ALAW8 FourCCType = cV4L2_PIX_FMT_SGBRG10ALAW8
+	PixelFmtSGRBG10ALAW8 FourCCType = cV4L2_PIX_FMT_SGRBG10ALAW8
+	PixelFmtSRGGB10ALAW8 FourCCType = cV4L2_PIX_FMT_SRGGB10ALAW8
+	PixelFmtSBGGR10DPCM8 FourCCType = cV4L2_PIX_FMT_SBGGR10DPCM8
+	PixelFmtSGBRG10DPCM8 FourCCType = cV4L2_PIX_FMT_SGBRG10DPCM8
+	PixelFmtSGRBG10DPCM8 FourCCType = cV4L2_PIX_FMT_SGRBG10DPCM8
+	PixelFmtSRGGB10DPCM8 FourCCType = cV4L2_PIX_FMT_SRGGB10DPCM8
+	PixelFmtSBGGR10P     FourCCType = cV4L2_PIX_FMT_SBGGR10P
+	PixelFmtSGBRG10P     FourCCType = cV4L2_PIX_FMT_SGBRG10P
+	PixelFmtSGRBG10P     FourCCType = cV4L2_PIX_FMT_SGRBG10P
+	PixelFmtSRGGB10P     FourCCType = cV4L2_PIX_FMT_SRGGB10P
 )
 
 // Bayer Formats - 12-bit
 var (
-	PixelFmtSBGGR12 FourCCType = C.V4L2_PIX_FMT_SBGGR12
-	PixelFmtSGBRG12 FourCCType = C.V4L2_PIX_FMT_SGBRG12
-	PixelFmtSGRBG12 FourCCType = C.V4L2_PIX_FMT_SGRBG12
-	PixelFmtSRGGB12 FourCCType = C.V4L2_PIX_FMT_SRGGB12
-	PixelFmtSBGGR12P FourCCType = C.V4L2_PIX_FMT_SBGGR12P
-	PixelFmtSGBRG12P FourCCType = C.V4L2_PIX_FMT_SGBRG12P
-	PixelFmtSGRBG12P FourCCType = C.V4L2_PIX_FMT_SGRBG12P
-	PixelFmtSRGGB12P FourCCType = C.V4L2_PIX_FMT_SRGGB12P
+	PixelFmtSBGGR12 FourCCType = cV4L2_PIX_FMT_SBGGR12
+	PixelFmtSGBRG12 FourCCType = cV4L2_PIX_FMT_SGBRG12
+	PixelFmtSGRBG12 FourCCType = cV4L2_PIX_FMT_SGRBG12
+	PixelFmtSRGGB12 FourCCType = cV4L2_PIX_FMT_SRGGB12
+	PixelFmtSBGGR12P FourCCType = cV4L2_PIX_FMT_SBGGR12P
+	PixelFmtSGBRG12P FourCCType = cV4L2_PIX_FMT_SGBRG12P
+	PixelFmtSGRBG12P FourCCType = cV4L2_PIX_FMT_SGRBG12P
+	PixelFmtSRGGB12P FourCCType = cV4L2_PIX_FMT_SRGGB12P
 )
 
 // Bayer Formats - 14-bit
 var (
-	PixelFmtSBGGR14 FourCCType = C.V4L2_PIX_FMT_SBGGR14
-	PixelFmtSGBRG14 FourCCType = C.V4L2_PIX_FMT_SGBRG14
-	PixelFmtSGRBG14 FourCCType = C.V4L2_PIX_FMT_SGRBG14
-	PixelFmtSRGGB14 FourCCType = C.V4L2_PIX_FMT_SRGGB14
-	PixelFmtSBGGR14P FourCCType = C.V4L2_PIX_FMT_SBGGR14P
-	PixelFmtSGBRG14P FourCCType = C.V4L2_PIX_FMT_SGBRG14P
-	PixelFmtSGRBG14P FourCCType = C.V4L2_PIX_FMT_SGRBG14P
-	PixelFmtSRGGB14P FourCCType = C.V4L2_PIX_FMT_SRGGB14P
+	PixelFmtSBGGR14 FourCCType = cV4L2_PIX_FMT_SBGGR14
+	PixelFmtSGBRG14 FourCCType = cV4L2_PIX_FMT_SGBRG14
+	PixelFmtSGRBG14 FourCCType = cV4L2_PIX_FMT_SGRBG14
+	PixelFmtSRGGB14 FourCCType = cV4L2_PIX_FMT_SRGGB14
+	PixelFmtSBGGR14P FourCCType = cV4L2_PIX_FMT_SBGGR14P
+	PixelFmtSGBRG14P FourCCType = cV4L2_PIX_FMT_SGBRG14P
+	PixelFmtSGRBG14P FourCCType = cV4L2_PIX_FMT_SGRBG14P
+	PixelFmtSRGGB14P FourCCType = cV4L2_PIX_FMT_SRGGB14P
 )
 
 // Bayer Formats - 16-bit
 var (
-	PixelFmtSBGGR16 FourCCType = C.V4L2_PIX_FMT_SBGGR16
-	PixelFmtSGBRG16 FourCCType = C.V4L2_PIX_FMT_SGBRG16
-	PixelFmtSGRBG16 FourCCType = C.V4L2_PIX_FMT_SGRBG16
-	PixelFmtSRGGB16 FourCCType = C.V4L2_PIX_FMT_SRGGB16
+	PixelFmtSBGGR16 FourCCType = cV4L2_PIX_FMT_SBGGR16
+	PixelFmtSGBRG16 FourCCType = cV4L2_PIX_FMT_SGBRG16
+	PixelFmtSGRBG16 FourCCType = cV4L2_PIX_FMT_SGRBG16
+	PixelFmtSRGGB16 FourCCType = cV4L2_PIX_FMT_SRGGB16
 )
 
 // PixelFormats provides a map of FourCCType encoding description
@@ -355,16 +352,16 @@ func IsPixYUVEncoded(pixFmt FourCCType) bool {
 type FieldType = uint32
 
 const (
-	FieldAny                 FieldType = C.V4L2_FIELD_ANY
-	FieldNone                FieldType = C.V4L2_FIELD_NONE
-	FieldTop                 FieldType = C.V4L2_FIELD_TOP
-	FieldBottom              FieldType = C.V4L2_FIELD_BOTTOM
-	FieldInterlaced          FieldType = C.V4L2_FIELD_INTERLACED
-	FieldSequentialTopBottom FieldType = C.V4L2_FIELD_SEQ_TB
-	FieldSequentialBottomTop FieldType = C.V4L2_FIELD_SEQ_BT
-	FieldAlternate           FieldType = C.V4L2_FIELD_ALTERNATE
-	FieldInterlacedTopBottom FieldType = C.V4L2_FIELD_INTERLACED_TB
-	FieldInterlacedBottomTop FieldType = C.V4L2_FIELD_INTERLACED_BT
+	FieldAny                 FieldType = cV4L2_FIELD_ANY
+	FieldNone                FieldType = cV4L2_FIELD_NONE
+	FieldTop                 FieldType = cV4L2_FIELD_TOP
+	FieldBottom              FieldType = cV4L2_FIELD_BOTTOM
+	FieldInterlaced          FieldType = cV4L2_FIELD_INTERLACED
+	FieldSequentialTopBottom FieldType = cV4L2_FIELD_SEQ_TB
+	FieldSequentialBottomTop FieldType = cV4L2_FIELD_SEQ_BT
+	FieldAlternate           FieldType = cV4L2_FIELD_ALTERNATE
+	FieldInterlacedTopBottom FieldType = cV4L2_FIELD_INTERLACED_TB
+	FieldInterlacedBottomTop FieldType = cV4L2_FIELD_INTERLACED_BT
 )
 
 // Fields is a map of FieldType description
@@ -387,17 +384,17 @@ var Fields = map[FieldType]string{
 type PixFormatFlag = uint32
 
 const (
-	FmtFlagCompressed           PixFormatFlag = C.V4L2_FMT_FLAG_COMPRESSED
-	FmtFlagEmulated             PixFormatFlag = C.V4L2_FMT_FLAG_EMULATED
-	FmtFlagContinuousBytestream PixFormatFlag = C.V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
-	FmtFlagDynamicResolution    PixFormatFlag = C.V4L2_FMT_FLAG_DYN_RESOLUTION
-	FmtFlagEncCapFrameInterval  PixFormatFlag = C.V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
-	FmtFlagCSCColorspace        PixFormatFlag = C.V4L2_FMT_FLAG_CSC_COLORSPACE
-	FmtFlagCSCXferFunc          PixFormatFlag = C.V4L2_FMT_FLAG_CSC_XFER_FUNC
-	FmtFlagCSCYCbCrEnc          PixFormatFlag = C.V4L2_FMT_FLAG_CSC_YCBCR_ENC
-	FmtFlagCSCQuantization      PixFormatFlag = C.V4L2_FMT_FLAG_CSC_QUANTIZATION
+	FmtFlagCompressed           PixFormatFlag = cV4L2_FMT_FLAG_COMPRESSED
+	FmtFlagEmulated             PixFormatFlag = cV4L2_FMT_FLAG_EMULATED
+	FmtFlagContinuousBytestream PixFormatFlag = cV4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM
+	FmtFlagDynamicResolution    PixFormatFlag = cV4L2_FMT_FLAG_DYN_RESOLUTION
+	FmtFlagEncCapFrameInterval  PixFormatFlag = cV4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL
+	FmtFlagCSCColorspace        PixFormatFlag = cV4L2_FMT_FLAG_CSC_COLORSPACE
+	FmtFlagCSCXferFunc          PixFormatFlag = cV4L2_FMT_FLAG_CSC_XFER_FUNC
+	FmtFlagCSCYCbCrEnc          PixFormatFlag = cV4L2_FMT_FLAG_CSC_YCBCR_ENC
+	FmtFlagCSCQuantization      PixFormatFlag = cV4L2_FMT_FLAG_CSC_QUANTIZATION
 	// FmtFlagMetaLineBased requires kernel 6.10+ (not available in Ubuntu 24.04)
-	// FmtFlagMetaLineBased        PixFormatFlag = C.V4L2_FMT_FLAG_META_LINE_BASED
+	// FmtFlagMetaLineBased        PixFormatFlag = cV4L2_FMT_FLAG_META_LINE_BASED
 )
 
 // FormatFlags is a map of format flag descriptions
@@ -741,39 +738,56 @@ func (f PixFormat) GetBitsPerPixel() int {
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
 // and https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
 func GetPixFormat(fd uintptr) (PixFormat, error) {
-	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(BufTypeVideoCapture)
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = BufTypeVideoCapture
 
-	if err := send(fd, C.VIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
 	}
 
-	v4l2PixFmt := *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Format.fmt[0]))
+	v4l2PixFmt := *(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
 	return PixFormat{
-		Width:        uint32(v4l2PixFmt.width),
-		Height:       uint32(v4l2PixFmt.height),
-		PixelFormat:  uint32(v4l2PixFmt.pixelformat),
-		Field:        uint32(v4l2PixFmt.field),
-		BytesPerLine: uint32(v4l2PixFmt.bytesperline),
-		SizeImage:    uint32(v4l2PixFmt.sizeimage),
-		Colorspace:   uint32(v4l2PixFmt.colorspace),
-		Priv:         uint32(v4l2PixFmt.priv),
-		Flags:        uint32(v4l2PixFmt.flags),
-		YcbcrEnc:     *(*uint32)(unsafe.Pointer(&v4l2PixFmt.anon0[0])),
-		HSVEnc:       *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v4l2PixFmt.anon0[0])) + unsafe.Sizeof(C.uint(0)))),
-		Quantization: uint32(v4l2PixFmt.quantization),
-		XferFunc:     uint32(v4l2PixFmt.xfer_func),
+		Width:        v4l2PixFmt.Width,
+		Height:       v4l2PixFmt.Height,
+		PixelFormat:  v4l2PixFmt.Pixelformat,
+		Field:        v4l2PixFmt.Field,
+		BytesPerLine: v4l2PixFmt.Bytesperline,
+		SizeImage:    v4l2PixFmt.Sizeimage,
+		Colorspace:   v4l2PixFmt.Colorspace,
+		Priv:         v4l2PixFmt.Priv,
+		Flags:        v4l2PixFmt.Flags,
+		YcbcrEnc:     v4l2PixFmt.Ycbcr_enc,
+		HSVEnc:       v4l2PixFmt.Ycbcr_enc,
+		Quantization: v4l2PixFmt.Quantization,
+		XferFunc:     v4l2PixFmt.Xfer_func,
 	}, nil
 }
 
 // SetPixFormat sets the pixel format information for the specified driver
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
 func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
-	var v4l2Format C.struct_v4l2_format
-	v4l2Format._type = C.uint(BufTypeVideoCapture)
-	*(*C.struct_v4l2_pix_format)(unsafe.Pointer(&v4l2Format.fmt[0])) = *(*C.struct_v4l2_pix_format)(unsafe.Pointer(&pixFmt))
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = BufTypeVideoCapture
+	ycbcrEnc := pixFmt.YcbcrEnc
+	if ycbcrEnc == 0 {
+		ycbcrEnc = pixFmt.HSVEnc
+	}
+	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = cV4L2PixFormat{
+		Width:        pixFmt.Width,
+		Height:       pixFmt.Height,
+		Pixelformat:  pixFmt.PixelFormat,
+		Field:        pixFmt.Field,
+		Bytesperline: pixFmt.BytesPerLine,
+		Sizeimage:    pixFmt.SizeImage,
+		Colorspace:   pixFmt.Colorspace,
+		Priv:         pixFmt.Priv,
+		Flags:        pixFmt.Flags,
+		Ycbcr_enc:    ycbcrEnc,
+		Quantization: pixFmt.Quantization,
+		Xfer_func:    pixFmt.XferFunc,
+	}
 
-	if err := send(fd, C.VIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return fmt.Errorf("pix format failed: %w", err)
 	}
 	return nil

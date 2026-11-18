@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-#include <linux/v4l2-controls.h>
-*/
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -103,7 +98,7 @@ type ControlVP8Frame struct {
 // VP8 Stateless Codec Control IDs
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlVP8Frame CtrlID = C.V4L2_CID_STATELESS_VP8_FRAME
+	CtrlVP8Frame CtrlID = cV4L2_CID_STATELESS_VP8_FRAME
 )
 
 // Type-safe helper methods for ExtControls

@@ -21,10 +21,8 @@ package v4l2
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/dv-timings.html
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enum-dv-timings.html
 
-// #include <linux/videodev2.h>
-import "C"
-
 import (
+	"encoding/binary"
 	"fmt"
 	"unsafe"
 
@@ -35,140 +33,140 @@ import (
 type DVTimingType = uint32
 
 const (
-	DVTimingTypeBT6561120 DVTimingType = C.V4L2_DV_BT_656_1120 // BT.656/1120 timing
+	DVTimingTypeBT6561120 DVTimingType = cV4L2_DV_BT_656_1120 // BT.656/1120 timing
 )
 
 // DVInterlaced represents interlaced vs progressive format
 type DVInterlaced = uint32
 
 const (
-	DVProgressive       DVInterlaced = C.V4L2_DV_PROGRESSIVE // Progressive scan
-	DVInterlacedFormat  DVInterlaced = C.V4L2_DV_INTERLACED  // Interlaced scan
+	DVProgressive       DVInterlaced = cV4L2_DV_PROGRESSIVE // Progressive scan
+	DVInterlacedFormat  DVInterlaced = cV4L2_DV_INTERLACED  // Interlaced scan
 )
 
 // DVPolarity represents sync signal polarities
 type DVPolarity = uint32
 
 const (
-	DVVSyncPosPolarity DVPolarity = C.V4L2_DV_VSYNC_POS_POL // Positive vertical sync
-	DVHSyncPosPolarity DVPolarity = C.V4L2_DV_HSYNC_POS_POL // Positive horizontal sync
+	DVVSyncPosPolarity DVPolarity = cV4L2_DV_VSYNC_POS_POL // Positive vertical sync
+	DVHSyncPosPolarity DVPolarity = cV4L2_DV_HSYNC_POS_POL // Positive horizontal sync
 )
 
 // DVStandard represents DV timing standards
 type DVStandard = uint32
 
 const (
-	DVStdCEA861 DVStandard = C.V4L2_DV_BT_STD_CEA861 // CEA-861 Digital TV Profile
-	DVStdDMT    DVStandard = C.V4L2_DV_BT_STD_DMT    // VESA Discrete Monitor Timings
-	DVStdCVT    DVStandard = C.V4L2_DV_BT_STD_CVT    // VESA Coordinated Video Timings
-	DVStdGTF    DVStandard = C.V4L2_DV_BT_STD_GTF    // VESA Generalized Timing Formula
+	DVStdCEA861 DVStandard = cV4L2_DV_BT_STD_CEA861 // CEA-861 Digital TV Profile
+	DVStdDMT    DVStandard = cV4L2_DV_BT_STD_DMT    // VESA Discrete Monitor Timings
+	DVStdCVT    DVStandard = cV4L2_DV_BT_STD_CVT    // VESA Coordinated Video Timings
+	DVStdGTF    DVStandard = cV4L2_DV_BT_STD_GTF    // VESA Generalized Timing Formula
 )
 
 // DVFlag represents DV timing flags
 type DVFlag = uint32
 
 const (
-	DVFlagReducedBlanking      DVFlag = C.V4L2_DV_FL_REDUCED_BLANKING        // Reduced blanking
-	DVFlagCanReduceFPS         DVFlag = C.V4L2_DV_FL_CAN_REDUCE_FPS          // Can reduce FPS
-	DVFlagReducedFPS           DVFlag = C.V4L2_DV_FL_REDUCED_FPS             // Reduced FPS
-	DVFlagHalfLine             DVFlag = C.V4L2_DV_FL_HALF_LINE               // Half line
-	DVFlagIsCEVideo            DVFlag = C.V4L2_DV_FL_IS_CE_VIDEO             // Consumer Electronics video
-	DVFlagFirstFieldExtraLine  DVFlag = C.V4L2_DV_FL_FIRST_FIELD_EXTRA_LINE  // First field has extra line
-	DVFlagHasPictureAspect     DVFlag = C.V4L2_DV_FL_HAS_PICTURE_ASPECT      // Has picture aspect ratio
-	DVFlagHasCEA861VIC         DVFlag = C.V4L2_DV_FL_HAS_CEA861_VIC          // Has CEA-861 VIC code
-	DVFlagHasHDMIVIC           DVFlag = C.V4L2_DV_FL_HAS_HDMI_VIC            // Has HDMI VIC code
-	DVFlagCanDetectReducedFPS  DVFlag = C.V4L2_DV_FL_CAN_DETECT_REDUCED_FPS  // Can detect reduced FPS
+	DVFlagReducedBlanking      DVFlag = cV4L2_DV_FL_REDUCED_BLANKING        // Reduced blanking
+	DVFlagCanReduceFPS         DVFlag = cV4L2_DV_FL_CAN_REDUCE_FPS          // Can reduce FPS
+	DVFlagReducedFPS           DVFlag = cV4L2_DV_FL_REDUCED_FPS             // Reduced FPS
+	DVFlagHalfLine             DVFlag = cV4L2_DV_FL_HALF_LINE               // Half line
+	DVFlagIsCEVideo            DVFlag = cV4L2_DV_FL_IS_CE_VIDEO             // Consumer Electronics video
+	DVFlagFirstFieldExtraLine  DVFlag = cV4L2_DV_FL_FIRST_FIELD_EXTRA_LINE  // First field has extra line
+	DVFlagHasPictureAspect     DVFlag = cV4L2_DV_FL_HAS_PICTURE_ASPECT      // Has picture aspect ratio
+	DVFlagHasCEA861VIC         DVFlag = cV4L2_DV_FL_HAS_CEA861_VIC          // Has CEA-861 VIC code
+	DVFlagHasHDMIVIC           DVFlag = cV4L2_DV_FL_HAS_HDMI_VIC            // Has HDMI VIC code
+	DVFlagCanDetectReducedFPS  DVFlag = cV4L2_DV_FL_CAN_DETECT_REDUCED_FPS  // Can detect reduced FPS
 )
 
 // DVCapability represents DV timing capabilities
 type DVCapability = uint32
 
 const (
-	DVCapInterlaced      DVCapability = C.V4L2_DV_BT_CAP_INTERLACED       // Interlaced formats supported
-	DVCapProgressive     DVCapability = C.V4L2_DV_BT_CAP_PROGRESSIVE      // Progressive formats supported
-	DVCapReducedBlanking DVCapability = C.V4L2_DV_BT_CAP_REDUCED_BLANKING // Reduced blanking supported
-	DVCapCustom          DVCapability = C.V4L2_DV_BT_CAP_CUSTOM           // Custom timings supported
+	DVCapInterlaced      DVCapability = cV4L2_DV_BT_CAP_INTERLACED       // Interlaced formats supported
+	DVCapProgressive     DVCapability = cV4L2_DV_BT_CAP_PROGRESSIVE      // Progressive formats supported
+	DVCapReducedBlanking DVCapability = cV4L2_DV_BT_CAP_REDUCED_BLANKING // Reduced blanking supported
+	DVCapCustom          DVCapability = cV4L2_DV_BT_CAP_CUSTOM           // Custom timings supported
 )
 
 // BTTimings wraps v4l2_bt_timings structure (BT.656/1120 timings)
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/dv-timings.html
 type BTTimings struct {
-	v4l2BTTimings C.struct_v4l2_bt_timings
+	v4l2BTTimings cV4L2BTTimings
 }
 
 // Accessor methods for BTTimings
 
 func (bt BTTimings) GetWidth() uint32 {
-	return uint32(bt.v4l2BTTimings.width)
+	return bt.v4l2BTTimings.Width
 }
 
 func (bt BTTimings) GetHeight() uint32 {
-	return uint32(bt.v4l2BTTimings.height)
+	return bt.v4l2BTTimings.Height
 }
 
 func (bt BTTimings) GetInterlaced() DVInterlaced {
-	return DVInterlaced(bt.v4l2BTTimings.interlaced)
+	return DVInterlaced(bt.v4l2BTTimings.Interlaced)
 }
 
 func (bt BTTimings) GetPolarities() DVPolarity {
-	return DVPolarity(bt.v4l2BTTimings.polarities)
+	return DVPolarity(bt.v4l2BTTimings.Polarities)
 }
 
 func (bt BTTimings) GetPixelClock() uint64 {
-	return uint64(bt.v4l2BTTimings.pixelclock)
+	return binary.NativeEndian.Uint64(bt.v4l2BTTimings.Pixelclock[:])
 }
 
 func (bt BTTimings) GetHFrontPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.hfrontporch)
+	return bt.v4l2BTTimings.Hfrontporch
 }
 
 func (bt BTTimings) GetHSync() uint32 {
-	return uint32(bt.v4l2BTTimings.hsync)
+	return bt.v4l2BTTimings.Hsync
 }
 
 func (bt BTTimings) GetHBackPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.hbackporch)
+	return bt.v4l2BTTimings.Hbackporch
 }
 
 func (bt BTTimings) GetVFrontPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.vfrontporch)
+	return bt.v4l2BTTimings.Vfrontporch
 }
 
 func (bt BTTimings) GetVSync() uint32 {
-	return uint32(bt.v4l2BTTimings.vsync)
+	return bt.v4l2BTTimings.Vsync
 }
 
 func (bt BTTimings) GetVBackPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.vbackporch)
+	return bt.v4l2BTTimings.Vbackporch
 }
 
 func (bt BTTimings) GetILVFrontPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.il_vfrontporch)
+	return bt.v4l2BTTimings.Il_vfrontporch
 }
 
 func (bt BTTimings) GetILVSync() uint32 {
-	return uint32(bt.v4l2BTTimings.il_vsync)
+	return bt.v4l2BTTimings.Il_vsync
 }
 
 func (bt BTTimings) GetILVBackPorch() uint32 {
-	return uint32(bt.v4l2BTTimings.il_vbackporch)
+	return bt.v4l2BTTimings.Il_vbackporch
 }
 
 func (bt BTTimings) GetStandards() DVStandard {
-	return DVStandard(bt.v4l2BTTimings.standards)
+	return DVStandard(bt.v4l2BTTimings.Standards)
 }
 
 func (bt BTTimings) GetFlags() DVFlag {
-	return DVFlag(bt.v4l2BTTimings.flags)
+	return DVFlag(bt.v4l2BTTimings.Flags)
 }
 
 func (bt BTTimings) GetCEA861VIC() uint8 {
-	return uint8(bt.v4l2BTTimings.cea861_vic)
+	return bt.v4l2BTTimings.Cea861_vic
 }
 
 func (bt BTTimings) GetHDMIVIC() uint8 {
-	return uint8(bt.v4l2BTTimings.hdmi_vic)
+	return bt.v4l2BTTimings.Hdmi_vic
 }
 
 // Helper methods for BTTimings
@@ -228,79 +226,78 @@ func (bt BTTimings) GetFrameRate() float64 {
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-dv-timings.html
 type DVTimings struct {
-	v4l2DVTimings C.struct_v4l2_dv_timings
+	v4l2DVTimings cV4L2DVTimings
 }
 
 // Accessor methods for DVTimings
 
 func (dv DVTimings) GetType() DVTimingType {
-	return DVTimingType(dv.v4l2DVTimings._type)
+	return DVTimingType(dv.v4l2DVTimings.Type)
 }
 
 func (dv DVTimings) GetBTTimings() BTTimings {
-	// Access union field through type cast
-	btTimings := (*C.struct_v4l2_bt_timings)(unsafe.Pointer(&dv.v4l2DVTimings.anon0[0]))
+	btTimings := (*cV4L2BTTimings)(unsafe.Pointer(&dv.v4l2DVTimings.Pad_cgo_0[0]))
 	return BTTimings{v4l2BTTimings: *btTimings}
 }
 
 // EnumDVTimings wraps v4l2_enum_dv_timings structure
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enum-dv-timings.html
 type EnumDVTimings struct {
-	v4l2EnumDVTimings C.struct_v4l2_enum_dv_timings
+	v4l2EnumDVTimings cV4L2EnumDVTimings
 }
 
 // Accessor methods for EnumDVTimings
 
 func (e EnumDVTimings) GetIndex() uint32 {
-	return uint32(e.v4l2EnumDVTimings.index)
+	return e.v4l2EnumDVTimings.Index
 }
 
 func (e EnumDVTimings) GetPad() uint32 {
-	return uint32(e.v4l2EnumDVTimings.pad)
+	return e.v4l2EnumDVTimings.Pad
 }
 
 func (e EnumDVTimings) GetTimings() DVTimings {
-	return DVTimings{v4l2DVTimings: e.v4l2EnumDVTimings.timings}
+	return DVTimings{v4l2DVTimings: e.v4l2EnumDVTimings.Timings}
 }
 
 // BTTimingsCap wraps v4l2_bt_timings_cap structure
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-dv-timings-cap.html
 type BTTimingsCap struct {
-	v4l2BTTimingsCap C.struct_v4l2_bt_timings_cap
+	v4l2BTTimingsCap cV4L2BTTimingsCap
 }
 
 // Accessor methods for BTTimingsCap
 
 func (btc BTTimingsCap) GetMinWidth() uint32 {
-	return uint32(btc.v4l2BTTimingsCap.min_width)
+	return btc.v4l2BTTimingsCap.Min_width
 }
 
 func (btc BTTimingsCap) GetMaxWidth() uint32 {
-	return uint32(btc.v4l2BTTimingsCap.max_width)
+	return btc.v4l2BTTimingsCap.Max_width
 }
 
 func (btc BTTimingsCap) GetMinHeight() uint32 {
-	return uint32(btc.v4l2BTTimingsCap.min_height)
+	return btc.v4l2BTTimingsCap.Min_height
 }
 
 func (btc BTTimingsCap) GetMaxHeight() uint32 {
-	return uint32(btc.v4l2BTTimingsCap.max_height)
+	return btc.v4l2BTTimingsCap.Max_height
 }
 
 func (btc BTTimingsCap) GetMinPixelClock() uint64 {
-	return uint64(btc.v4l2BTTimingsCap.min_pixelclock)
+	return btc.v4l2BTTimingsCap.Min_pixelclock
 }
 
 func (btc BTTimingsCap) GetMaxPixelClock() uint64 {
-	return uint64(btc.v4l2BTTimingsCap.max_pixelclock)
+	return btc.v4l2BTTimingsCap.Max_pixelclock
 }
 
 func (btc BTTimingsCap) GetStandards() DVStandard {
-	return DVStandard(btc.v4l2BTTimingsCap.standards)
+	return DVStandard(btc.v4l2BTTimingsCap.Standards)
 }
 
 func (btc BTTimingsCap) GetCapabilities() DVCapability {
-	return DVCapability(btc.v4l2BTTimingsCap.capabilities)
+	return DVCapability(btc.v4l2BTTimingsCap.Capabilities)
 }
 
 // Helper methods for BTTimingsCap
@@ -332,23 +329,21 @@ func (btc BTTimingsCap) HasStandard(std DVStandard) bool {
 // DVTimingsCap wraps v4l2_dv_timings_cap structure
 // https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-dv-timings-cap.html
 type DVTimingsCap struct {
-	v4l2DVTimingsCap C.struct_v4l2_dv_timings_cap
+	v4l2DVTimingsCap cV4L2DVTimingsCap
 }
 
 // Accessor methods for DVTimingsCap
 
 func (dvc DVTimingsCap) GetType() DVTimingType {
-	return DVTimingType(dvc.v4l2DVTimingsCap._type)
+	return DVTimingType(dvc.v4l2DVTimingsCap.Type)
 }
 
 func (dvc DVTimingsCap) GetPad() uint32 {
-	return uint32(dvc.v4l2DVTimingsCap.pad)
+	return dvc.v4l2DVTimingsCap.Pad
 }
 
 func (dvc DVTimingsCap) GetBTTimingsCap() BTTimingsCap {
-	// Access union field through type cast
-	btCap := (*C.struct_v4l2_bt_timings_cap)(unsafe.Pointer(&dvc.v4l2DVTimingsCap.anon0[0]))
-	return BTTimingsCap{v4l2BTTimingsCap: *btCap}
+	return BTTimingsCap{v4l2BTTimingsCap: dvc.v4l2DVTimingsCap.Bt}
 }
 
 // ============================================================================
@@ -367,9 +362,9 @@ func (dvc DVTimingsCap) GetBTTimingsCap() BTTimingsCap {
 //	bt := timings.GetBTTimings()
 //	fmt.Printf("Resolution: %dx%d @ %.2f Hz\n", bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
 func GetDVTimings(fd uintptr) (DVTimings, error) {
-	var timings C.struct_v4l2_dv_timings
+	var timings cV4L2DVTimings
 
-	if err := send(fd, C.VIDIOC_G_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
+	if err := send(fd, cVIDIOC_G_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
 		return DVTimings{}, fmt.Errorf("v4l2: VIDIOC_G_DV_TIMINGS failed: %w", err)
 	}
 
@@ -386,7 +381,7 @@ func GetDVTimings(fd uintptr) (DVTimings, error) {
 //	    log.Fatal(err)
 //	}
 func SetDVTimings(fd uintptr, timings DVTimings) error {
-	if err := send(fd, C.VIDIOC_S_DV_TIMINGS, uintptr(unsafe.Pointer(&timings.v4l2DVTimings))); err != nil {
+	if err := send(fd, cVIDIOC_S_DV_TIMINGS, uintptr(unsafe.Pointer(&timings.v4l2DVTimings))); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_DV_TIMINGS failed: %w", err)
 	}
 	return nil
@@ -405,9 +400,9 @@ func SetDVTimings(fd uintptr, timings DVTimings) error {
 //	}
 //	fmt.Printf("Detected: %dx%d\n", timings.GetBTTimings().GetWidth(), timings.GetBTTimings().GetHeight())
 func QueryDVTimings(fd uintptr) (DVTimings, error) {
-	var timings C.struct_v4l2_dv_timings
+	var timings cV4L2DVTimings
 
-	if err := send(fd, C.VIDIOC_QUERY_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
+	if err := send(fd, cVIDIOC_QUERY_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
 		return DVTimings{}, fmt.Errorf("v4l2: VIDIOC_QUERY_DV_TIMINGS failed: %w", err)
 	}
 
@@ -425,11 +420,11 @@ func QueryDVTimings(fd uintptr) (DVTimings, error) {
 //	}
 //	timings := enumTiming.GetTimings()
 func EnumerateDVTimings(fd uintptr, index uint32, pad uint32) (EnumDVTimings, error) {
-	var enumTimings C.struct_v4l2_enum_dv_timings
-	enumTimings.index = C.uint(index)
-	enumTimings.pad = C.uint(pad)
+	var enumTimings cV4L2EnumDVTimings
+	enumTimings.Index = index
+	enumTimings.Pad = pad
 
-	if err := send(fd, C.VIDIOC_ENUM_DV_TIMINGS, uintptr(unsafe.Pointer(&enumTimings))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_DV_TIMINGS, uintptr(unsafe.Pointer(&enumTimings))); err != nil {
 		return EnumDVTimings{}, fmt.Errorf("v4l2: VIDIOC_ENUM_DV_TIMINGS failed for index %d: %w", index, err)
 	}
 
@@ -478,11 +473,11 @@ func GetAllDVTimings(fd uintptr, pad uint32) ([]EnumDVTimings, error) {
 //	    btCap.GetMinWidth(), btCap.GetMinHeight(),
 //	    btCap.GetMaxWidth(), btCap.GetMaxHeight())
 func GetDVTimingsCap(fd uintptr, pad uint32) (DVTimingsCap, error) {
-	var cap C.struct_v4l2_dv_timings_cap
-	cap.pad = C.uint(pad)
-	cap._type = C.V4L2_DV_BT_656_1120
+	var cap cV4L2DVTimingsCap
+	cap.Pad = pad
+	cap.Type = cV4L2_DV_BT_656_1120
 
-	if err := send(fd, C.VIDIOC_DV_TIMINGS_CAP, uintptr(unsafe.Pointer(&cap))); err != nil {
+	if err := send(fd, cVIDIOC_DV_TIMINGS_CAP, uintptr(unsafe.Pointer(&cap))); err != nil {
 		return DVTimingsCap{}, fmt.Errorf("v4l2: VIDIOC_DV_TIMINGS_CAP failed: %w", err)
 	}
 

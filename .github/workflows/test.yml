@@ -14,16 +14,24 @@ jobs:
       with:
         go-version: '1.25'
 
-    - name: Install build dependencies
+    - name: Build (CGO_ENABLED=0)
+      run: |
+        CGO_ENABLED=0 go build ./...
+        CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
+
+    - name: Run Unit Tests (CGO_ENABLED=0)
+      run: CGO_ENABLED=0 go test -v ./v4l2 ./device ./imgsupport
+
+    - name: Vet (CGO_ENABLED=0)
+      run: CGO_ENABLED=0 go vet ./v4l2 ./device ./imgsupport
+
+    - name: Install C headers for ABI parity verification
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential linux-headers-generic
 
-    - name: Build
-      run: go build ./...
-
-    - name: Run Unit Tests
-      run: go test -v ./v4l2 ./device ./imgsupport
+    - name: Verify C ABI parity
+      run: CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -73,4 +81,4 @@ jobs:
 
     - name: Run Integration Tests
       run: |
-        go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11
+        CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11

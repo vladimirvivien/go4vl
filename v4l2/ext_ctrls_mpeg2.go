@@ -1,10 +1,5 @@
 package v4l2
 
-/*
-#include "compat.h"
-#include <linux/v4l2-controls.h>
-*/
-import "C"
 import (
 	"fmt"
 	"unsafe"
@@ -46,9 +41,9 @@ type ControlMPEG2Quantization struct {
 // MPEG2 Stateless Codec Control IDs
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlMPEG2Sequence      CtrlID = C.V4L2_CID_STATELESS_MPEG2_SEQUENCE
-	CtrlMPEG2Picture       CtrlID = C.V4L2_CID_STATELESS_MPEG2_PICTURE
-	CtrlMPEG2Quantization  CtrlID = C.V4L2_CID_STATELESS_MPEG2_QUANTISATION
+	CtrlMPEG2Sequence      CtrlID = cV4L2_CID_STATELESS_MPEG2_SEQUENCE
+	CtrlMPEG2Picture       CtrlID = cV4L2_CID_STATELESS_MPEG2_PICTURE
+	CtrlMPEG2Quantization  CtrlID = cV4L2_CID_STATELESS_MPEG2_QUANTISATION
 )
 
 // Type-safe helper methods for ExtControls

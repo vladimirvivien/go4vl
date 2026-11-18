@@ -1,19 +1,16 @@
 package v4l2
 
-// #include <linux/videodev2.h>
-import "C"
-
 // TimecodeType
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/buffer.html?highlight=v4l2_timecode#timecode-type
 // https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L886
 type TimecodeType = uint32
 
 const (
-	TimecodeType24FPS TimecodeType = C.V4L2_TC_TYPE_24FPS
-	TimecodeType25FPS TimecodeType = C.V4L2_TC_TYPE_25FPS
-	TimecodeType30FPS TimecodeType = C.V4L2_TC_TYPE_30FPS
-	TimecodeType50FPS TimecodeType = C.V4L2_TC_TYPE_50FPS
-	TimecodeType60FPS TimecodeType = C.V4L2_TC_TYPE_60FPS
+	TimecodeType24FPS TimecodeType = cV4L2_TC_TYPE_24FPS
+	TimecodeType25FPS TimecodeType = cV4L2_TC_TYPE_25FPS
+	TimecodeType30FPS TimecodeType = cV4L2_TC_TYPE_30FPS
+	TimecodeType50FPS TimecodeType = cV4L2_TC_TYPE_50FPS
+	TimecodeType60FPS TimecodeType = cV4L2_TC_TYPE_60FPS
 )
 
 // TimecodeFlag
@@ -22,8 +19,8 @@ const (
 type TimecodeFlag = uint32
 
 const (
-	TimecodeFlagDropFrame  TimecodeFlag = C.V4L2_TC_FLAG_DROPFRAME
-	TimecodeFlagColorFrame TimecodeFlag = C.V4L2_TC_FLAG_COLORFRAME
+	TimecodeFlagDropFrame  TimecodeFlag = cV4L2_TC_FLAG_DROPFRAME
+	TimecodeFlagColorFrame TimecodeFlag = cV4L2_TC_FLAG_COLORFRAME
 )
 
 // Timecode (v4l2_timecode)
