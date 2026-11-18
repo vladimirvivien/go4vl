@@ -42,7 +42,10 @@ jobs:
 
     - name: Install kernel headers and modules
       run: |
-        sudo apt-get install -y linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
+        sudo apt-get install -y linux-headers-$(uname -r)
+        if ! modinfo videodev >/dev/null 2>&1; then
+          sudo apt-get install -y linux-modules-extra-$(uname -r) || sudo apt-get install -y linux-modules-extra-azure
+        fi
 
     - name: Build and load v4l2loopback
       run: |
