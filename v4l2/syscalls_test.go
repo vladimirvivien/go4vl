@@ -2,8 +2,13 @@ package v4l2
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // mockDevice implements the Device interface for testing
@@ -235,5 +240,26 @@ func TestWaitForRead_TimeoutBehavior(t *testing.T) {
 		}
 	case <-time.After(200 * time.Millisecond):
 		t.Error("Channel should close within 200ms of cancellation")
+	}
+}
+
+func TestOpenDevice_CharDeviceCheck(t *testing.T) {
+	regFile := filepath.Join(t.TempDir(), "not-a-char-device")
+	if err := os.WriteFile(regFile, []byte("x"), 0o600); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	if _, err := OpenDevice(regFile, sys.O_RDONLY|sys.O_CLOEXEC, 0); err == nil {
+		t.Fatalf("OpenDevice(%q) expected error for regular file, got nil", regFile)
+	} else if !strings.Contains(err.Error(), "not character device") {
+		t.Fatalf("OpenDevice(%q) err = %v, want 'not character device'", regFile, err)
+	}
+
+	fd, err := OpenDevice("/dev/null", sys.O_RDWR|sys.O_NONBLOCK|sys.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatalf("OpenDevice(/dev/null) unexpected error: %v", err)
+	}
+	if err := CloseDevice(fd); err != nil {
+		t.Fatalf("CloseDevice(/dev/null) failed: %v", err)
 	}
 }

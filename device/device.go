@@ -116,7 +116,7 @@ type Device struct {
 //   - WithBufferSize(n): Set the number of buffers for streaming (default: 2)
 //   - WithPixFormat(fmt): Set the pixel format and frame dimensions
 //   - WithFPS(fps): Set the frames per second for capture
-//   - WithIOType(io): Set the memory type for streaming (only MMAP supported)
+//   - WithIOType(io): Set the memory type for streaming (MMAP, UserPtr, or DMABuf; default: MMAP)
 //
 // The function performs the following initialization steps:
 //  1. Opens the device file descriptor

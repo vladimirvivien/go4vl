@@ -18,7 +18,7 @@ func OpenDevice(path string, flags int, mode uint32) (uintptr, error) {
 		return 0, fmt.Errorf("open device: %w", err)
 	}
 
-	if (fstat.Mode() | fs.ModeCharDevice) == 0 {
+	if fstat.Mode()&fs.ModeCharDevice == 0 {
 		return 0, fmt.Errorf("device open: %s: not character device", path)
 	}
 
