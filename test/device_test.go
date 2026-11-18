@@ -505,6 +505,65 @@ func TestDevice_ContextCancellation(t *testing.T) {
 	}
 }
 
+// TestDevice_ContextCancelReopenNoMmapLeak verifies that cancelling the capture
+// context before Stop()/Close() releases all mmap mappings and lets the device
+// reopen and configure its pixel format repeatedly without EBUSY.
+func TestDevice_ContextCancelReopenNoMmapLeak(t *testing.T) {
+	devPath := RequireV4L2Testing(t)
+
+	for cycle := 0; cycle < 5; cycle++ {
+		dev, err := device.Open(devPath, device.WithBufferSize(2))
+		if err != nil {
+			t.Fatalf("cycle %d: Open failed: %v", cycle, err)
+		}
+
+		pixFmt, err := dev.GetPixFormat()
+		if err == nil && pixFmt.PixelFormat != 0 {
+			if err := dev.SetPixFormat(pixFmt); err != nil {
+				_ = dev.Close()
+				t.Fatalf("cycle %d: SetPixFormat failed (possible leaked mmap/EBUSY): %v", cycle, err)
+			}
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		if err := dev.Start(ctx); err != nil {
+			cancel()
+			_ = dev.Close()
+			t.Skipf("cycle %d: Start() failed (device may be busy): %v", cycle, err)
+		}
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for range dev.GetOutput() {
+			}
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			_ = dev.Close()
+			t.Fatalf("cycle %d: capture goroutine did not exit after cancel", cycle)
+		}
+
+		if err := dev.Stop(); err != nil {
+			_ = dev.Close()
+			t.Fatalf("cycle %d: Stop() after cancel failed: %v", cycle, err)
+		}
+		if err := dev.Close(); err != nil {
+			t.Fatalf("cycle %d: Close() failed: %v", cycle, err)
+		}
+
+		mapsData, err := os.ReadFile("/proc/self/maps")
+		if err == nil && strings.Contains(string(mapsData), devPath) {
+			t.Fatalf("cycle %d: /proc/self/maps still contains mapping for %s after Stop/Close", cycle, devPath)
+		}
+	}
+}
+
 // TestDevice_DeviceInfo consolidates device info tests that query device metadata
 // to avoid "device or resource busy" errors from opening the device multiple times.
 func TestDevice_DeviceInfo(t *testing.T) {

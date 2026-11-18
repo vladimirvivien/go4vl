@@ -125,7 +125,7 @@ type DecoderConfig struct {
 // Call Close() when done to release resources.
 func OpenDecoder(path string, config DecoderConfig) (*Decoder, error) {
 	// Open device
-	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+	fd, err := v4l2.OpenDevice(path, openDeviceFlags, 0)
 	if err != nil {
 		return nil, fmt.Errorf("decoder open: %w", err)
 	}

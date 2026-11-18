@@ -126,7 +126,7 @@ type EncoderConfig struct {
 // Call Close() when done to release resources.
 func OpenEncoder(path string, config EncoderConfig) (*Encoder, error) {
 	// Open device
-	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+	fd, err := v4l2.OpenDevice(path, openDeviceFlags, 0)
 	if err != nil {
 		return nil, fmt.Errorf("encoder open: %w", err)
 	}

@@ -2,14 +2,17 @@ package device
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
-	sys "syscall"
 	"time"
 	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
+
+const openDeviceFlags = sys.O_RDWR | sys.O_NONBLOCK | sys.O_CLOEXEC
 
 // Device represents a V4L2 video device and provides high-level methods for video capture and streaming.
 // It encapsulates the low-level V4L2 API interactions and manages the device lifecycle including
@@ -54,9 +57,13 @@ type Device struct {
 	// requestedBuf contains the buffer request parameters negotiated with the driver
 	requestedBuf v4l2.RequestBuffers
 
-	// streaming indicates whether the device is currently streaming video data
+	// streaming indicates whether the capture loop is actively running.
 	// Use atomic operations to access this field for thread-safety
 	streaming atomic.Bool
+
+	// streamActive tracks whether Start() has initialized buffers/streaming on the device,
+	// independent of capture-loop exit so Stop()/Close() always release resources.
+	streamActive atomic.Bool
 
 	// streamingMode tracks which API is being used (0=none, 1=GetOutput, 2=GetFrames)
 	// This ensures mutual exclusivity between the two streaming approaches
@@ -143,11 +150,18 @@ type Device struct {
 //	    log.Fatal(err)
 //	}
 //	defer dev.Close()
-func Open(path string, options ...Option) (*Device, error) {
-	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+func Open(path string, options ...Option) (_ *Device, err error) {
+	fd, err := v4l2.OpenDevice(path, openDeviceFlags, 0)
 	if err != nil {
 		return nil, fmt.Errorf("device open: %w", err)
 	}
+	defer func() {
+		if err != nil {
+			if closeErr := v4l2.CloseDevice(fd); closeErr != nil {
+				err = errors.Join(err, fmt.Errorf("close device handle: %w", closeErr))
+			}
+		}
+	}()
 
 	dev := &Device{
 		path:      path,
@@ -165,9 +179,6 @@ func Open(path string, options ...Option) (*Device, error) {
 	// get capability
 	cap, err := v4l2.GetCapability(dev.fd)
 	if err != nil {
-		if err := v4l2.CloseDevice(dev.fd); err != nil {
-			return nil, fmt.Errorf("device %s: closing after failure: %s", path, err)
-		}
 		return nil, fmt.Errorf("device open: %s: %w", path, err)
 	}
 	dev.cap = cap
@@ -196,9 +207,6 @@ func Open(path string, options ...Option) (*Device, error) {
 	case cap.IsVideoOutputSupported():
 		dev.bufType = v4l2.BufTypeVideoOutput
 	default:
-		if err := v4l2.CloseDevice(dev.fd); err != nil {
-			return nil, fmt.Errorf("device open: %s: closing after failure: %s", path, err)
-		}
 		return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
 	}
 
@@ -256,12 +264,12 @@ func Open(path string, options ...Option) (*Device, error) {
 //
 // Returns an error if stopping the stream or closing the file descriptor fails.
 func (d *Device) Close() error {
-	if d.streaming.Load() {
-		if err := d.Stop(); err != nil {
-			return err
-		}
+	var stopErr error
+	if d.config.ioMethod != IOMethodReadWrite && (d.streaming.Load() || d.streamActive.Load() || len(d.buffers) > 0 || d.captureDone != nil) {
+		stopErr = d.Stop()
 	}
-	return v4l2.CloseDevice(d.fd)
+	closeErr := v4l2.CloseDevice(d.fd)
+	return errors.Join(stopErr, closeErr)
 }
 
 // AddDMABufferFDs provides DMA-BUF file descriptors for import mode.
@@ -1643,7 +1651,7 @@ func (d *Device) Start(ctx context.Context) error {
 		return fmt.Errorf("device: start stream: %s", v4l2.ErrorUnsupportedFeature)
 	}
 
-	if d.streaming.Load() {
+	if d.streaming.Load() || d.streamActive.Load() {
 		return fmt.Errorf("device: stream already started")
 	}
 
@@ -1652,6 +1660,7 @@ func (d *Device) Start(ctx context.Context) error {
 	// allocate device buffers
 	bufReq, err := v4l2.InitBuffers(d)
 	if err != nil {
+		d.streaming.Store(false)
 		return fmt.Errorf("device: requested buffer type not be supported: %w", err)
 	}
 
@@ -1665,10 +1674,12 @@ func (d *Device) Start(ctx context.Context) error {
 	case v4l2.IOTypeDMABuf:
 		if len(d.dmabufFDs) == 0 {
 			d.streaming.Store(false)
+			_, _ = v4l2.ResetBuffers(d)
 			return fmt.Errorf("device: DMA-BUF mode requires file descriptors via AddDMABufferFDs")
 		}
 		if len(d.dmabufFDs) < int(d.config.bufSize) {
 			d.streaming.Store(false)
+			_, _ = v4l2.ResetBuffers(d)
 			return fmt.Errorf("device: DMA-BUF mode requires %d fds, got %d", d.config.bufSize, len(d.dmabufFDs))
 		}
 		// mmap the DMA-BUF fds so capture loops can read frame data
@@ -1678,12 +1689,15 @@ func (d *Device) Start(ctx context.Context) error {
 				sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
 			if err != nil {
 				d.streaming.Store(false)
+				_ = d.releaseBuffers(true)
 				return fmt.Errorf("device: mmap dmabuf fd %d: %w", d.dmabufFDs[i], err)
 			}
 			d.buffers[i] = buf
 		}
 	default: // IOTypeMMAP
 		if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
+			d.streaming.Store(false)
+			_, _ = v4l2.ResetBuffers(d)
 			return fmt.Errorf("device: make mapped buffers: %s", err)
 		}
 	}
@@ -1695,16 +1709,19 @@ func (d *Device) Start(ctx context.Context) error {
 			ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
 			if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
 				d.streaming.Store(false)
+				_ = d.releaseBuffers(true)
 				return fmt.Errorf("device: buffer queueing: %w", err)
 			}
 		case v4l2.IOTypeDMABuf:
 			if _, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, uint32(i), d.dmabufFDs[i], d.config.pixFormat.SizeImage); err != nil {
 				d.streaming.Store(false)
+				_ = d.releaseBuffers(true)
 				return fmt.Errorf("device: buffer queueing: %w", err)
 			}
 		default:
 			if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
 				d.streaming.Store(false)
+				_ = d.releaseBuffers(true)
 				return fmt.Errorf("device: buffer queueing: %w", err)
 			}
 		}
@@ -1713,9 +1730,11 @@ func (d *Device) Start(ctx context.Context) error {
 	// Start the V4L2 stream
 	if err := v4l2.StreamOn(d); err != nil {
 		d.streaming.Store(false)
+		_ = d.releaseBuffers(true)
 		return fmt.Errorf("device: stream on: %w", err)
 	}
 
+	d.streamActive.Store(true)
 	// Create capture done channel for synchronization with Stop()
 	d.captureDone = make(chan struct{})
 	d.captureStarted.Store(false)
@@ -1724,17 +1743,48 @@ func (d *Device) Start(ctx context.Context) error {
 	return nil
 }
 
+// releaseBuffers unmaps memory-mapped buffers (MMAP/DMABuf) and optionally resets
+// kernel buffer allocations. USERPTR buffers are Go-managed slices and must not be munmapped.
+func (d *Device) releaseBuffers(resetDriver bool) error {
+	var errs []error
+	if len(d.buffers) > 0 {
+		switch d.config.ioType {
+		case v4l2.IOTypeMMAP, 0:
+			if err := v4l2.UnmapMemoryBuffers(d); err != nil {
+				errs = append(errs, err)
+			}
+		case v4l2.IOTypeDMABuf:
+			for _, buf := range d.buffers {
+				if buf != nil {
+					if err := sys.Munmap(buf); err != nil {
+						errs = append(errs, fmt.Errorf("unmap dmabuf buffer: %w", err))
+					}
+				}
+			}
+		case v4l2.IOTypeUserPtr:
+			// Application-allocated Go slices; released by GC.
+		}
+		d.buffers = nil
+	}
+	if resetDriver {
+		if _, err := v4l2.ResetBuffers(d); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
 // Stop halts video streaming and releases streaming resources. Only available in
 // streaming I/O mode. Returns an error if the device was opened with IOMethodReadWrite.
 // This method waits for the capture goroutine to exit, then unmaps buffers and stops the stream.
 //
 // The method ensures proper synchronization:
 //  1. Waits for the capture goroutine to exit (with 500ms timeout)
-//  2. Unmaps memory buffers (safe after goroutine exits)
-//  3. Stops the device stream
+//  2. Stops the device stream
+//  3. Unmaps memory buffers and resets driver buffer allocations
 //  4. Resets state for next Start()
 //
-// Safe to call multiple times - returns immediately if not streaming.
+// Safe to call multiple times - returns immediately if no stream or buffers are active.
 // Should always be called when done streaming to free resources.
 //
 // Returns an error if buffer unmapping or stream stopping fails.
@@ -1743,7 +1793,7 @@ func (d *Device) Stop() error {
 		return fmt.Errorf("device: Stop() not supported in read/write IO mode")
 	}
 
-	if !d.streaming.Load() {
+	if !d.streaming.Load() && !d.streamActive.Load() && len(d.buffers) == 0 && d.captureDone == nil {
 		return nil
 	}
 
@@ -1753,7 +1803,7 @@ func (d *Device) Stop() error {
 
 	// Wait for capture goroutine to exit before unmapping buffers
 	// This prevents segfaults from accessing unmapped memory
-	if d.captureDone != nil {
+	if d.captureStarted.Load() && d.captureDone != nil {
 		select {
 		case <-d.captureDone:
 			// Goroutine exited cleanly
@@ -1763,28 +1813,26 @@ func (d *Device) Stop() error {
 		}
 	}
 
-	switch d.config.ioType {
-	case v4l2.IOTypeMMAP:
-		if err := v4l2.UnmapMemoryBuffers(d); err != nil {
-			return fmt.Errorf("device: stop: %w", err)
-		}
-	case v4l2.IOTypeDMABuf:
-		// unmap the mmap'd views of DMA-BUF fds
-		for _, buf := range d.buffers {
-			if buf != nil {
-				sys.Munmap(buf)
-			}
+	streamWasActive := d.streamActive.Swap(false)
+
+	var errs []error
+	if streamWasActive {
+		if err := v4l2.StreamOff(d); err != nil {
+			errs = append(errs, fmt.Errorf("device: stop: %w", err))
 		}
 	}
-	if err := v4l2.StreamOff(d); err != nil {
-		return fmt.Errorf("device: stop: %w", err)
+	// Always unmap any mapped buffers even if StreamOff failed (e.g. device disconnect).
+	if err := d.releaseBuffers(streamWasActive); err != nil {
+		errs = append(errs, fmt.Errorf("device: stop: %w", err))
 	}
+
 	d.streamingMode.Store(0) // Reset mode to allow different API on next Start()
+	d.captureStarted.Store(false)
 	// Set channels to nil so they can be recreated on next Start()
 	// The goroutine will close them before exiting
 	d.output = nil
 	d.frames = nil
 	d.streamErr = nil
 	d.captureDone = nil
-	return nil
+	return errors.Join(errs...)
 }

@@ -2,9 +2,15 @@ package device
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
 
 // TestDevice_StructFields tests that all Device struct fields are accessible
@@ -949,4 +955,287 @@ func TestDevice_ExportBuffer_RejectsNonMMAP(t *testing.T) {
 			}
 		})
 	}
+}
+
+func countOpenFDs(t *testing.T) int {
+	t.Helper()
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Fatalf("failed to read /proc/self/fd: %v", err)
+	}
+	return len(entries)
+}
+
+func assertFDClosed(t *testing.T, fd uintptr) {
+	t.Helper()
+	_, err := sys.FcntlInt(fd, sys.F_GETFD, 0)
+	if !errors.Is(err, sys.EBADF) {
+		t.Errorf("fd %d still open (F_GETFD err = %v, want EBADF)", fd, err)
+	}
+}
+
+// TestDevice_Open_ClosesFDOnFailure verifies Open does not leak file descriptors when initialization fails.
+func TestDevice_Open_ClosesFDOnFailure(t *testing.T) {
+	before := countOpenFDs(t)
+	for i := 0; i < 10; i++ {
+		_, err := Open("/dev/null")
+		if err == nil {
+			t.Fatal("Open(/dev/null) expected error, got nil")
+		}
+	}
+	after := countOpenFDs(t)
+	if after != before {
+		t.Errorf("open fd count leaked: before=%d, after=%d", before, after)
+	}
+}
+
+// TestDevice_OpenFlags_CLOEXEC verifies device fds are opened with O_CLOEXEC and not inherited by child processes.
+func TestDevice_OpenFlags_CLOEXEC(t *testing.T) {
+	if openDeviceFlags&sys.O_CLOEXEC == 0 {
+		t.Fatal("openDeviceFlags must include O_CLOEXEC")
+	}
+
+	fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+	if err != nil {
+		t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+	}
+	defer v4l2.CloseDevice(fd)
+
+	flags, err := sys.FcntlInt(fd, sys.F_GETFD, 0)
+	if err != nil {
+		t.Fatalf("F_GETFD failed: %v", err)
+	}
+	if flags&sys.FD_CLOEXEC == 0 {
+		t.Errorf("FD_CLOEXEC not set on opened fd (flags=0x%x)", flags)
+	}
+
+	// Verify a spawned child process does not see this fd in /proc/self/fd.
+	fdStr := strconv.FormatUint(uint64(fd), 10)
+	cmd := exec.Command("sh", "-c", "test ! -e /proc/self/fd/"+fdStr)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Errorf("child process inherited fd %d: %v (%s)", fd, err, string(out))
+	}
+}
+
+// TestDevice_Close_ClosesFDWhenStopFails verifies Close still closes the fd even if Stop returns an error.
+func TestDevice_Close_ClosesFDWhenStopFails(t *testing.T) {
+	fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+	if err != nil {
+		t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+	}
+
+	dev := &Device{
+		fd:      fd,
+		bufType: v4l2.BufTypeVideoCapture,
+	}
+	dev.streaming.Store(true)
+	dev.streamActive.Store(true)
+
+	closeErr := dev.Close()
+	if closeErr == nil {
+		t.Error("Close() expected Stop error on /dev/null, got nil")
+	}
+	assertFDClosed(t, fd)
+}
+
+// TestDevice_StopAndClose_CleanupAfterContextCancel verifies mmap buffers and stream state
+// are released even when ctx cancellation cleared streaming before Stop() or Close().
+func TestDevice_StopAndClose_CleanupAfterContextCancel(t *testing.T) {
+	pageSize := os.Getpagesize()
+
+	allocAnonMmap := func(t *testing.T) []byte {
+		t.Helper()
+		b, err := sys.Mmap(-1, 0, pageSize, sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED|sys.MAP_ANONYMOUS)
+		if err != nil {
+			t.Fatalf("Mmap failed: %v", err)
+		}
+		return b
+	}
+
+	t.Run("Stop_MMAP_after_cancel", func(t *testing.T) {
+		fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+		if err != nil {
+			t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+		}
+		defer v4l2.CloseDevice(fd)
+
+		buf0 := allocAnonMmap(t)
+		buf1 := allocAnonMmap(t)
+
+		done := make(chan struct{})
+		close(done)
+
+		dev := &Device{
+			fd:          fd,
+			bufType:     v4l2.BufTypeVideoCapture,
+			config:      config{ioType: v4l2.IOTypeMMAP, bufSize: 2},
+			buffers:     [][]byte{buf0, buf1},
+			output:      make(chan []byte, 1),
+			streamErr:   make(chan error, 1),
+			captureDone: done,
+		}
+		// Simulate capture goroutine having exited on ctx.Done() before Stop() is called.
+		dev.streaming.Store(false)
+		dev.streamActive.Store(true)
+		dev.captureStarted.Store(true)
+
+		// Stop returns StreamOff/ResetBuffers ENOTTY on /dev/null, but must still unmap and reset state.
+		_ = dev.Stop()
+
+		if dev.buffers != nil {
+			t.Error("expected dev.buffers to be nil after Stop()")
+		}
+		if dev.streamActive.Load() {
+			t.Error("expected streamActive to be false after Stop()")
+		}
+		if dev.output != nil || dev.frames != nil || dev.streamErr != nil || dev.captureDone != nil {
+			t.Error("expected channels to be reset to nil after Stop()")
+		}
+		// Re-munmapping must fail with EINVAL because Stop() already unmapped the pages.
+		if err := sys.Munmap(buf0); !errors.Is(err, sys.EINVAL) {
+			t.Errorf("buf0 was not unmapped by Stop(): Munmap err = %v, want EINVAL", err)
+		}
+		if err := sys.Munmap(buf1); !errors.Is(err, sys.EINVAL) {
+			t.Errorf("buf1 was not unmapped by Stop(): Munmap err = %v, want EINVAL", err)
+		}
+	})
+
+	t.Run("Stop_DMABuf_after_cancel", func(t *testing.T) {
+		fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+		if err != nil {
+			t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+		}
+		defer v4l2.CloseDevice(fd)
+
+		buf := allocAnonMmap(t)
+		done := make(chan struct{})
+		close(done)
+
+		dev := &Device{
+			fd:          fd,
+			bufType:     v4l2.BufTypeVideoCapture,
+			config:      config{ioType: v4l2.IOTypeDMABuf, bufSize: 1},
+			buffers:     [][]byte{buf},
+			captureDone: done,
+		}
+		dev.streaming.Store(false)
+		dev.streamActive.Store(true)
+		dev.captureStarted.Store(true)
+
+		_ = dev.Stop()
+
+		if dev.buffers != nil {
+			t.Error("expected dev.buffers to be nil after Stop()")
+		}
+		if err := sys.Munmap(buf); !errors.Is(err, sys.EINVAL) {
+			t.Errorf("dmabuf view was not unmapped by Stop(): Munmap err = %v, want EINVAL", err)
+		}
+	})
+
+	t.Run("Stop_UserPtr_after_cancel_does_not_munmap", func(t *testing.T) {
+		fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+		if err != nil {
+			t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+		}
+		defer v4l2.CloseDevice(fd)
+
+		heapSlice := make([]byte, pageSize)
+		done := make(chan struct{})
+		close(done)
+
+		dev := &Device{
+			fd:          fd,
+			bufType:     v4l2.BufTypeVideoCapture,
+			config:      config{ioType: v4l2.IOTypeUserPtr, bufSize: 1},
+			buffers:     [][]byte{heapSlice},
+			captureDone: done,
+		}
+		dev.streaming.Store(false)
+		dev.streamActive.Store(true)
+		dev.captureStarted.Store(true)
+
+		_ = dev.Stop()
+
+		if dev.buffers != nil {
+			t.Error("expected dev.buffers to be nil after Stop()")
+		}
+		// Go heap slice must remain intact.
+		heapSlice[0] = 42
+		if heapSlice[0] != 42 {
+			t.Error("heapSlice corrupted")
+		}
+	})
+
+	t.Run("Close_MMAP_after_cancel_without_Stop", func(t *testing.T) {
+		fd, err := v4l2.OpenDevice("/dev/null", openDeviceFlags, 0)
+		if err != nil {
+			t.Fatalf("OpenDevice(/dev/null) failed: %v", err)
+		}
+
+		buf := allocAnonMmap(t)
+		done := make(chan struct{})
+		close(done)
+
+		dev := &Device{
+			fd:          fd,
+			bufType:     v4l2.BufTypeVideoCapture,
+			config:      config{ioType: v4l2.IOTypeMMAP, bufSize: 1},
+			buffers:     [][]byte{buf},
+			captureDone: done,
+		}
+		dev.streaming.Store(false)
+		dev.streamActive.Store(true)
+		dev.captureStarted.Store(true)
+
+		_ = dev.Close()
+
+		assertFDClosed(t, fd)
+		if err := sys.Munmap(buf); !errors.Is(err, sys.EINVAL) {
+			t.Errorf("buf was not unmapped by Close(): Munmap err = %v, want EINVAL", err)
+		}
+	})
+
+	t.Run("Stop_waits_for_captureDone_after_streaming_cleared", func(t *testing.T) {
+		buf := allocAnonMmap(t)
+		done := make(chan struct{})
+		goroutineExiting := make(chan struct{})
+
+		dev := &Device{
+			config:      config{ioType: v4l2.IOTypeMMAP, bufSize: 1},
+			buffers:     [][]byte{buf},
+			captureDone: done,
+		}
+		dev.streaming.Store(false)
+		dev.captureStarted.Store(true)
+
+		go func() {
+			defer close(done)
+			close(goroutineExiting)
+			time.Sleep(25 * time.Millisecond)
+			// Safe read of buffer before captureDone closes; Stop() must wait for done.
+			_ = dev.buffers[0][0]
+		}()
+
+		<-goroutineExiting
+		if err := dev.Stop(); err != nil {
+			t.Errorf("Stop() returned unexpected error: %v", err)
+		}
+		if dev.buffers != nil {
+			t.Error("expected dev.buffers to be nil after Stop()")
+		}
+	})
+
+	t.Run("Stop_without_capture_goroutine_does_not_block", func(t *testing.T) {
+		dev := &Device{
+			captureDone: make(chan struct{}),
+		}
+		dev.streaming.Store(true)
+		dev.captureStarted.Store(false)
+
+		start := time.Now()
+		_ = dev.Stop()
+		if elapsed := time.Since(start); elapsed >= 200*time.Millisecond {
+			t.Errorf("Stop() blocked for %v when capture goroutine never started", elapsed)
+		}
+	})
 }
