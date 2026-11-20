@@ -77,6 +77,16 @@ func ReadDevice(fd uintptr, buf []byte) (int, error) {
 	return n, nil
 }
 
+// WriteDevice writes frame data to a V4L2 output device using the write() syscall.
+// The device must support V4L2_CAP_READWRITE and V4L2_CAP_VIDEO_OUTPUT.
+func WriteDevice(fd uintptr, buf []byte) (int, error) {
+	n, err := sys.Write(int(fd), buf)
+	if err != nil {
+		return n, fmt.Errorf("write device: %w", err)
+	}
+	return n, nil
+}
+
 // ioctl is a wrapper for Syscall(SYS_IOCTL)
 func ioctl(fd, req, arg uintptr) (err sys.Errno) {
 	for {
@@ -110,15 +120,17 @@ func send(fd, req, arg uintptr) error {
 	}
 }
 
-// WaitForRead returns a channel that can be used to be notified when
-// a device is ready to be read. The goroutine will exit when the context
-// is cancelled, preventing goroutine leaks.
+// WaitForRead returns a channel that is notified when a device is ready to be read.
+// The goroutine exits when ctx is cancelled.
 func WaitForRead(ctx context.Context, dev Device) <-chan struct{} {
 	sigChan := make(chan struct{})
 
 	go func(fd uintptr) {
 		defer close(sigChan)
-		var fdsRead sys.FdSet
+		fds := []sys.PollFd{{
+			Fd:     int32(fd),
+			Events: sys.POLLIN,
+		}}
 		for {
 			select {
 			case <-ctx.Done():
@@ -126,17 +138,15 @@ func WaitForRead(ctx context.Context, dev Device) <-chan struct{} {
 			default:
 			}
 
-			fdsRead.Zero()
-			fdsRead.Set(int(fd))
-			// Use shorter timeout for more responsive shutdown
-			tv := sys.Timeval{Sec: 0, Usec: 100000} // 100ms
-			n, errno := sys.Select(int(fd+1), &fdsRead, nil, nil, &tv)
-			if errno == sys.EINTR {
-				continue
+			fds[0].Revents = 0
+			n, err := sys.Poll(fds, 100)
+			if err != nil {
+				if errors.Is(err, sys.EINTR) {
+					continue
+				}
+				return
 			}
-
 			if n == 0 {
-				// timeout, no data available
 				continue
 			}
 
