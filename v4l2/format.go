@@ -734,18 +734,7 @@ func (f PixFormat) GetBitsPerPixel() int {
 	}
 }
 
-// GetPixFormat retrieves pixel information for the specified driver (via v4l2_format and v4l2_pix_format)
-// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
-// and https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
-func GetPixFormat(fd uintptr) (PixFormat, error) {
-	var v4l2Format cV4L2Format
-	v4l2Format.Type = BufTypeVideoCapture
-
-	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
-		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
-	}
-
-	v4l2PixFmt := *(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
+func pixFormatFromC(v4l2PixFmt cV4L2PixFormat) PixFormat {
 	return PixFormat{
 		Width:        v4l2PixFmt.Width,
 		Height:       v4l2PixFmt.Height,
@@ -760,19 +749,15 @@ func GetPixFormat(fd uintptr) (PixFormat, error) {
 		HSVEnc:       v4l2PixFmt.Ycbcr_enc,
 		Quantization: v4l2PixFmt.Quantization,
 		XferFunc:     v4l2PixFmt.Xfer_func,
-	}, nil
+	}
 }
 
-// SetPixFormat sets the pixel format information for the specified driver
-// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
-func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
-	var v4l2Format cV4L2Format
-	v4l2Format.Type = BufTypeVideoCapture
+func pixFormatToC(pixFmt PixFormat) cV4L2PixFormat {
 	ycbcrEnc := pixFmt.YcbcrEnc
 	if ycbcrEnc == 0 {
 		ycbcrEnc = pixFmt.HSVEnc
 	}
-	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = cV4L2PixFormat{
+	return cV4L2PixFormat{
 		Width:        pixFmt.Width,
 		Height:       pixFmt.Height,
 		Pixelformat:  pixFmt.PixelFormat,
@@ -786,9 +771,60 @@ func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
 		Quantization: pixFmt.Quantization,
 		Xfer_func:    pixFmt.XferFunc,
 	}
+}
+
+// GetPixFormatByType retrieves single-planar pixel format information for the specified buffer type.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html
+func GetPixFormatByType(fd uintptr, bufType BufType) (PixFormat, error) {
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = bufType
+
+	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
+	}
+
+	v4l2PixFmt := *(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
+	return pixFormatFromC(v4l2PixFmt), nil
+}
+
+// GetPixFormat retrieves pixel information for the specified driver (via v4l2_format and v4l2_pix_format)
+// See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h#L2331
+// and https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
+func GetPixFormat(fd uintptr) (PixFormat, error) {
+	return GetPixFormatByType(fd, BufTypeVideoCapture)
+}
+
+// SetPixFormatByType sets single-planar pixel format information for the specified buffer type.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html
+func SetPixFormatByType(fd uintptr, bufType BufType, pixFmt PixFormat) error {
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = bufType
+	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatToC(pixFmt)
 
 	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
 		return fmt.Errorf("pix format failed: %w", err)
 	}
 	return nil
+}
+
+// SetPixFormat sets the pixel format information for the specified driver
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html#ioctl-vidioc-g-fmt-vidioc-s-fmt-vidioc-try-fmt
+func SetPixFormat(fd uintptr, pixFmt PixFormat) error {
+	return SetPixFormatByType(fd, BufTypeVideoCapture, pixFmt)
+}
+
+// TryPixFormat negotiates a single-planar pixel format without changing device state (VIDIOC_TRY_FMT).
+// Returns the driver-adjusted pixel format.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-fmt.html
+func TryPixFormat(fd uintptr, bufType BufType, pixFmt PixFormat) (PixFormat, error) {
+	var v4l2Format cV4L2Format
+	v4l2Format.Type = bufType
+	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatToC(pixFmt)
+
+	if err := send(fd, cVIDIOC_TRY_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+		return PixFormat{}, fmt.Errorf("try pix format failed: %w", err)
+	}
+
+	v4l2PixFmt := *(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0]))
+	return pixFormatFromC(v4l2PixFmt), nil
 }

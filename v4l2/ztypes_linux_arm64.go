@@ -6,6 +6,7 @@ package v4l2
 
 const (
 	cMEDIA_IOC_DEVICE_INFO      uintptr = 0xc1007c00
+	cVIDIOC_CREATE_BUFS         uintptr = 0xc100565c
 	cVIDIOC_CROPCAP             uintptr = 0xc02c563a
 	cVIDIOC_DECODER_CMD         uintptr = 0xc0485660
 	cVIDIOC_DQBUF               uintptr = 0xc0585611
@@ -25,6 +26,7 @@ const (
 	cVIDIOC_EXPBUF              uintptr = 0xc0405610
 	cVIDIOC_G_AUDIO             uintptr = 0x80345621
 	cVIDIOC_G_AUDOUT            uintptr = 0x80345631
+	cVIDIOC_G_CROP              uintptr = 0xc014563b
 	cVIDIOC_G_CTRL              uintptr = 0xc008561b
 	cVIDIOC_G_DV_TIMINGS        uintptr = 0xc0845658
 	cVIDIOC_G_EXT_CTRLS         uintptr = 0xc0205647
@@ -34,6 +36,7 @@ const (
 	cVIDIOC_G_MODULATOR         uintptr = 0xc0445636
 	cVIDIOC_G_OUTPUT            uintptr = 0x8004562e
 	cVIDIOC_G_PARM              uintptr = 0xc0cc5615
+	cVIDIOC_G_SELECTION         uintptr = 0xc040565e
 	cVIDIOC_G_STD               uintptr = 0x80085617
 	cVIDIOC_G_TUNER             uintptr = 0xc054561d
 	cVIDIOC_QBUF                uintptr = 0xc058560f
@@ -60,11 +63,13 @@ const (
 	cVIDIOC_S_MODULATOR         uintptr = 0x40445637
 	cVIDIOC_S_OUTPUT            uintptr = 0xc004562f
 	cVIDIOC_S_PARM              uintptr = 0xc0cc5616
+	cVIDIOC_S_SELECTION         uintptr = 0xc040565f
 	cVIDIOC_S_STD               uintptr = 0x40085618
 	cVIDIOC_S_TUNER             uintptr = 0x4054561e
 	cVIDIOC_TRY_DECODER_CMD     uintptr = 0xc0485661
 	cVIDIOC_TRY_ENCODER_CMD     uintptr = 0xc028564e
 	cVIDIOC_TRY_EXT_CTRLS       uintptr = 0xc0205649
+	cVIDIOC_TRY_FMT             uintptr = 0xc0d05640
 	cVIDIOC_UNSUBSCRIBE_EVENT   uintptr = 0x4020565b
 )
 
@@ -188,6 +193,17 @@ type cV4L2CaptureParm struct {
 type cV4L2Control struct {
 	Id    uint32
 	Value int32
+}
+type cV4L2CreateBuffers struct {
+	Index        uint32
+	Count        uint32
+	Memory       uint32
+	Pad_cgo_0    [4]byte
+	Format       cV4L2Format
+	Capabilities uint32
+	Flags        uint32
+	Num_buffers  uint32
+	Reserved     [5]uint32
 }
 type cV4L2Crop struct {
 	Type uint32
@@ -412,6 +428,32 @@ type cV4L2PixFormat struct {
 	Quantization uint32
 	Xfer_func    uint32
 }
+type cV4L2PlanePixFormat struct {
+	Sizeimage    uint32
+	Bytesperline uint32
+	Reserved     [6]uint16
+}
+type cV4L2PixFormatMPlane struct {
+	Width        uint32
+	Height       uint32
+	Pixelformat  uint32
+	Field        uint32
+	Colorspace   uint32
+	Plane_fmt    [8]cV4L2PlanePixFormat
+	Num_planes   uint8
+	Flags        uint8
+	Ycbcr_enc    uint8
+	Quantization uint8
+	Xfer_func    uint8
+	Reserved     [7]uint8
+}
+type cV4L2Plane struct {
+	Bytesused uint32
+	Length    uint32
+	M         [8]byte
+	Offset    uint32
+	Reserved  [11]uint32
+}
 type cV4L2QueryCtrl struct {
 	Id       uint32
 	Type     uint32
@@ -451,6 +493,13 @@ type cV4L2RequestBuffers struct {
 	Capabilities uint32
 	Flags        uint8
 	Reserved     [3]uint8
+}
+type cV4L2Selection struct {
+	Type     uint32
+	Target   uint32
+	Flags    uint32
+	R        cV4L2Rect
+	Reserved [9]uint32
 }
 type cV4L2Standard struct {
 	Index       uint32

@@ -1,7 +1,9 @@
 package v4l2
 
 import (
+	"encoding/binary"
 	"fmt"
+	"runtime"
 	"unsafe"
 
 	sys "golang.org/x/sys/unix"
@@ -32,6 +34,32 @@ const (
 	// BufTypeOverlay is for video overlay buffers.
 	// Used for hardware overlay onto a display.
 	BufTypeOverlay BufType = cV4L2_BUF_TYPE_VIDEO_OVERLAY
+
+	// BufTypeVideoCaptureMPlane is for multi-planar video capture buffers.
+	BufTypeVideoCaptureMPlane BufType = cV4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE
+
+	// BufTypeVideoOutputMPlane is for multi-planar video output buffers.
+	BufTypeVideoOutputMPlane BufType = cV4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE
+
+	// BufTypeMetaCapture is for metadata capture buffers.
+	BufTypeMetaCapture BufType = cV4L2_BUF_TYPE_META_CAPTURE
+
+	// BufTypeMetaOutput is for metadata output buffers.
+	BufTypeMetaOutput BufType = cV4L2_BUF_TYPE_META_OUTPUT
+)
+
+// IsMultiPlanar reports whether bufType uses the multi-planar V4L2 API.
+func IsMultiPlanar(bufType BufType) bool {
+	return bufType == BufTypeVideoCaptureMPlane || bufType == BufTypeVideoOutputMPlane
+}
+
+// Buffer capability flags returned in RequestBuffers.Capabilities and CreateBuffersResult.Capabilities.
+const (
+	BufCapSupportsMMAP         uint32 = cV4L2_BUF_CAP_SUPPORTS_MMAP
+	BufCapSupportsUserPtr      uint32 = cV4L2_BUF_CAP_SUPPORTS_USERPTR
+	BufCapSupportsDMABuf       uint32 = cV4L2_BUF_CAP_SUPPORTS_DMABUF
+	BufCapSupportsRequests     uint32 = cV4L2_BUF_CAP_SUPPORTS_REQUESTS
+	BufCapSupportsOrphanedBufs uint32 = cV4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS
 )
 
 // IOType specifies the I/O method for transferring data between userspace and the V4L2 device.
@@ -117,7 +145,14 @@ const (
 	BufFlagRequestFD           BufFlag = cV4L2_BUF_FLAG_REQUEST_FD
 )
 
-// TODO implement vl42_create_buffers
+// CreateBuffersResult holds the driver response from VIDIOC_CREATE_BUFS (v4l2_create_buffers).
+type CreateBuffersResult struct {
+	Index        uint32
+	Count        uint32
+	Capabilities uint32
+	Flags        uint32
+	NumBuffers   uint32
+}
 
 // RequestBuffers (v4l2_requestbuffers) is used to request buffer allocation initializing
 // streaming for memory mapped, user pointer, or DMA buffer access.
@@ -145,15 +180,59 @@ type Buffer struct {
 	Timecode  Timecode
 	Sequence  uint32
 	Memory    uint32
-	Info      BufferInfo // union m
+	Info      BufferInfo // union m (single-planar)
+	Planes    []Plane    // multi-planar plane descriptors (when IsMultiPlanar(Type))
 	Length    uint32
 	Reserved2 uint32
 	RequestFD int32
 }
 
+func decodeBufferInfo(memory uint32, m [8]byte) BufferInfo {
+	var info BufferInfo
+	switch memory {
+	case IOTypeUserPtr:
+		info.UserPtr = uintptr(binary.NativeEndian.Uint64(m[:]))
+	case IOTypeDMABuf:
+		info.FD = int32(binary.NativeEndian.Uint32(m[:4]))
+	default:
+		info.Offset = binary.NativeEndian.Uint32(m[:4])
+	}
+	return info
+}
+
+func decodePlaneInfo(memory uint32, m [8]byte) PlaneInfo {
+	var info PlaneInfo
+	switch memory {
+	case IOTypeUserPtr:
+		info.UserPtr = uintptr(binary.NativeEndian.Uint64(m[:]))
+	case IOTypeDMABuf:
+		info.FD = int32(binary.NativeEndian.Uint32(m[:4]))
+	default:
+		info.MemOffset = binary.NativeEndian.Uint32(m[:4])
+	}
+	return info
+}
+
+func encodePlaneInfo(memory uint32, info PlaneInfo) [8]byte {
+	var m [8]byte
+	switch memory {
+	case IOTypeUserPtr:
+		binary.NativeEndian.PutUint64(m[:], uint64(info.UserPtr))
+	case IOTypeDMABuf:
+		binary.NativeEndian.PutUint32(m[:4], uint32(info.FD))
+	default:
+		binary.NativeEndian.PutUint32(m[:4], info.MemOffset)
+	}
+	return m
+}
+
 // makeBuffer makes a Buffer value from cV4L2Buffer
 func makeBuffer(v4l2Buf cV4L2Buffer) Buffer {
-	return Buffer{
+	return makeBufferWithPlanes(v4l2Buf, nil)
+}
+
+func makeBufferWithPlanes(v4l2Buf cV4L2Buffer, cPlanes []cV4L2Plane) Buffer {
+	buf := Buffer{
 		Index:     v4l2Buf.Index,
 		Type:      v4l2Buf.Type,
 		BytesUsed: v4l2Buf.Bytesused,
@@ -163,11 +242,31 @@ func makeBuffer(v4l2Buf cV4L2Buffer) Buffer {
 		Timecode:  *(*Timecode)(unsafe.Pointer(&v4l2Buf.Timecode)),
 		Sequence:  v4l2Buf.Sequence,
 		Memory:    v4l2Buf.Memory,
-		Info:      *(*BufferInfo)(unsafe.Pointer(&v4l2Buf.M[0])),
 		Length:    v4l2Buf.Length,
 		Reserved2: v4l2Buf.Reserved2,
 		RequestFD: v4l2Buf.Fd,
 	}
+	if IsMultiPlanar(v4l2Buf.Type) && len(cPlanes) > 0 {
+		n := int(v4l2Buf.Length)
+		if n > len(cPlanes) {
+			n = len(cPlanes)
+		}
+		buf.Planes = make([]Plane, n)
+		for i := 0; i < n; i++ {
+			buf.Planes[i] = Plane{
+				BytesUsed:  cPlanes[i].Bytesused,
+				Length:     cPlanes[i].Length,
+				Info:       decodePlaneInfo(v4l2Buf.Memory, cPlanes[i].M),
+				DataOffset: cPlanes[i].Offset,
+			}
+		}
+		if len(buf.Planes) > 0 {
+			buf.Info.Planes = &buf.Planes[0]
+		}
+	} else {
+		buf.Info = decodeBufferInfo(v4l2Buf.Memory, v4l2Buf.M)
+	}
+	return buf
 }
 
 // BufferInfo represents Union of several values in type Buffer
@@ -390,20 +489,28 @@ func QueueBufferDMABuf(fd uintptr, bufType BufType, index uint32, dmabufFD int32
 	return makeBuffer(v4l2Buf), nil
 }
 
-// ExportBuffer exports a V4L2 buffer as a DMA-BUF file descriptor.
-// The buffer must have been allocated with MMAP. The returned fd can be
-// passed to other subsystems (GPU, DRM, other V4L2 devices).
+// ExportBufferPlane exports a specific plane of a V4L2 buffer as a DMA-BUF file descriptor (VIDIOC_EXPBUF).
+// For single-planar buffers, pass plane = 0.
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-expbuf.html
-func ExportBuffer(devFD uintptr, bufType BufType, index uint32, flags uint32) (int32, error) {
+func ExportBufferPlane(devFD uintptr, bufType BufType, index, plane, flags uint32) (int32, error) {
 	var exp cV4L2ExportBuffer
 	exp.Type = bufType
 	exp.Index = index
+	exp.Plane = plane
 	exp.Flags = flags
 
 	if err := send(devFD, cVIDIOC_EXPBUF, uintptr(unsafe.Pointer(&exp))); err != nil {
 		return 0, fmt.Errorf("export buffer: %w", err)
 	}
 	return exp.Fd, nil
+}
+
+// ExportBuffer exports a V4L2 buffer as a DMA-BUF file descriptor.
+// The buffer must have been allocated with MMAP. The returned fd can be
+// passed to other subsystems (GPU, DRM, other V4L2 devices).
+// https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-expbuf.html
+func ExportBuffer(devFD uintptr, bufType BufType, index uint32, flags uint32) (int32, error) {
+	return ExportBufferPlane(devFD, bufType, index, 0, flags)
 }
 
 // DequeueBuffer dequeues a buffer in the device driver, marking it as consumed by the application,
@@ -421,4 +528,207 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	}
 
 	return makeBuffer(v4l2Buf), nil
+}
+
+// DequeueBufferMPlane dequeues a multi-planar buffer (VIDIOC_DQBUF) with space for numPlanes planes.
+// numPlanes must be in [1, MaxPlanes].
+func DequeueBufferMPlane(fd uintptr, ioType IOType, bufType BufType, numPlanes uint32) (Buffer, error) {
+	if !IsMultiPlanar(bufType) {
+		return Buffer{}, fmt.Errorf("buffer dequeue mplane: buffer type %d is not multi-planar", bufType)
+	}
+	if numPlanes == 0 || numPlanes > MaxPlanes {
+		return Buffer{}, fmt.Errorf("buffer dequeue mplane: invalid plane count %d", numPlanes)
+	}
+
+	cPlanes := make([]cV4L2Plane, numPlanes)
+	var pinner runtime.Pinner
+	pinner.Pin(&cPlanes[0])
+	defer func() {
+		pinner.Unpin()
+		runtime.KeepAlive(cPlanes)
+	}()
+
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = ioType
+	v4l2Buf.Length = numPlanes
+	binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+
+	if err := send(fd, cVIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("buffer dequeue mplane: %w", err)
+	}
+
+	return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
+}
+
+// StreamOnType starts streaming for the specified buffer type directly on fd (VIDIOC_STREAMON).
+func StreamOnType(fd uintptr, bufType BufType) error {
+	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+		return fmt.Errorf("stream on: %w", err)
+	}
+	return nil
+}
+
+// StreamOffType stops streaming for the specified buffer type directly on fd (VIDIOC_STREAMOFF).
+func StreamOffType(fd uintptr, bufType BufType) error {
+	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+		return fmt.Errorf("stream off: %w", err)
+	}
+	return nil
+}
+
+// RequestBuffersForType requests count buffers for bufType and ioType directly on fd (VIDIOC_REQBUFS).
+// Pass count = 0 to free/orphan previously allocated buffers.
+func RequestBuffersForType(fd uintptr, bufType BufType, ioType IOType, count uint32) (RequestBuffers, error) {
+	var req cV4L2RequestBuffers
+	req.Count = count
+	req.Type = bufType
+	req.Memory = ioType
+
+	if err := send(fd, cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
+	}
+
+	return *(*RequestBuffers)(unsafe.Pointer(&req)), nil
+}
+
+// CreateBuffers dynamically allocates additional buffers for bufType and ioType (VIDIOC_CREATE_BUFS).
+// For single-planar buffer types, provide pixFmt; for multi-planar buffer types, provide pixFmtMPlane.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-create-bufs.html
+func CreateBuffers(fd uintptr, count uint32, ioType IOType, bufType BufType, pixFmt *PixFormat, pixFmtMPlane *PixFormatMPlane) (CreateBuffersResult, error) {
+	var cb cV4L2CreateBuffers
+	cb.Count = count
+	cb.Memory = ioType
+	cb.Format.Type = bufType
+
+	if IsMultiPlanar(bufType) {
+		if pixFmtMPlane == nil {
+			return CreateBuffersResult{}, fmt.Errorf("create buffers: multi-planar buffer type %d requires pixFmtMPlane", bufType)
+		}
+		*(*cV4L2PixFormatMPlane)(unsafe.Pointer(&cb.Format.Fmt[0])) = pixFormatMPlaneToC(*pixFmtMPlane)
+	} else {
+		if pixFmt == nil {
+			return CreateBuffersResult{}, fmt.Errorf("create buffers: single-planar buffer type %d requires pixFmt", bufType)
+		}
+		*(*cV4L2PixFormat)(unsafe.Pointer(&cb.Format.Fmt[0])) = pixFormatToC(*pixFmt)
+	}
+
+	if err := send(fd, cVIDIOC_CREATE_BUFS, uintptr(unsafe.Pointer(&cb))); err != nil {
+		return CreateBuffersResult{}, fmt.Errorf("create buffers: %w", err)
+	}
+
+	return CreateBuffersResult{
+		Index:        cb.Index,
+		Count:        cb.Count,
+		Capabilities: cb.Capabilities,
+		Flags:        cb.Flags,
+		NumBuffers:   cb.Num_buffers,
+	}, nil
+}
+
+// QueryBuffer queries buffer metadata at index for bufType and ioType (VIDIOC_QUERYBUF).
+// For multi-planar buffer types, numPlanes must be in [1, MaxPlanes]; for single-planar types it is ignored.
+func QueryBuffer(fd uintptr, bufType BufType, ioType IOType, index uint32, numPlanes uint32) (Buffer, error) {
+	var v4l2Buf cV4L2Buffer
+	v4l2Buf.Type = bufType
+	v4l2Buf.Memory = ioType
+	v4l2Buf.Index = index
+
+	if IsMultiPlanar(bufType) {
+		if numPlanes == 0 || numPlanes > MaxPlanes {
+			return Buffer{}, fmt.Errorf("query buffer: invalid plane count %d", numPlanes)
+		}
+		cPlanes := make([]cV4L2Plane, numPlanes)
+		var pinner runtime.Pinner
+		pinner.Pin(&cPlanes[0])
+		defer func() {
+			pinner.Unpin()
+			runtime.KeepAlive(cPlanes)
+		}()
+
+		v4l2Buf.Length = numPlanes
+		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+
+		if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+			return Buffer{}, fmt.Errorf("query buffer: %w", err)
+		}
+		return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
+	}
+
+	if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("query buffer: %w", err)
+	}
+	return makeBuffer(v4l2Buf), nil
+}
+
+// QueueBufferWith enqueues a buffer with full caller control over v4l2_buffer metadata and planes (VIDIOC_QBUF).
+// Supports both single-planar and multi-planar buffer types across MMAP, USERPTR, and DMABUF memory modes.
+func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
+	v4l2Buf := cV4L2Buffer{
+		Index:     buf.Index,
+		Type:      buf.Type,
+		Bytesused: buf.BytesUsed,
+		Flags:     buf.Flags,
+		Field:     buf.Field,
+		Timestamp: cTimeval{Sec: buf.Timestamp.Sec, Usec: buf.Timestamp.Usec},
+		Timecode:  *(*cV4L2Timecode)(unsafe.Pointer(&buf.Timecode)),
+		Memory:    buf.Memory,
+		Length:    buf.Length,
+		Reserved2: buf.Reserved2,
+		Fd:        buf.RequestFD,
+	}
+
+	if IsMultiPlanar(buf.Type) {
+		if len(buf.Planes) == 0 || len(buf.Planes) > MaxPlanes {
+			return Buffer{}, fmt.Errorf("buffer queue: invalid plane count %d", len(buf.Planes))
+		}
+		cPlanes := make([]cV4L2Plane, len(buf.Planes))
+		for i, p := range buf.Planes {
+			cPlanes[i] = cV4L2Plane{
+				Bytesused: p.BytesUsed,
+				Length:    p.Length,
+				M:         encodePlaneInfo(buf.Memory, p.Info),
+				Offset:    p.DataOffset,
+			}
+		}
+
+		var pinner runtime.Pinner
+		pinner.Pin(&cPlanes[0])
+		defer func() {
+			pinner.Unpin()
+			runtime.KeepAlive(cPlanes)
+		}()
+
+		v4l2Buf.Length = uint32(len(cPlanes))
+		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+
+		if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+			return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+		}
+		return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
+	}
+
+	switch buf.Memory {
+	case IOTypeUserPtr:
+		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(buf.Info.UserPtr))
+	case IOTypeDMABuf:
+		binary.NativeEndian.PutUint32(v4l2Buf.M[:4], uint32(buf.Info.FD))
+	default:
+		binary.NativeEndian.PutUint32(v4l2Buf.M[:4], buf.Info.Offset)
+	}
+
+	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+	}
+	return makeBuffer(v4l2Buf), nil
+}
+
+// MapMemoryBuffer maps a V4L2 MMAP buffer plane at offset with length into process memory.
+func MapMemoryBuffer(fd uintptr, offset int64, length int) ([]byte, error) {
+	return mapMemoryBuffer(fd, offset, length)
+}
+
+// UnmapMemoryBuffer unmaps a buffer previously mapped by MapMemoryBuffer.
+func UnmapMemoryBuffer(buf []byte) error {
+	return unmapMemoryBuffer(buf)
 }

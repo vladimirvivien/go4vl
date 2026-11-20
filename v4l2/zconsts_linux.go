@@ -9,6 +9,11 @@ const (
 	cV4L2_BAND_MODULATION_AM                          = 0x8
 	cV4L2_BAND_MODULATION_FM                          = 0x4
 	cV4L2_BAND_MODULATION_VSB                         = 0x2
+	cV4L2_BUF_CAP_SUPPORTS_DMABUF                     = 0x4
+	cV4L2_BUF_CAP_SUPPORTS_MMAP                       = 0x1
+	cV4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS              = 0x10
+	cV4L2_BUF_CAP_SUPPORTS_REQUESTS                   = 0x8
+	cV4L2_BUF_CAP_SUPPORTS_USERPTR                    = 0x2
 	cV4L2_BUF_FLAG_BFRAME                             = 0x20
 	cV4L2_BUF_FLAG_DONE                               = 0x4
 	cV4L2_BUF_FLAG_ERROR                              = 0x40
@@ -31,8 +36,12 @@ const (
 	cV4L2_BUF_FLAG_TSTAMP_SRC_EOF                     = 0x0
 	cV4L2_BUF_FLAG_TSTAMP_SRC_MASK                    = 0x70000
 	cV4L2_BUF_FLAG_TSTAMP_SRC_SOE                     = 0x10000
+	cV4L2_BUF_TYPE_META_CAPTURE                       = 0xd
+	cV4L2_BUF_TYPE_META_OUTPUT                        = 0xe
 	cV4L2_BUF_TYPE_VIDEO_CAPTURE                      = 0x1
+	cV4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE               = 0x9
 	cV4L2_BUF_TYPE_VIDEO_OUTPUT                       = 0x2
+	cV4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE                = 0xa
 	cV4L2_BUF_TYPE_VIDEO_OVERLAY                      = 0x3
 	cV4L2_CAP_ASYNCIO                                 = 0x2000000
 	cV4L2_CAP_AUDIO                                   = 0x20000
@@ -639,4 +648,18 @@ const (
 	cV4L2_YCBCR_ENC_SYCC                              = 0x5
 	cV4L2_YCBCR_ENC_XV601                             = 0x3
 	cV4L2_YCBCR_ENC_XV709                             = 0x4
+	cV4L2_SEL_FLAG_GE                                 = 0x1
+	cV4L2_SEL_FLAG_KEEP_CONFIG                        = 0x4
+	cV4L2_SEL_FLAG_LE                                 = 0x2
+	cV4L2_SEL_TGT_COMPOSE                             = 0x100
+	cV4L2_SEL_TGT_COMPOSE_ACTIVE                      = 0x100
+	cV4L2_SEL_TGT_COMPOSE_BOUNDS                      = 0x102
+	cV4L2_SEL_TGT_COMPOSE_DEFAULT                     = 0x101
+	cV4L2_SEL_TGT_COMPOSE_PADDED                      = 0x103
+	cV4L2_SEL_TGT_CROP                                = 0x0
+	cV4L2_SEL_TGT_CROP_ACTIVE                         = 0x0
+	cV4L2_SEL_TGT_CROP_BOUNDS                         = 0x2
+	cV4L2_SEL_TGT_CROP_DEFAULT                        = 0x1
+	cV4L2_SEL_TGT_NATIVE_SIZE                         = 0x3
+	cVIDEO_MAX_PLANES                                 = 0x8
 )

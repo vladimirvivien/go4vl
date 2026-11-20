@@ -34,17 +34,35 @@ func GetCropCapability(fd uintptr, bufType BufType) (CropCapability, error) {
 	}, nil
 }
 
-// SetCropRect sets the cropping dimension for specified device
-// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html#ioctl-vidioc-g-crop-vidioc-s-crop
-func SetCropRect(fd uintptr, r Rect) error {
+// GetCropRect retrieves the current cropping rectangle for the specified buffer type.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html
+func GetCropRect(fd uintptr, bufType BufType) (Rect, error) {
 	var crop cV4L2Crop
-	crop.Type = BufTypeVideoCapture
+	crop.Type = bufType
+
+	if err := send(fd, cVIDIOC_G_CROP, uintptr(unsafe.Pointer(&crop))); err != nil {
+		return Rect{}, fmt.Errorf("get crop: %w", err)
+	}
+	return Rect(crop.C), nil
+}
+
+// SetCropRectByType sets the cropping rectangle for the specified buffer type.
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html#ioctl-vidioc-g-crop-vidioc-s-crop
+func SetCropRectByType(fd uintptr, bufType BufType, r Rect) error {
+	var crop cV4L2Crop
+	crop.Type = bufType
 	crop.C = cV4L2Rect(r)
 
 	if err := send(fd, cVIDIOC_S_CROP, uintptr(unsafe.Pointer(&crop))); err != nil {
 		return fmt.Errorf("set crop: %w", err)
 	}
 	return nil
+}
+
+// SetCropRect sets the cropping dimension for specified device
+// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-g-crop.html#ioctl-vidioc-g-crop-vidioc-s-crop
+func SetCropRect(fd uintptr, r Rect) error {
+	return SetCropRectByType(fd, BufTypeVideoCapture, r)
 }
 
 func (c CropCapability) String() string {

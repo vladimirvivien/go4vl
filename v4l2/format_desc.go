@@ -74,29 +74,30 @@ func makeFormatDescription(fmtDesc cV4L2FmtDesc) FormatDescription {
 	}
 }
 
-// GetFormatDescription returns a device format description at index
-func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
+// GetFormatDescriptionByType returns a device format description at index for the specified buffer type.
+func GetFormatDescriptionByType(fd uintptr, bufType BufType, index uint32) (FormatDescription, error) {
 	var fmtDesc cV4L2FmtDesc
 	fmtDesc.Index = index
-	fmtDesc.Type = BufTypeVideoCapture
+	fmtDesc.Type = bufType
 
 	if err := send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
-
 	}
 	return makeFormatDescription(fmtDesc), nil
 }
 
-// GetAllFormatDescriptions attempts to retrieve all device format descriptions by
-// iterating from 0 up to an index that returns an error. At that point, the function
-// will return the collected descriptions and the error.
-// So if len(result) > 0, then error could be ignored.
-func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
+// GetFormatDescription returns a device format description at index
+func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
+	return GetFormatDescriptionByType(fd, BufTypeVideoCapture, index)
+}
+
+// GetAllFormatDescriptionsByType retrieves all supported format descriptions for the specified buffer type.
+func GetAllFormatDescriptionsByType(fd uintptr, bufType BufType) (result []FormatDescription, err error) {
 	index := uint32(0)
 	for {
 		var fmtDesc cV4L2FmtDesc
 		fmtDesc.Index = index
-		fmtDesc.Type = BufTypeVideoCapture
+		fmtDesc.Type = bufType
 
 		if err = send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
@@ -108,6 +109,14 @@ func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error
 		index++
 	}
 	return result, nil
+}
+
+// GetAllFormatDescriptions attempts to retrieve all device format descriptions by
+// iterating from 0 up to an index that returns an error. At that point, the function
+// will return the collected descriptions and the error.
+// So if len(result) > 0, then error could be ignored.
+func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error) {
+	return GetAllFormatDescriptionsByType(fd, BufTypeVideoCapture)
 }
 
 // GetFormatDescriptionByEncoding returns a FormatDescription that matches the specified encoded pixel format

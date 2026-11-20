@@ -11,6 +11,8 @@
 
 * [device_info](./device_info) - Uses go4vl to query and print device and format information.
 * [format](./format) - Shows how to query and apply device and format information.
+* [mplane_capture](./mplane_capture/) - Query and negotiate multi-planar (`MPLANE`) formats, plane buffers, and DMA-BUF plane export.
+* [selection_crop](./selection_crop/) - Query and set V4L2 selection rectangles (`VIDIOC_G_SELECTION` / `VIDIOC_S_SELECTION`).
 * [video_inputs](./video_inputs/) - Enumerate and select video inputs (for devices with multiple inputs).
 * [video_outputs](./video_outputs/) - Enumerate and select video outputs (for output devices and v4l2loopback).
 * [audio_inputs](./audio_inputs/) - Enumerate and select audio inputs (for webcams with mics, TV tuner cards).

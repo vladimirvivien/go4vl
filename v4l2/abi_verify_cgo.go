@@ -52,6 +52,21 @@ static size_t offsetof_v4l2_decoder_cmd_stop(void) {
 static size_t offsetof_v4l2_querymenu_name(void) {
 	return offsetof(struct v4l2_querymenu, name);
 }
+static size_t offsetof_v4l2_plane_m(void) {
+	return offsetof(struct v4l2_plane, m);
+}
+static size_t offsetof_v4l2_plane_data_offset(void) {
+	return offsetof(struct v4l2_plane, data_offset);
+}
+static size_t offsetof_v4l2_pix_format_mplane_num_planes(void) {
+	return offsetof(struct v4l2_pix_format_mplane, num_planes);
+}
+static size_t offsetof_v4l2_create_buffers_format(void) {
+	return offsetof(struct v4l2_create_buffers, format);
+}
+static size_t offsetof_v4l2_selection_r(void) {
+	return offsetof(struct v4l2_selection, r);
+}
 */
 import "C"
 
@@ -82,6 +97,7 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"cV4L2CaptureParm":     uintptr(C.sizeof_struct_v4l2_captureparm),
 		"CaptureParam":         uintptr(C.sizeof_struct_v4l2_captureparm),
 		"cV4L2Control":         uintptr(C.sizeof_struct_v4l2_control),
+		"cV4L2CreateBuffers":   uintptr(C.sizeof_struct_v4l2_create_buffers),
 		"cV4L2Crop":            uintptr(C.sizeof_struct_v4l2_crop),
 		"cV4L2CropCap":         uintptr(C.sizeof_struct_v4l2_cropcap),
 		"cV4L2DecoderCmd":      uintptr(C.sizeof_struct_v4l2_decoder_cmd),
@@ -117,11 +133,15 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"cV4L2OutputParm":      uintptr(C.sizeof_struct_v4l2_outputparm),
 		"OutputParam":          uintptr(C.sizeof_struct_v4l2_outputparm),
 		"cV4L2PixFormat":       uintptr(C.sizeof_struct_v4l2_pix_format),
+		"cV4L2PlanePixFormat":  uintptr(C.sizeof_struct_v4l2_plane_pix_format),
+		"cV4L2PixFormatMPlane": uintptr(C.sizeof_struct_v4l2_pix_format_mplane),
+		"cV4L2Plane":           uintptr(C.sizeof_struct_v4l2_plane),
 		"cV4L2QueryCtrl":       uintptr(C.sizeof_struct_v4l2_queryctrl),
 		"cV4L2QueryExtCtrl":    uintptr(C.sizeof_struct_v4l2_query_ext_ctrl),
 		"cV4L2QueryMenu":       uintptr(C.sizeof_struct_v4l2_querymenu),
 		"cV4L2RequestBuffers":  uintptr(C.sizeof_struct_v4l2_requestbuffers),
 		"RequestBuffers":       uintptr(C.sizeof_struct_v4l2_requestbuffers),
+		"cV4L2Selection":       uintptr(C.sizeof_struct_v4l2_selection),
 		"cV4L2Standard":        uintptr(C.sizeof_struct_v4l2_standard),
 		"cV4L2StreamParm":      uintptr(C.sizeof_struct_v4l2_streamparm),
 		"cV4L2Tuner":           uintptr(C.sizeof_struct_v4l2_tuner),
@@ -148,7 +168,12 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 		"cV4L2DVTimings.Pad_cgo_0":    uintptr(C.offsetof_v4l2_dv_timings_bt()),
 		"cV4L2DVTimingsCap.Bt":        uintptr(C.offsetof_v4l2_dv_timings_cap_bt()),
 		"cV4L2DecoderCmd.Stop":        uintptr(C.offsetof_v4l2_decoder_cmd_stop()),
-		"cV4L2QueryMenu.Name":         uintptr(C.offsetof_v4l2_querymenu_name()),
+		"cV4L2QueryMenu.Name":              uintptr(C.offsetof_v4l2_querymenu_name()),
+		"cV4L2Plane.M":                     uintptr(C.offsetof_v4l2_plane_m()),
+		"cV4L2Plane.Offset":                uintptr(C.offsetof_v4l2_plane_data_offset()),
+		"cV4L2PixFormatMPlane.Num_planes":  uintptr(C.offsetof_v4l2_pix_format_mplane_num_planes()),
+		"cV4L2CreateBuffers.Format":        uintptr(C.offsetof_v4l2_create_buffers_format()),
+		"cV4L2Selection.R":                 uintptr(C.offsetof_v4l2_selection_r()),
 	}
 	out := make([]abiPair, 0, len(goOffsets))
 	for name, got := range goOffsets {
@@ -160,6 +185,7 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 func cIoctlChecks() []abiPair {
 	return []abiPair{
 		{"cMEDIA_IOC_DEVICE_INFO", cMEDIA_IOC_DEVICE_INFO, uintptr(C.MEDIA_IOC_DEVICE_INFO)},
+		{"cVIDIOC_CREATE_BUFS", cVIDIOC_CREATE_BUFS, uintptr(C.VIDIOC_CREATE_BUFS)},
 		{"cVIDIOC_CROPCAP", cVIDIOC_CROPCAP, uintptr(C.VIDIOC_CROPCAP)},
 		{"cVIDIOC_DECODER_CMD", cVIDIOC_DECODER_CMD, uintptr(C.VIDIOC_DECODER_CMD)},
 		{"cVIDIOC_DQBUF", cVIDIOC_DQBUF, uintptr(C.VIDIOC_DQBUF)},
@@ -179,6 +205,7 @@ func cIoctlChecks() []abiPair {
 		{"cVIDIOC_EXPBUF", cVIDIOC_EXPBUF, uintptr(C.VIDIOC_EXPBUF)},
 		{"cVIDIOC_G_AUDIO", cVIDIOC_G_AUDIO, uintptr(C.VIDIOC_G_AUDIO)},
 		{"cVIDIOC_G_AUDOUT", cVIDIOC_G_AUDOUT, uintptr(C.VIDIOC_G_AUDOUT)},
+		{"cVIDIOC_G_CROP", cVIDIOC_G_CROP, uintptr(C.VIDIOC_G_CROP)},
 		{"cVIDIOC_G_CTRL", cVIDIOC_G_CTRL, uintptr(C.VIDIOC_G_CTRL)},
 		{"cVIDIOC_G_DV_TIMINGS", cVIDIOC_G_DV_TIMINGS, uintptr(C.VIDIOC_G_DV_TIMINGS)},
 		{"cVIDIOC_G_EXT_CTRLS", cVIDIOC_G_EXT_CTRLS, uintptr(C.VIDIOC_G_EXT_CTRLS)},
@@ -188,6 +215,7 @@ func cIoctlChecks() []abiPair {
 		{"cVIDIOC_G_MODULATOR", cVIDIOC_G_MODULATOR, uintptr(C.VIDIOC_G_MODULATOR)},
 		{"cVIDIOC_G_OUTPUT", cVIDIOC_G_OUTPUT, uintptr(C.VIDIOC_G_OUTPUT)},
 		{"cVIDIOC_G_PARM", cVIDIOC_G_PARM, uintptr(C.VIDIOC_G_PARM)},
+		{"cVIDIOC_G_SELECTION", cVIDIOC_G_SELECTION, uintptr(C.VIDIOC_G_SELECTION)},
 		{"cVIDIOC_G_STD", cVIDIOC_G_STD, uintptr(C.VIDIOC_G_STD)},
 		{"cVIDIOC_G_TUNER", cVIDIOC_G_TUNER, uintptr(C.VIDIOC_G_TUNER)},
 		{"cVIDIOC_QBUF", cVIDIOC_QBUF, uintptr(C.VIDIOC_QBUF)},
@@ -214,11 +242,13 @@ func cIoctlChecks() []abiPair {
 		{"cVIDIOC_S_MODULATOR", cVIDIOC_S_MODULATOR, uintptr(C.VIDIOC_S_MODULATOR)},
 		{"cVIDIOC_S_OUTPUT", cVIDIOC_S_OUTPUT, uintptr(C.VIDIOC_S_OUTPUT)},
 		{"cVIDIOC_S_PARM", cVIDIOC_S_PARM, uintptr(C.VIDIOC_S_PARM)},
+		{"cVIDIOC_S_SELECTION", cVIDIOC_S_SELECTION, uintptr(C.VIDIOC_S_SELECTION)},
 		{"cVIDIOC_S_STD", cVIDIOC_S_STD, uintptr(C.VIDIOC_S_STD)},
 		{"cVIDIOC_S_TUNER", cVIDIOC_S_TUNER, uintptr(C.VIDIOC_S_TUNER)},
 		{"cVIDIOC_TRY_DECODER_CMD", cVIDIOC_TRY_DECODER_CMD, uintptr(C.VIDIOC_TRY_DECODER_CMD)},
 		{"cVIDIOC_TRY_ENCODER_CMD", cVIDIOC_TRY_ENCODER_CMD, uintptr(C.VIDIOC_TRY_ENCODER_CMD)},
 		{"cVIDIOC_TRY_EXT_CTRLS", cVIDIOC_TRY_EXT_CTRLS, uintptr(C.VIDIOC_TRY_EXT_CTRLS)},
+		{"cVIDIOC_TRY_FMT", cVIDIOC_TRY_FMT, uintptr(C.VIDIOC_TRY_FMT)},
 		{"cVIDIOC_UNSUBSCRIBE_EVENT", cVIDIOC_UNSUBSCRIBE_EVENT, uintptr(C.VIDIOC_UNSUBSCRIBE_EVENT)},
 	}
 }
@@ -231,6 +261,11 @@ func cValueConstantChecks() ([]abiPair, uint64) {
 		{"V4L2_PIX_FMT_NV12", uintptr(PixelFmtNV12), uintptr(uint32(C.V4L2_PIX_FMT_NV12))},
 		{"V4L2_BUF_TYPE_VIDEO_CAPTURE", uintptr(BufTypeVideoCapture), uintptr(uint32(C.V4L2_BUF_TYPE_VIDEO_CAPTURE))},
 		{"V4L2_BUF_TYPE_VIDEO_OUTPUT", uintptr(BufTypeVideoOutput), uintptr(uint32(C.V4L2_BUF_TYPE_VIDEO_OUTPUT))},
+		{"V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE", uintptr(BufTypeVideoCaptureMPlane), uintptr(uint32(C.V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE))},
+		{"V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE", uintptr(BufTypeVideoOutputMPlane), uintptr(uint32(C.V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE))},
+		{"V4L2_SEL_TGT_CROP", uintptr(SelTargetCrop), uintptr(uint32(C.V4L2_SEL_TGT_CROP))},
+		{"V4L2_SEL_TGT_COMPOSE", uintptr(SelTargetCompose), uintptr(uint32(C.V4L2_SEL_TGT_COMPOSE))},
+		{"VIDEO_MAX_PLANES", uintptr(MaxPlanes), uintptr(uint32(C.VIDEO_MAX_PLANES))},
 		{"V4L2_MEMORY_MMAP", uintptr(IOTypeMMAP), uintptr(uint32(C.V4L2_MEMORY_MMAP))},
 		{"V4L2_MEMORY_USERPTR", uintptr(IOTypeUserPtr), uintptr(uint32(C.V4L2_MEMORY_USERPTR))},
 		{"V4L2_MEMORY_DMABUF", uintptr(IOTypeDMABuf), uintptr(uint32(C.V4L2_MEMORY_DMABUF))},

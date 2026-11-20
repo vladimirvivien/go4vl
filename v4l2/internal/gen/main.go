@@ -227,6 +227,7 @@ type cV4L2BTTimingsCap C.struct_v4l2_bt_timings_cap
 type cV4L2Buffer C.struct_v4l2_buffer
 type cV4L2CaptureParm C.struct_v4l2_captureparm
 type cV4L2Control C.struct_v4l2_control
+type cV4L2CreateBuffers C.struct_v4l2_create_buffers
 type cV4L2Crop C.struct_v4l2_crop
 type cV4L2CropCap C.struct_v4l2_cropcap
 type cV4L2DecoderCmd C.struct_v4l2_decoder_cmd
@@ -258,10 +259,14 @@ type cV4L2Modulator C.struct_v4l2_modulator
 type cV4L2Output C.struct_v4l2_output
 type cV4L2OutputParm C.struct_v4l2_outputparm
 type cV4L2PixFormat C.struct_v4l2_pix_format
+type cV4L2PlanePixFormat C.struct_v4l2_plane_pix_format
+type cV4L2PixFormatMPlane C.struct_v4l2_pix_format_mplane
+type cV4L2Plane C.struct_v4l2_plane
 type cV4L2QueryCtrl C.struct_v4l2_queryctrl
 type cV4L2QueryExtCtrl C.struct_v4l2_query_ext_ctrl
 type cV4L2QueryMenu C.struct_v4l2_querymenu
 type cV4L2RequestBuffers C.struct_v4l2_requestbuffers
+type cV4L2Selection C.struct_v4l2_selection
 type cV4L2Standard C.struct_v4l2_standard
 type cV4L2StreamParm C.struct_v4l2_streamparm
 type cV4L2Tuner C.struct_v4l2_tuner
@@ -269,6 +274,7 @@ type cV4L2Tuner C.struct_v4l2_tuner
 
 var ioctlConsts = []string{
 	"MEDIA_IOC_DEVICE_INFO",
+	"VIDIOC_CREATE_BUFS",
 	"VIDIOC_CROPCAP",
 	"VIDIOC_DECODER_CMD",
 	"VIDIOC_DQBUF",
@@ -288,6 +294,7 @@ var ioctlConsts = []string{
 	"VIDIOC_EXPBUF",
 	"VIDIOC_G_AUDIO",
 	"VIDIOC_G_AUDOUT",
+	"VIDIOC_G_CROP",
 	"VIDIOC_G_CTRL",
 	"VIDIOC_G_DV_TIMINGS",
 	"VIDIOC_G_EXT_CTRLS",
@@ -297,6 +304,7 @@ var ioctlConsts = []string{
 	"VIDIOC_G_MODULATOR",
 	"VIDIOC_G_OUTPUT",
 	"VIDIOC_G_PARM",
+	"VIDIOC_G_SELECTION",
 	"VIDIOC_G_STD",
 	"VIDIOC_G_TUNER",
 	"VIDIOC_QBUF",
@@ -323,11 +331,13 @@ var ioctlConsts = []string{
 	"VIDIOC_S_MODULATOR",
 	"VIDIOC_S_OUTPUT",
 	"VIDIOC_S_PARM",
+	"VIDIOC_S_SELECTION",
 	"VIDIOC_S_STD",
 	"VIDIOC_S_TUNER",
 	"VIDIOC_TRY_DECODER_CMD",
 	"VIDIOC_TRY_ENCODER_CMD",
 	"VIDIOC_TRY_EXT_CTRLS",
+	"VIDIOC_TRY_FMT",
 	"VIDIOC_UNSUBSCRIBE_EVENT",
 }
 
@@ -338,6 +348,11 @@ var uapiConsts = []string{
 	"V4L2_BAND_MODULATION_AM",
 	"V4L2_BAND_MODULATION_FM",
 	"V4L2_BAND_MODULATION_VSB",
+	"V4L2_BUF_CAP_SUPPORTS_DMABUF",
+	"V4L2_BUF_CAP_SUPPORTS_MMAP",
+	"V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS",
+	"V4L2_BUF_CAP_SUPPORTS_REQUESTS",
+	"V4L2_BUF_CAP_SUPPORTS_USERPTR",
 	"V4L2_BUF_FLAG_BFRAME",
 	"V4L2_BUF_FLAG_DONE",
 	"V4L2_BUF_FLAG_ERROR",
@@ -360,8 +375,12 @@ var uapiConsts = []string{
 	"V4L2_BUF_FLAG_TSTAMP_SRC_EOF",
 	"V4L2_BUF_FLAG_TSTAMP_SRC_MASK",
 	"V4L2_BUF_FLAG_TSTAMP_SRC_SOE",
+	"V4L2_BUF_TYPE_META_CAPTURE",
+	"V4L2_BUF_TYPE_META_OUTPUT",
 	"V4L2_BUF_TYPE_VIDEO_CAPTURE",
+	"V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE",
 	"V4L2_BUF_TYPE_VIDEO_OUTPUT",
+	"V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE",
 	"V4L2_BUF_TYPE_VIDEO_OVERLAY",
 	"V4L2_CAP_ASYNCIO",
 	"V4L2_CAP_AUDIO",
@@ -968,4 +987,18 @@ var uapiConsts = []string{
 	"V4L2_YCBCR_ENC_SYCC",
 	"V4L2_YCBCR_ENC_XV601",
 	"V4L2_YCBCR_ENC_XV709",
+	"V4L2_SEL_FLAG_GE",
+	"V4L2_SEL_FLAG_KEEP_CONFIG",
+	"V4L2_SEL_FLAG_LE",
+	"V4L2_SEL_TGT_COMPOSE",
+	"V4L2_SEL_TGT_COMPOSE_ACTIVE",
+	"V4L2_SEL_TGT_COMPOSE_BOUNDS",
+	"V4L2_SEL_TGT_COMPOSE_DEFAULT",
+	"V4L2_SEL_TGT_COMPOSE_PADDED",
+	"V4L2_SEL_TGT_CROP",
+	"V4L2_SEL_TGT_CROP_ACTIVE",
+	"V4L2_SEL_TGT_CROP_BOUNDS",
+	"V4L2_SEL_TGT_CROP_DEFAULT",
+	"V4L2_SEL_TGT_NATIVE_SIZE",
+	"VIDEO_MAX_PLANES",
 }

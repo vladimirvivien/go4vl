@@ -430,10 +430,10 @@ func QueryExtControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	return control, nil
 }
 
-// QueryAllExtControls loop through all available ext controls and query the information for
-// all controls without their current values (use GetExtControlValue to get current values).
-func QueryAllExtControls(fd uintptr) (result []Control, err error) {
-	cid := CtrlClassCodec | cV4L2_CTRL_FLAG_NEXT_CTRL
+// QueryAllExtControlsByClass enumerates extended controls starting from the specified control class
+// (pass 0 to enumerate across all control classes, including compound controls when combined with CtrlFlagNextCompound).
+func QueryAllExtControlsByClass(fd uintptr, class CtrlClass) (result []Control, err error) {
+	cid := class | cV4L2_CTRL_FLAG_NEXT_CTRL
 	for {
 		control, err := QueryExtControlInfo(fd, cid)
 		if err != nil {
@@ -443,11 +443,16 @@ func QueryAllExtControls(fd uintptr) (result []Control, err error) {
 			return result, fmt.Errorf("query all ext controls: %w", err)
 		}
 		result = append(result, control)
-		// setup next id
 		cid = control.ID | cV4L2_CTRL_FLAG_NEXT_CTRL
 	}
 
 	return result, nil
+}
+
+// QueryAllExtControls loop through all available ext controls and query the information for
+// all controls without their current values (use GetExtControlValue to get current values).
+func QueryAllExtControls(fd uintptr) (result []Control, err error) {
+	return QueryAllExtControlsByClass(fd, CtrlClassCodec)
 }
 
 func makeExtControl(qryCtrl cV4L2QueryExtCtrl) Control {
