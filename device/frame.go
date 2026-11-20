@@ -122,3 +122,21 @@ func (f *Frame) IsBFrame() bool {
 func (f *Frame) HasError() bool {
 	return f.Flags&v4l2.BufFlagError != 0
 }
+
+// Clone returns a deep copy of the frame with its own independent Data slice.
+// The cloned frame is not attached to any buffer pool and does not require Release().
+// Use Clone when retaining a frame yielded by Device.Frames beyond the current iteration.
+func (f *Frame) Clone() *Frame {
+	var dataCopy []byte
+	if f.Data != nil {
+		dataCopy = make([]byte, len(f.Data))
+		copy(dataCopy, f.Data)
+	}
+	return &Frame{
+		Data:      dataCopy,
+		Timestamp: f.Timestamp,
+		Sequence:  f.Sequence,
+		Flags:     f.Flags,
+		Index:     f.Index,
+	}
+}

@@ -98,6 +98,12 @@ type Device struct {
 	// dmabufFDs holds DMA-BUF file descriptors for import mode.
 	// Set via AddDMABufferFDs() before Start().
 	dmabufFDs []int32
+
+	// outputQueued tracks how many initial output buffers have been queued in streaming output mode.
+	outputQueued uint32
+
+	// outputStreamOn tracks whether VIDIOC_STREAMON has been called for streaming output mode.
+	outputStreamOn bool
 }
 
 // Open opens a V4L2 video device at the specified path and prepares it for use.
@@ -200,18 +206,28 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 		}
 	}
 
-	switch {
-	case cap.IsVideoCaptureSupported():
-		// setup capture parameters (output channel created when streaming starts)
+	switch dev.config.bufType {
+	case v4l2.BufTypeVideoCapture:
+		if !cap.IsVideoCaptureSupported() {
+			return nil, fmt.Errorf("device open: %s: does not support video capture: %w", path, v4l2.ErrorUnsupportedFeature)
+		}
 		dev.bufType = v4l2.BufTypeVideoCapture
-	case cap.IsVideoOutputSupported():
+	case v4l2.BufTypeVideoOutput:
+		if !cap.IsVideoOutputSupported() {
+			return nil, fmt.Errorf("device open: %s: does not support video output: %w", path, v4l2.ErrorUnsupportedFeature)
+		}
 		dev.bufType = v4l2.BufTypeVideoOutput
+	case 0:
+		switch {
+		case cap.IsVideoCaptureSupported():
+			dev.bufType = v4l2.BufTypeVideoCapture
+		case cap.IsVideoOutputSupported():
+			dev.bufType = v4l2.BufTypeVideoOutput
+		default:
+			return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
+		}
 	default:
-		return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
-	}
-
-	if dev.config.bufType != 0 && dev.config.bufType != dev.bufType {
-		return nil, fmt.Errorf("device open: does not support buffer stream type")
+		return nil, fmt.Errorf("device open: %s: unsupported buffer stream type %d", path, dev.config.bufType)
 	}
 
 	// set IOType for streaming mode (read/write mode doesn't use buffer API)
@@ -228,7 +244,7 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 
 	// reset crop, only if cropping supported
 	if cropcap, err := v4l2.GetCropCapability(dev.fd, dev.bufType); err == nil {
-		if err := v4l2.SetCropRect(dev.fd, cropcap.DefaultRect); err != nil {
+		if err := v4l2.SetCropRectByType(dev.fd, dev.bufType, cropcap.DefaultRect); err != nil {
 			// ignore errors
 		}
 	}
@@ -239,7 +255,7 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
 		}
 	} else {
-		dev.config.pixFormat, err = v4l2.GetPixFormat(dev.fd)
+		dev.config.pixFormat, err = v4l2.GetPixFormatByType(dev.fd, dev.bufType)
 		if err != nil {
 			return nil, fmt.Errorf("device open: %s: get default format: %w", path, err)
 		}
@@ -515,15 +531,13 @@ func (d *Device) SetCropRect(r v4l2.Rect) error {
 //
 // The format is either explicitly set via SetPixFormat() or the device's
 // default format queried during initialization.
-//
-// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
-	if !d.cap.IsVideoCaptureSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return v4l2.PixFormat{}, v4l2.ErrorUnsupportedFeature
 	}
 
 	if d.config.pixFormat == (v4l2.PixFormat{}) {
-		pixFmt, err := v4l2.GetPixFormat(d.fd)
+		pixFmt, err := v4l2.GetPixFormatByType(d.fd, d.bufType)
 		if err != nil {
 			return v4l2.PixFormat{}, fmt.Errorf("device: %w", err)
 		}
@@ -533,70 +547,40 @@ func (d *Device) GetPixFormat() (v4l2.PixFormat, error) {
 	return d.config.pixFormat, nil
 }
 
-// SetPixFormat configures the pixel format for video capture including
+// SetPixFormat configures the pixel format for video capture or output including
 // frame dimensions, pixel encoding, and other format parameters.
-//
-// Parameters:
-//   - pixFmt: Pixel format specification including width, height, and format
-//
-// Common pixel formats:
-//   - PixelFmtMJPEG: Motion JPEG compressed format
-//   - PixelFmtYUYV: YUV 4:2:2 packed format
-//   - PixelFmtH264: H.264 compressed video
-//
-// The driver may adjust the requested format to match hardware capabilities.
-// Call GetPixFormat() after setting to retrieve the actual format.
-//
-// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
-	if !d.cap.IsVideoCaptureSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return v4l2.ErrorUnsupportedFeature
 	}
 
-	if err := v4l2.SetPixFormat(d.fd, pixFmt); err != nil {
+	if err := v4l2.SetPixFormatByType(d.fd, d.bufType, pixFmt); err != nil {
 		return fmt.Errorf("device: %w", err)
 	}
-	d.config.pixFormat = pixFmt
+	if actual, err := v4l2.GetPixFormatByType(d.fd, d.bufType); err == nil {
+		d.config.pixFormat = actual
+	} else {
+		d.config.pixFormat = pixFmt
+	}
 	return nil
 }
 
 // GetFormatDescription returns the format description at the specified index.
-// Format descriptions enumerate the pixel formats supported by the device.
-//
-// Parameters:
-//   - idx: Zero-based index of the format to query
-//
-// Use GetFormatDescriptions() to retrieve all supported formats at once.
-// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
 func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error) {
-	if !d.cap.IsVideoCaptureSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return v4l2.FormatDescription{}, v4l2.ErrorUnsupportedFeature
 	}
 
-	return v4l2.GetFormatDescription(d.fd, idx)
+	return v4l2.GetFormatDescriptionByType(d.fd, d.bufType, idx)
 }
 
 // GetFormatDescriptions returns all pixel formats supported by the device.
-// Each format description includes the format name, pixel format code,
-// and format flags.
-//
-// This is useful for discovering device capabilities and validating format support
-// before calling SetPixFormat().
-//
-// Returns ErrorUnsupportedFeature if the device doesn't support video capture.
-//
-// Example:
-//
-//	formats, err := dev.GetFormatDescriptions()
-//	for _, fmt := range formats {
-//	    log.Printf("Supported format: %s (0x%08x)\n", fmt.Description, fmt.PixelFormat)
-//	}
 func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
-	if !d.cap.IsVideoCaptureSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return nil, v4l2.ErrorUnsupportedFeature
 	}
 
-	return v4l2.GetAllFormatDescriptions(d.fd)
+	return v4l2.GetAllFormatDescriptionsByType(d.fd, d.bufType)
 }
 
 // GetVideoInputIndex returns the currently selected video input index.
@@ -1292,7 +1276,7 @@ func (d *Device) GetDVTimingsCap(pad uint32) (v4l2.DVTimingsCap, error) {
 // For capture devices, this includes the frame interval (FPS) and capture modes.
 // Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
-	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return v4l2.StreamParam{}, v4l2.ErrorUnsupportedFeature
 	}
 	return v4l2.GetStreamParam(d.fd, d.bufType)
@@ -1308,36 +1292,23 @@ func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
 //
 // Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
-	if !d.cap.IsVideoCaptureSupported() && d.cap.IsVideoOutputSupported() {
+	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
 		return v4l2.ErrorUnsupportedFeature
 	}
 	return v4l2.SetStreamParam(d.fd, d.bufType, param)
 }
 
 // SetFrameRate sets the frames per second (FPS) for video capture or output.
-//
-// Parameters:
-//   - fps: Desired frames per second (e.g., 30, 60)
-//
-// The actual frame rate may be adjusted by the driver based on hardware capabilities.
-// Use GetFrameRate() to retrieve the actual rate after setting.
-//
-// Common frame rates:
-//   - 15 FPS: Low bandwidth streaming
-//   - 30 FPS: Standard video capture
-//   - 60 FPS: Smooth motion capture
-//
-// Returns ErrorUnsupportedFeature if the device doesn't support frame rate control.
 func (d *Device) SetFrameRate(fps uint32) error {
 	if !d.cap.IsStreamingSupported() {
 		return fmt.Errorf("set frame rate: %w", v4l2.ErrorUnsupportedFeature)
 	}
 
 	var param v4l2.StreamParam
-	switch {
-	case d.cap.IsVideoCaptureSupported():
+	switch d.bufType {
+	case v4l2.BufTypeVideoCapture, v4l2.BufTypeVideoCaptureMPlane:
 		param.Capture = v4l2.CaptureParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
-	case d.cap.IsVideoOutputSupported():
+	case v4l2.BufTypeVideoOutput, v4l2.BufTypeVideoOutputMPlane:
 		param.Output = v4l2.OutputParam{TimePerFrame: v4l2.Fract{Numerator: 1, Denominator: fps}}
 	default:
 		return v4l2.ErrorUnsupportedFeature
@@ -1350,20 +1321,16 @@ func (d *Device) SetFrameRate(fps uint32) error {
 }
 
 // GetFrameRate returns the current frames per second (FPS) setting.
-// If not explicitly set, returns the device's default frame rate.
-//
-// The actual frame rate during streaming may vary based on lighting conditions,
-// processing load, and hardware limitations.
 func (d *Device) GetFrameRate() (uint32, error) {
 	if d.config.fps == 0 {
 		param, err := d.GetStreamParam()
 		if err != nil {
 			return 0, fmt.Errorf("device: frame rate: %w", err)
 		}
-		switch {
-		case d.cap.IsVideoCaptureSupported():
+		switch d.bufType {
+		case v4l2.BufTypeVideoCapture, v4l2.BufTypeVideoCaptureMPlane:
 			d.config.fps = param.Capture.TimePerFrame.Denominator
-		case d.cap.IsVideoOutputSupported():
+		case v4l2.BufTypeVideoOutput, v4l2.BufTypeVideoOutputMPlane:
 			d.config.fps = param.Output.TimePerFrame.Denominator
 		default:
 			return 0, v4l2.ErrorUnsupportedFeature
@@ -1702,36 +1669,43 @@ func (d *Device) Start(ctx context.Context) error {
 		}
 	}
 
-	// Queue buffers for capture
-	for i := 0; i < int(d.config.bufSize); i++ {
-		switch d.config.ioType {
-		case v4l2.IOTypeUserPtr:
-			ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
-			if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
-				d.streaming.Store(false)
-				_ = d.releaseBuffers(true)
-				return fmt.Errorf("device: buffer queueing: %w", err)
-			}
-		case v4l2.IOTypeDMABuf:
-			if _, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, uint32(i), d.dmabufFDs[i], d.config.pixFormat.SizeImage); err != nil {
-				d.streaming.Store(false)
-				_ = d.releaseBuffers(true)
-				return fmt.Errorf("device: buffer queueing: %w", err)
-			}
-		default:
-			if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
-				d.streaming.Store(false)
-				_ = d.releaseBuffers(true)
-				return fmt.Errorf("device: buffer queueing: %w", err)
+	d.outputQueued = 0
+	d.outputStreamOn = false
+
+	// For capture devices, pre-queue all empty buffers and start the stream immediately.
+	// For output devices, buffers are queued with frame data via WriteFrame, which calls
+	// StreamOn on the first queued frame.
+	if d.bufType != v4l2.BufTypeVideoOutput && d.bufType != v4l2.BufTypeVideoOutputMPlane {
+		for i := 0; i < int(d.config.bufSize); i++ {
+			switch d.config.ioType {
+			case v4l2.IOTypeUserPtr:
+				ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
+				if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
+					d.streaming.Store(false)
+					_ = d.releaseBuffers(true)
+					return fmt.Errorf("device: buffer queueing: %w", err)
+				}
+			case v4l2.IOTypeDMABuf:
+				if _, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, uint32(i), d.dmabufFDs[i], d.config.pixFormat.SizeImage); err != nil {
+					d.streaming.Store(false)
+					_ = d.releaseBuffers(true)
+					return fmt.Errorf("device: buffer queueing: %w", err)
+				}
+			default:
+				if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
+					d.streaming.Store(false)
+					_ = d.releaseBuffers(true)
+					return fmt.Errorf("device: buffer queueing: %w", err)
+				}
 			}
 		}
-	}
 
-	// Start the V4L2 stream
-	if err := v4l2.StreamOn(d); err != nil {
-		d.streaming.Store(false)
-		_ = d.releaseBuffers(true)
-		return fmt.Errorf("device: stream on: %w", err)
+		// Start the V4L2 stream
+		if err := v4l2.StreamOn(d); err != nil {
+			d.streaming.Store(false)
+			_ = d.releaseBuffers(true)
+			return fmt.Errorf("device: stream on: %w", err)
+		}
 	}
 
 	d.streamActive.Store(true)
@@ -1814,13 +1788,16 @@ func (d *Device) Stop() error {
 	}
 
 	streamWasActive := d.streamActive.Swap(false)
+	isOutput := d.bufType == v4l2.BufTypeVideoOutput || d.bufType == v4l2.BufTypeVideoOutputMPlane
 
 	var errs []error
-	if streamWasActive {
+	if streamWasActive && (!isOutput || d.outputStreamOn) {
 		if err := v4l2.StreamOff(d); err != nil {
 			errs = append(errs, fmt.Errorf("device: stop: %w", err))
 		}
 	}
+	d.outputQueued = 0
+	d.outputStreamOn = false
 	// Always unmap any mapped buffers even if StreamOff failed (e.g. device disconnect).
 	if err := d.releaseBuffers(streamWasActive); err != nil {
 		errs = append(errs, fmt.Errorf("device: stop: %w", err))

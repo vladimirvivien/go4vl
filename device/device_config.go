@@ -214,3 +214,12 @@ func WithVideoOutputEnabled() Option {
 		o.bufType = v4l2.BufTypeVideoOutput
 	}
 }
+
+// WithBufferType explicitly sets the V4L2 buffer type (for example,
+// v4l2.BufTypeVideoCapture or v4l2.BufTypeVideoOutput) when opening a device
+// that supports multiple buffer types.
+func WithBufferType(bufType v4l2.BufType) Option {
+	return func(o *config) {
+		o.bufType = bufType
+	}
+}

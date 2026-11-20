@@ -669,13 +669,13 @@ func TestDevice_ContextCancellation(t *testing.T) {
 func TestDevice_PixelFormatZeroValue(t *testing.T) {
 	dev := Device{
 		cap: v4l2.Capability{
-			Capabilities: v4l2.CapVideoOutput, // No capture support
+			Capabilities: v4l2.CapAudio, // Neither video capture nor video output
 		},
 	}
 
 	_, err := dev.GetPixFormat()
 	if err != v4l2.ErrorUnsupportedFeature {
-		t.Errorf("GetPixFormat() without capture support should return ErrorUnsupportedFeature, got %v", err)
+		t.Errorf("GetPixFormat() without capture or output support should return ErrorUnsupportedFeature, got %v", err)
 	}
 }
 
@@ -683,13 +683,13 @@ func TestDevice_PixelFormatZeroValue(t *testing.T) {
 func TestDevice_SetPixFormat_UnsupportedFeature(t *testing.T) {
 	dev := Device{
 		cap: v4l2.Capability{
-			Capabilities: v4l2.CapVideoOutput, // No capture support
+			Capabilities: v4l2.CapAudio, // Neither video capture nor video output
 		},
 	}
 
 	err := dev.SetPixFormat(v4l2.PixFormat{})
 	if err != v4l2.ErrorUnsupportedFeature {
-		t.Errorf("SetPixFormat() without capture support should return ErrorUnsupportedFeature, got %v", err)
+		t.Errorf("SetPixFormat() without capture or output support should return ErrorUnsupportedFeature, got %v", err)
 	}
 }
 
