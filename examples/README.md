@@ -3,9 +3,10 @@
 ## Basic Capture Examples
 
 * [snapshot](./snapshot/) - A simple example to capture a single frame and save it to a file.
+* [iter_snapshot](./iter_snapshot/) - Capture a single frame to disk using the zero-copy `Device.Frames(ctx)` iterator.
 * [capture0](./capture0) - Shows how to capture multiple images and saves them to files (legacy API).
 * [capture_frames](./capture_frames) - Capture frames with metadata and buffer pooling for high-performance streaming.
-* [iter_capture](./iter_capture/) - **Recommended**: Zero-copy frame capture using `Device.Frames(ctx)` (`iter.Seq2`) with automatic buffer re-queueing.
+* [iter_capture](./iter_capture/) - **Recommended**: Zero-copy frame capture using `Device.Frames(ctx)` (`iter.Seq2`) with automatic buffer re-queueing and `frame.Clone()`.
 * [capture1](./capture1) - Shows how to capture multiple images using specified image format.
 * [video_output](./video_output/) - Stream synthetic YUYV frames to a V4L2 video output or `v4l2loopback` device.
 * [m2m_pipeline](./m2m_pipeline/) - Dual-queue M2M (`OUTPUT` + `CAPTURE`) session multiplexed with `v4l2.Poller` (`epoll`).

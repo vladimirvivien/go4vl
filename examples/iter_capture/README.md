@@ -21,6 +21,7 @@ go build -o iter_capture ./examples/iter_capture
 | `-d` | `/dev/video0` | V4L2 video capture device path |
 | `-n` | `30` | Number of frames to capture |
 | `-b` | `4` | Number of `MMAP` buffers to request |
+| `-save-last` | `""` | Optional file path to save a `frame.Clone()` copy of the last frame after the loop |
 
 ## Buffer Lifetime
 

@@ -9,7 +9,7 @@ A Go centric abstraction of the library for  `Video for Linux 2`  (v4l2) user AP
 ----
 
 The `go4vl` project is for working with the Video for Linux 2 API for real-time video.
-It hides all the complexities of working with V4L2 and provides idiomatic Go types, like channels, to consume and process captured video frames.
+It provides both a low-level `v4l2` UAPI package (`CGO_ENABLED=0`) and an ergonomic `device` package with idiomatic Go streaming interfaces—including zero-copy `iter.Seq2` frame iterators (`Device.Frames(ctx)`) and channels.
 
 > This project is designed to work with Linux and the Linux Video API only.  It is *NOT* meant to be a portable/cross-platform package.
 
@@ -30,30 +30,28 @@ It hides all the complexities of working with V4L2 and provides idiomatic Go typ
 
 ## Why go4vl?
 
-Working directly with V4L2 in Go requires complex C interop and manual memory management. `go4vl` provides:
+Working directly with V4L2 in Go requires complex ioctl marshaling and manual memory management. `go4vl` provides:
 
-* **Idiomatic Go API** - Use channels and standard Go types instead of C structs
-* **Zero-copy streaming** - Memory-mapped buffers for efficient video processing
-* **Simplified device control** - Easy access to formats, controls, and capture settings
-* **Pure Linux focus** - Optimized for Linux video pipelines without cross-platform compromises
+* **Zero-copy `iter.Seq2` streaming** - Range directly over memory-mapped kernel buffers with `dev.Frames(ctx)` (0 per-frame copies, automatic `VIDIOC_QBUF` re-queueing)
+* **Idiomatic Go API** - Standard Go iterators, channels, and typed options instead of raw C structs
+* **No runtime CGO** - Builds with `CGO_ENABLED=0` on Linux (`amd64` and `arm64`) without kernel headers or a C toolchain
+* **Capture, output, and M2M pipelines** - Supports video capture, video output, multi-planar (`MPLANE`) formats, DMA-BUF export/import, and `epoll`/`poll` multiplexing
 
 ## Features
 
-* Capture and control video data from your Go programs
-* Idiomatic Go types such as channels to access and stream video data
-* Exposes device enumeration and information
-* Provides device capture control
-* Access to video format information
-* Streaming uses zero-copy IO with memory-mapped buffers
+* Zero-copy frame capture via `Device.Frames(ctx)` (`iter.Seq2[*device.Frame, error]`) as well as channel APIs (`GetFrames()`, `GetOutput()`)
+* Video output streaming (`Device.WriteFrame`) and direct `Read` / `Write` I/O
+* Multi-planar (`MPLANE`) formats/buffers, Selection API, DMA-BUF, and dual-queue M2M sessions (`v4l2.M2MSession`)
+* `v4l2.Poll` and `v4l2.Poller` (`epoll`) multiplexing `POLLIN | POLLOUT | POLLPRI`
+* Device enumeration, format negotiation, and user/extended/codec controls
 
 ## Prerequisites
 
 **Software:**
-* Go 1.16 or later
-* Linux kernel 5.10.x or later (go4vl works with kernel 5.10.x and newer)
-* C compiler (gcc/clang) or cross-compiler for target platform
-* V4L2 kernel headers (linux-libc-dev on Debian/Ubuntu, kernel-headers on RHEL/Fedora)
-* V4L2 drivers (typically included in Linux kernel)
+* Go 1.25 or later
+* Linux kernel 5.10.x or later
+* V4L2 drivers (typically included in the Linux kernel)
+* *(Optional)* A C compiler and `linux-libc-dev` are only needed if regenerating ABI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` parity tests
 
 **Hardware:**
 * V4L2-compatible capture device (webcam, capture card, etc.)
@@ -102,7 +100,7 @@ For detailed build instructions including prerequisite installation, cross-compi
 
 ## Quick Start
 
-Capture a single frame and save to file (assumes MJPEG format support):
+Capture a single frame and save to file using the zero-copy `Frames(ctx)` iterator:
 
 ```go
 package main
@@ -116,32 +114,31 @@ import (
 )
 
 func main() {
-	dev, err := device.Open("/dev/video0", device.WithBufferSize(1))
+	dev, err := device.Open("/dev/video0", device.WithBufferSize(2))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer dev.Close()
 
-	if err := dev.Start(context.TODO()); err != nil {
+	ctx := context.Background()
+	if err := dev.Start(ctx); err != nil {
 		log.Fatal(err)
 	}
+	defer dev.Stop()
 
-	// Capture frame from channel
-	frame := <-dev.GetOutput()
-
-	file, err := os.Create("pic.jpg")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	if _, err := file.Write(frame); err != nil {
-		log.Fatal(err)
+	for frame, err := range dev.Frames(ctx) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile("pic.jpg", frame.Data, 0o644); err != nil {
+			log.Fatal(err)
+		}
+		break // Underlying MMAP buffer is automatically re-queued on break.
 	}
 }
 ```
 
-See complete example: [examples/snapshot/snap.go](./examples/snapshot/snap.go)
+See complete examples: [examples/iter_snapshot/main.go](./examples/iter_snapshot/main.go) and [examples/iter_capture/main.go](./examples/iter_capture/main.go)
 
 ## API Overview
 
@@ -187,18 +184,31 @@ brightness := dev.GetControl(v4l2.CtrlBrightness)
 dev.SetControl(v4l2.CtrlBrightness, 128)
 ```
 
-**Streaming (Legacy API):**
+**Streaming (Zero-Copy `Frames` Iterator — Recommended):**
 ```go
 ctx := context.Background()
-dev.Start(ctx)
+if err := dev.Start(ctx); err != nil {
+    log.Fatal(err)
+}
+defer dev.Stop()
 
-for frame := range dev.GetOutput() {
-    // Process frame bytes
-    processFrame(frame)
+for frame, err := range dev.Frames(ctx) {
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // frame.Data points directly into the MMAP buffer (0 copies, 0 allocs).
+    // The buffer is automatically re-queued after each iteration (including on break/return).
+    processFrame(frame.Data)
+
+    // To retain frame data beyond the current iteration, clone it:
+    // saved := frame.Clone()
 }
 ```
 
-**Streaming (Frame API - Recommended):**
+`Device.Frames(ctx)` uses Go's `iter.Seq2[*device.Frame, error]` backed by `v4l2.Poll` with no background goroutines and automatic `VIDIOC_QBUF` buffer bookkeeping. See [examples/iter_capture](./examples/iter_capture/) and [examples/iter_snapshot](./examples/iter_snapshot/).
+
+**Streaming (Pooled Channel API):**
 ```go
 ctx := context.Background()
 dev.Start(ctx)
@@ -220,8 +230,15 @@ for frame := range dev.GetFrames() {
 }
 ```
 
+**Streaming (Legacy Channel API):**
+```go
+ctx := context.Background()
+dev.Start(ctx)
 
-The `GetFrames()` API uses buffer pooling to dramatically reduce allocation overhead and GC pressure, making it ideal for high-throughput video processing. See [examples/capture_frames](./examples/capture_frames/) for a complete example.
+for frame := range dev.GetOutput() {
+    processFrame(frame)
+}
+```
 
 Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg.go.dev/github.com/vladimirvivien/go4vl)
 
@@ -229,10 +246,14 @@ Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg
 
 This repository includes multiple examples demonstrating various capabilities:
 
-* **[snapshot](./examples/snapshot/)** - Capture single frame to file
-* **[capture0](./examples/capture0/)** - Capture multiple frames (legacy API)
-* **[capture_frames](./examples/capture_frames/)** - Capture with metadata and pooling (recommended)
-* **[capture1](./examples/capture1/)** - Capture with specific format
+* **[iter_capture](./examples/iter_capture/)** - **Recommended**: Zero-copy frame capture using `Device.Frames(ctx)` (`iter.Seq2`)
+* **[iter_snapshot](./examples/iter_snapshot/)** - Single-frame snapshot using `Device.Frames(ctx)`
+* **[video_output](./examples/video_output/)** - Stream frames to a V4L2 video output or `v4l2loopback` device
+* **[m2m_pipeline](./examples/m2m_pipeline/)** - Dual-queue M2M (`OUTPUT` + `CAPTURE`) session with `v4l2.Poller` (`epoll`)
+* **[mplane_capture](./examples/mplane_capture/)** - Multi-planar (`MPLANE`) formats, plane buffers, and DMA-BUF export
+* **[selection_crop](./examples/selection_crop/)** - Selection API (`VIDIOC_G_SELECTION` / `VIDIOC_S_SELECTION`)
+* **[capture_frames](./examples/capture_frames/)** - Channel-based capture with metadata and buffer pooling
+* **[snapshot](./examples/snapshot/)** - Single-frame capture (legacy channel API)
 * **[device_info](./examples/device_info/)** - Query device information
 * **[format](./examples/format/)** - Query and set formats
 * **[user_ctrl](./examples/user_ctrl/)** - Control brightness, contrast, etc.
