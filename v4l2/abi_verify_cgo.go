@@ -6,6 +6,8 @@ package v4l2
 #include "internal/gen/compat.h"
 #include <linux/media.h>
 #include <linux/v4l2-controls.h>
+#include <linux/v4l2-subdev.h>
+#include <linux/media-bus-format.h>
 #include <stddef.h>
 #include <sys/time.h>
 #include <time.h>
@@ -67,6 +69,21 @@ static size_t offsetof_v4l2_create_buffers_format(void) {
 static size_t offsetof_v4l2_selection_r(void) {
 	return offsetof(struct v4l2_selection, r);
 }
+static size_t offsetof_media_v2_topology_ptr_links(void) {
+	return offsetof(struct media_v2_topology, ptr_links);
+}
+static size_t offsetof_media_v2_interface_devnode(void) {
+	return offsetof(struct media_v2_interface, devnode);
+}
+static size_t offsetof_media_entity_desc_dev(void) {
+	return offsetof(struct media_entity_desc, dev);
+}
+static size_t offsetof_v4l2_subdev_format_format(void) {
+	return offsetof(struct v4l2_subdev_format, format);
+}
+static size_t offsetof_v4l2_subdev_selection_r(void) {
+	return offsetof(struct v4l2_subdev_selection, r);
+}
 */
 import "C"
 
@@ -87,7 +104,25 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"Fract":                uintptr(C.sizeof_struct_v4l2_fract),
 		"cV4L2Rect":            uintptr(C.sizeof_struct_v4l2_rect),
 		"Rect":                 uintptr(C.sizeof_struct_v4l2_rect),
-		"cMediaDeviceInfo":     uintptr(C.sizeof_struct_media_device_info),
+		"cMediaDeviceInfo":             uintptr(C.sizeof_struct_media_device_info),
+		"cMediaV2Topology":             uintptr(C.sizeof_struct_media_v2_topology),
+		"cMediaV2Entity":               uintptr(C.sizeof_struct_media_v2_entity),
+		"cMediaV2Interface":            uintptr(C.sizeof_struct_media_v2_interface),
+		"cMediaV2IntfDevnode":          uintptr(C.sizeof_struct_media_v2_intf_devnode),
+		"cMediaV2Pad":                  uintptr(C.sizeof_struct_media_v2_pad),
+		"cMediaV2Link":                 uintptr(C.sizeof_struct_media_v2_link),
+		"cMediaEntityDesc":             uintptr(C.sizeof_struct_media_entity_desc),
+		"cMediaPadDesc":                uintptr(C.sizeof_struct_media_pad_desc),
+		"cMediaLinkDesc":               uintptr(C.sizeof_struct_media_link_desc),
+		"cMediaLinksEnum":              uintptr(C.sizeof_struct_media_links_enum),
+		"cV4L2MBusFrameFmt":            uintptr(C.sizeof_struct_v4l2_mbus_framefmt),
+		"cV4L2SubdevFormat":            uintptr(C.sizeof_struct_v4l2_subdev_format),
+		"cV4L2SubdevCrop":              uintptr(C.sizeof_struct_v4l2_subdev_crop),
+		"cV4L2SubdevMBusCodeEnum":      uintptr(C.sizeof_struct_v4l2_subdev_mbus_code_enum),
+		"cV4L2SubdevFrameSizeEnum":     uintptr(C.sizeof_struct_v4l2_subdev_frame_size_enum),
+		"cV4L2SubdevFrameInterval":     uintptr(C.sizeof_struct_v4l2_subdev_frame_interval),
+		"cV4L2SubdevFrameIntervalEnum": uintptr(C.sizeof_struct_v4l2_subdev_frame_interval_enum),
+		"cV4L2SubdevSelection":         uintptr(C.sizeof_struct_v4l2_subdev_selection),
 		"cV4L2Capability":      uintptr(C.sizeof_struct_v4l2_capability),
 		"cV4L2Audio":           uintptr(C.sizeof_struct_v4l2_audio),
 		"cV4L2AudioOut":        uintptr(C.sizeof_struct_v4l2_audioout),
@@ -174,6 +209,11 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 		"cV4L2PixFormatMPlane.Num_planes":  uintptr(C.offsetof_v4l2_pix_format_mplane_num_planes()),
 		"cV4L2CreateBuffers.Format":        uintptr(C.offsetof_v4l2_create_buffers_format()),
 		"cV4L2Selection.R":                 uintptr(C.offsetof_v4l2_selection_r()),
+		"cMediaV2Topology.Ptr_links":       uintptr(C.offsetof_media_v2_topology_ptr_links()),
+		"cMediaV2Interface.Devnode":        uintptr(C.offsetof_media_v2_interface_devnode()),
+		"cMediaEntityDesc.Dev":             uintptr(C.offsetof_media_entity_desc_dev()),
+		"cV4L2SubdevFormat.Format":         uintptr(C.offsetof_v4l2_subdev_format_format()),
+		"cV4L2SubdevSelection.R":           uintptr(C.offsetof_v4l2_subdev_selection_r()),
 	}
 	out := make([]abiPair, 0, len(goOffsets))
 	for name, got := range goOffsets {
@@ -185,6 +225,21 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 func cIoctlChecks() []abiPair {
 	return []abiPair{
 		{"cMEDIA_IOC_DEVICE_INFO", cMEDIA_IOC_DEVICE_INFO, uintptr(C.MEDIA_IOC_DEVICE_INFO)},
+		{"cMEDIA_IOC_ENUM_ENTITIES", cMEDIA_IOC_ENUM_ENTITIES, uintptr(C.MEDIA_IOC_ENUM_ENTITIES)},
+		{"cMEDIA_IOC_ENUM_LINKS", cMEDIA_IOC_ENUM_LINKS, uintptr(C.MEDIA_IOC_ENUM_LINKS)},
+		{"cMEDIA_IOC_G_TOPOLOGY", cMEDIA_IOC_G_TOPOLOGY, uintptr(C.MEDIA_IOC_G_TOPOLOGY)},
+		{"cMEDIA_IOC_SETUP_LINK", cMEDIA_IOC_SETUP_LINK, uintptr(C.MEDIA_IOC_SETUP_LINK)},
+		{"cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL", cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL, uintptr(C.VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL)},
+		{"cVIDIOC_SUBDEV_ENUM_FRAME_SIZE", cVIDIOC_SUBDEV_ENUM_FRAME_SIZE, uintptr(C.VIDIOC_SUBDEV_ENUM_FRAME_SIZE)},
+		{"cVIDIOC_SUBDEV_ENUM_MBUS_CODE", cVIDIOC_SUBDEV_ENUM_MBUS_CODE, uintptr(C.VIDIOC_SUBDEV_ENUM_MBUS_CODE)},
+		{"cVIDIOC_SUBDEV_G_CROP", cVIDIOC_SUBDEV_G_CROP, uintptr(C.VIDIOC_SUBDEV_G_CROP)},
+		{"cVIDIOC_SUBDEV_G_FMT", cVIDIOC_SUBDEV_G_FMT, uintptr(C.VIDIOC_SUBDEV_G_FMT)},
+		{"cVIDIOC_SUBDEV_G_FRAME_INTERVAL", cVIDIOC_SUBDEV_G_FRAME_INTERVAL, uintptr(C.VIDIOC_SUBDEV_G_FRAME_INTERVAL)},
+		{"cVIDIOC_SUBDEV_G_SELECTION", cVIDIOC_SUBDEV_G_SELECTION, uintptr(C.VIDIOC_SUBDEV_G_SELECTION)},
+		{"cVIDIOC_SUBDEV_S_CROP", cVIDIOC_SUBDEV_S_CROP, uintptr(C.VIDIOC_SUBDEV_S_CROP)},
+		{"cVIDIOC_SUBDEV_S_FMT", cVIDIOC_SUBDEV_S_FMT, uintptr(C.VIDIOC_SUBDEV_S_FMT)},
+		{"cVIDIOC_SUBDEV_S_FRAME_INTERVAL", cVIDIOC_SUBDEV_S_FRAME_INTERVAL, uintptr(C.VIDIOC_SUBDEV_S_FRAME_INTERVAL)},
+		{"cVIDIOC_SUBDEV_S_SELECTION", cVIDIOC_SUBDEV_S_SELECTION, uintptr(C.VIDIOC_SUBDEV_S_SELECTION)},
 		{"cVIDIOC_CREATE_BUFS", cVIDIOC_CREATE_BUFS, uintptr(C.VIDIOC_CREATE_BUFS)},
 		{"cVIDIOC_CROPCAP", cVIDIOC_CROPCAP, uintptr(C.VIDIOC_CROPCAP)},
 		{"cVIDIOC_DECODER_CMD", cVIDIOC_DECODER_CMD, uintptr(C.VIDIOC_DECODER_CMD)},

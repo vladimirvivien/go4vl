@@ -5,72 +5,87 @@
 package v4l2
 
 const (
-	cMEDIA_IOC_DEVICE_INFO      uintptr = 0xc1007c00
-	cVIDIOC_CREATE_BUFS         uintptr = 0xc100565c
-	cVIDIOC_CROPCAP             uintptr = 0xc02c563a
-	cVIDIOC_DECODER_CMD         uintptr = 0xc0485660
-	cVIDIOC_DQBUF               uintptr = 0xc0585611
-	cVIDIOC_DQEVENT             uintptr = 0x80885659
-	cVIDIOC_DV_TIMINGS_CAP      uintptr = 0xc0905664
-	cVIDIOC_ENCODER_CMD         uintptr = 0xc028564d
-	cVIDIOC_ENUMAUDIO           uintptr = 0xc0345641
-	cVIDIOC_ENUMAUDOUT          uintptr = 0xc0345642
-	cVIDIOC_ENUMINPUT           uintptr = 0xc050561a
-	cVIDIOC_ENUMOUTPUT          uintptr = 0xc0485630
-	cVIDIOC_ENUMSTD             uintptr = 0xc0485619
-	cVIDIOC_ENUM_DV_TIMINGS     uintptr = 0xc0945662
-	cVIDIOC_ENUM_FMT            uintptr = 0xc0405602
-	cVIDIOC_ENUM_FRAMEINTERVALS uintptr = 0xc034564b
-	cVIDIOC_ENUM_FRAMESIZES     uintptr = 0xc02c564a
-	cVIDIOC_ENUM_FREQ_BANDS     uintptr = 0xc0405665
-	cVIDIOC_EXPBUF              uintptr = 0xc0405610
-	cVIDIOC_G_AUDIO             uintptr = 0x80345621
-	cVIDIOC_G_AUDOUT            uintptr = 0x80345631
-	cVIDIOC_G_CROP              uintptr = 0xc014563b
-	cVIDIOC_G_CTRL              uintptr = 0xc008561b
-	cVIDIOC_G_DV_TIMINGS        uintptr = 0xc0845658
-	cVIDIOC_G_EXT_CTRLS         uintptr = 0xc0205647
-	cVIDIOC_G_FMT               uintptr = 0xc0d05604
-	cVIDIOC_G_FREQUENCY         uintptr = 0xc02c5638
-	cVIDIOC_G_INPUT             uintptr = 0x80045626
-	cVIDIOC_G_MODULATOR         uintptr = 0xc0445636
-	cVIDIOC_G_OUTPUT            uintptr = 0x8004562e
-	cVIDIOC_G_PARM              uintptr = 0xc0cc5615
-	cVIDIOC_G_SELECTION         uintptr = 0xc040565e
-	cVIDIOC_G_STD               uintptr = 0x80085617
-	cVIDIOC_G_TUNER             uintptr = 0xc054561d
-	cVIDIOC_QBUF                uintptr = 0xc058560f
-	cVIDIOC_QUERYBUF            uintptr = 0xc0585609
-	cVIDIOC_QUERYCAP            uintptr = 0x80685600
-	cVIDIOC_QUERYCTRL           uintptr = 0xc0445624
-	cVIDIOC_QUERYMENU           uintptr = 0xc02c5625
-	cVIDIOC_QUERYSTD            uintptr = 0x8008563f
-	cVIDIOC_QUERY_DV_TIMINGS    uintptr = 0x80845663
-	cVIDIOC_QUERY_EXT_CTRL      uintptr = 0xc0e85667
-	cVIDIOC_REQBUFS             uintptr = 0xc0145608
-	cVIDIOC_STREAMOFF           uintptr = 0x40045613
-	cVIDIOC_STREAMON            uintptr = 0x40045612
-	cVIDIOC_SUBSCRIBE_EVENT     uintptr = 0x4020565a
-	cVIDIOC_S_AUDIO             uintptr = 0x40345622
-	cVIDIOC_S_AUDOUT            uintptr = 0x40345632
-	cVIDIOC_S_CROP              uintptr = 0x4014563c
-	cVIDIOC_S_CTRL              uintptr = 0xc008561c
-	cVIDIOC_S_DV_TIMINGS        uintptr = 0xc0845657
-	cVIDIOC_S_EXT_CTRLS         uintptr = 0xc0205648
-	cVIDIOC_S_FMT               uintptr = 0xc0d05605
-	cVIDIOC_S_FREQUENCY         uintptr = 0x402c5639
-	cVIDIOC_S_INPUT             uintptr = 0xc0045627
-	cVIDIOC_S_MODULATOR         uintptr = 0x40445637
-	cVIDIOC_S_OUTPUT            uintptr = 0xc004562f
-	cVIDIOC_S_PARM              uintptr = 0xc0cc5616
-	cVIDIOC_S_SELECTION         uintptr = 0xc040565f
-	cVIDIOC_S_STD               uintptr = 0x40085618
-	cVIDIOC_S_TUNER             uintptr = 0x4054561e
-	cVIDIOC_TRY_DECODER_CMD     uintptr = 0xc0485661
-	cVIDIOC_TRY_ENCODER_CMD     uintptr = 0xc028564e
-	cVIDIOC_TRY_EXT_CTRLS       uintptr = 0xc0205649
-	cVIDIOC_TRY_FMT             uintptr = 0xc0d05640
-	cVIDIOC_UNSUBSCRIBE_EVENT   uintptr = 0x4020565b
+	cMEDIA_IOC_DEVICE_INFO             uintptr = 0xc1007c00
+	cMEDIA_IOC_ENUM_ENTITIES           uintptr = 0xc1007c01
+	cMEDIA_IOC_ENUM_LINKS              uintptr = 0xc0287c02
+	cMEDIA_IOC_G_TOPOLOGY              uintptr = 0xc0487c04
+	cMEDIA_IOC_SETUP_LINK              uintptr = 0xc0347c03
+	cVIDIOC_CREATE_BUFS                uintptr = 0xc100565c
+	cVIDIOC_CROPCAP                    uintptr = 0xc02c563a
+	cVIDIOC_DECODER_CMD                uintptr = 0xc0485660
+	cVIDIOC_DQBUF                      uintptr = 0xc0585611
+	cVIDIOC_DQEVENT                    uintptr = 0x80885659
+	cVIDIOC_DV_TIMINGS_CAP             uintptr = 0xc0905664
+	cVIDIOC_ENCODER_CMD                uintptr = 0xc028564d
+	cVIDIOC_ENUMAUDIO                  uintptr = 0xc0345641
+	cVIDIOC_ENUMAUDOUT                 uintptr = 0xc0345642
+	cVIDIOC_ENUMINPUT                  uintptr = 0xc050561a
+	cVIDIOC_ENUMOUTPUT                 uintptr = 0xc0485630
+	cVIDIOC_ENUMSTD                    uintptr = 0xc0485619
+	cVIDIOC_ENUM_DV_TIMINGS            uintptr = 0xc0945662
+	cVIDIOC_ENUM_FMT                   uintptr = 0xc0405602
+	cVIDIOC_ENUM_FRAMEINTERVALS        uintptr = 0xc034564b
+	cVIDIOC_ENUM_FRAMESIZES            uintptr = 0xc02c564a
+	cVIDIOC_ENUM_FREQ_BANDS            uintptr = 0xc0405665
+	cVIDIOC_EXPBUF                     uintptr = 0xc0405610
+	cVIDIOC_G_AUDIO                    uintptr = 0x80345621
+	cVIDIOC_G_AUDOUT                   uintptr = 0x80345631
+	cVIDIOC_G_CROP                     uintptr = 0xc014563b
+	cVIDIOC_G_CTRL                     uintptr = 0xc008561b
+	cVIDIOC_G_DV_TIMINGS               uintptr = 0xc0845658
+	cVIDIOC_G_EXT_CTRLS                uintptr = 0xc0205647
+	cVIDIOC_G_FMT                      uintptr = 0xc0d05604
+	cVIDIOC_G_FREQUENCY                uintptr = 0xc02c5638
+	cVIDIOC_G_INPUT                    uintptr = 0x80045626
+	cVIDIOC_G_MODULATOR                uintptr = 0xc0445636
+	cVIDIOC_G_OUTPUT                   uintptr = 0x8004562e
+	cVIDIOC_G_PARM                     uintptr = 0xc0cc5615
+	cVIDIOC_G_SELECTION                uintptr = 0xc040565e
+	cVIDIOC_G_STD                      uintptr = 0x80085617
+	cVIDIOC_G_TUNER                    uintptr = 0xc054561d
+	cVIDIOC_QBUF                       uintptr = 0xc058560f
+	cVIDIOC_QUERYBUF                   uintptr = 0xc0585609
+	cVIDIOC_QUERYCAP                   uintptr = 0x80685600
+	cVIDIOC_QUERYCTRL                  uintptr = 0xc0445624
+	cVIDIOC_QUERYMENU                  uintptr = 0xc02c5625
+	cVIDIOC_QUERYSTD                   uintptr = 0x8008563f
+	cVIDIOC_QUERY_DV_TIMINGS           uintptr = 0x80845663
+	cVIDIOC_QUERY_EXT_CTRL             uintptr = 0xc0e85667
+	cVIDIOC_REQBUFS                    uintptr = 0xc0145608
+	cVIDIOC_STREAMOFF                  uintptr = 0x40045613
+	cVIDIOC_STREAMON                   uintptr = 0x40045612
+	cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL uintptr = 0xc040564b
+	cVIDIOC_SUBDEV_ENUM_FRAME_SIZE     uintptr = 0xc040564a
+	cVIDIOC_SUBDEV_ENUM_MBUS_CODE      uintptr = 0xc0305602
+	cVIDIOC_SUBDEV_G_CROP              uintptr = 0xc038563b
+	cVIDIOC_SUBDEV_G_FMT               uintptr = 0xc0585604
+	cVIDIOC_SUBDEV_G_FRAME_INTERVAL    uintptr = 0xc0305615
+	cVIDIOC_SUBDEV_G_SELECTION         uintptr = 0xc040563d
+	cVIDIOC_SUBDEV_S_CROP              uintptr = 0xc038563c
+	cVIDIOC_SUBDEV_S_FMT               uintptr = 0xc0585605
+	cVIDIOC_SUBDEV_S_FRAME_INTERVAL    uintptr = 0xc0305616
+	cVIDIOC_SUBDEV_S_SELECTION         uintptr = 0xc040563e
+	cVIDIOC_SUBSCRIBE_EVENT            uintptr = 0x4020565a
+	cVIDIOC_S_AUDIO                    uintptr = 0x40345622
+	cVIDIOC_S_AUDOUT                   uintptr = 0x40345632
+	cVIDIOC_S_CROP                     uintptr = 0x4014563c
+	cVIDIOC_S_CTRL                     uintptr = 0xc008561c
+	cVIDIOC_S_DV_TIMINGS               uintptr = 0xc0845657
+	cVIDIOC_S_EXT_CTRLS                uintptr = 0xc0205648
+	cVIDIOC_S_FMT                      uintptr = 0xc0d05605
+	cVIDIOC_S_FREQUENCY                uintptr = 0x402c5639
+	cVIDIOC_S_INPUT                    uintptr = 0xc0045627
+	cVIDIOC_S_MODULATOR                uintptr = 0x40445637
+	cVIDIOC_S_OUTPUT                   uintptr = 0xc004562f
+	cVIDIOC_S_PARM                     uintptr = 0xc0cc5616
+	cVIDIOC_S_SELECTION                uintptr = 0xc040565f
+	cVIDIOC_S_STD                      uintptr = 0x40085618
+	cVIDIOC_S_TUNER                    uintptr = 0x4054561e
+	cVIDIOC_TRY_DECODER_CMD            uintptr = 0xc0485661
+	cVIDIOC_TRY_ENCODER_CMD            uintptr = 0xc028564e
+	cVIDIOC_TRY_EXT_CTRLS              uintptr = 0xc0205649
+	cVIDIOC_TRY_FMT                    uintptr = 0xc0d05640
+	cVIDIOC_UNSUBSCRIBE_EVENT          uintptr = 0x4020565b
 )
 
 type cTimeval struct {
@@ -109,6 +124,159 @@ type cMediaDeviceInfo struct {
 	Hw_revision    uint32
 	Driver_version uint32
 	Reserved       [31]uint32
+}
+type cMediaV2Topology struct {
+	Topology_version uint64
+	Num_entities     uint32
+	Reserved1        uint32
+	Ptr_entities     uint64
+	Num_interfaces   uint32
+	Reserved2        uint32
+	Ptr_interfaces   uint64
+	Num_pads         uint32
+	Reserved3        uint32
+	Ptr_pads         uint64
+	Num_links        uint32
+	Reserved4        uint32
+	Ptr_links        uint64
+}
+type cMediaV2Entity struct {
+	Id       uint32
+	Name     [64]uint8
+	Function uint32
+	Flags    uint32
+	Reserved [5]uint32
+}
+type cMediaV2Interface struct {
+	Id        uint32
+	Type      uint32
+	Flags     uint32
+	Reserved  [9]uint32
+	Devnode   cMediaV2IntfDevnode
+	Pad_cgo_0 [56]byte
+}
+type cMediaV2IntfDevnode struct {
+	Major uint32
+	Minor uint32
+}
+type cMediaV2Pad struct {
+	Id        uint32
+	Entity_id uint32
+	Flags     uint32
+	Index     uint32
+	Reserved  [4]uint32
+}
+type cMediaV2Link struct {
+	Id        uint32
+	Source_id uint32
+	Sink_id   uint32
+	Flags     uint32
+	Reserved  [6]uint32
+}
+type cMediaEntityDesc struct {
+	Id        uint32
+	Name      [32]uint8
+	Type      uint32
+	Revision  uint32
+	Flags     uint32
+	Group_id  uint32
+	Pads      uint16
+	Links     uint16
+	Reserved  [4]uint32
+	Dev       [2]uint32
+	Pad_cgo_0 [176]byte
+}
+type cMediaPadDesc struct {
+	Entity   uint32
+	Index    uint16
+	Flags    uint32
+	Reserved [2]uint32
+}
+type cMediaLinkDesc struct {
+	Source   cMediaPadDesc
+	Sink     cMediaPadDesc
+	Flags    uint32
+	Reserved [2]uint32
+}
+type cMediaLinksEnum struct {
+	Entity   uint32
+	Pads     *cMediaPadDesc
+	Links    *cMediaLinkDesc
+	Reserved [4]uint32
+}
+type cV4L2MBusFrameFmt struct {
+	Width        uint32
+	Height       uint32
+	Code         uint32
+	Field        uint32
+	Colorspace   uint32
+	Ycbcr_enc    uint16
+	Quantization uint16
+	Xfer_func    uint16
+	Flags        uint16
+	Reserved     [10]uint16
+}
+type cV4L2SubdevFormat struct {
+	Which    uint32
+	Pad      uint32
+	Format   cV4L2MBusFrameFmt
+	Stream   uint32
+	Reserved [7]uint32
+}
+type cV4L2SubdevCrop struct {
+	Which    uint32
+	Pad      uint32
+	Rect     cV4L2Rect
+	Stream   uint32
+	Reserved [7]uint32
+}
+type cV4L2SubdevMBusCodeEnum struct {
+	Pad      uint32
+	Index    uint32
+	Code     uint32
+	Which    uint32
+	Flags    uint32
+	Stream   uint32
+	Reserved [6]uint32
+}
+type cV4L2SubdevFrameSizeEnum struct {
+	Index      uint32
+	Pad        uint32
+	Code       uint32
+	Min_width  uint32
+	Max_width  uint32
+	Min_height uint32
+	Max_height uint32
+	Which      uint32
+	Stream     uint32
+	Reserved   [7]uint32
+}
+type cV4L2SubdevFrameInterval struct {
+	Pad      uint32
+	Interval cV4L2Fract
+	Stream   uint32
+	Which    uint32
+	Reserved [7]uint32
+}
+type cV4L2SubdevFrameIntervalEnum struct {
+	Index    uint32
+	Pad      uint32
+	Code     uint32
+	Width    uint32
+	Height   uint32
+	Interval cV4L2Fract
+	Which    uint32
+	Stream   uint32
+	Reserved [7]uint32
+}
+type cV4L2SubdevSelection struct {
+	Which    uint32
+	Pad      uint32
+	Target   uint32
+	Flags    uint32
+	R        cV4L2Rect
+	Stream   uint32
+	Reserved [7]uint32
 }
 type cV4L2Capability struct {
 	Driver       [16]uint8

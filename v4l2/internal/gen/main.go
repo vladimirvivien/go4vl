@@ -101,6 +101,9 @@ func generateConsts(tmpDir, v4l2Dir string, env []string) error {
 #include <linux/videodev2.h>
 #include <linux/v4l2-controls.h>
 #include <linux/v4l2-common.h>
+#include <linux/media.h>
+#include <linux/v4l2-subdev.h>
+#include <linux/media-bus-format.h>
 */
 import "C"
 
@@ -144,6 +147,8 @@ func generateTypes(tmpDir, v4l2Dir, arch string, env []string) error {
 #include <linux/v4l2-controls.h>
 #include <linux/v4l2-common.h>
 #include <linux/media.h>
+#include <linux/v4l2-subdev.h>
+#include <linux/media-bus-format.h>
 */
 import "C"
 
@@ -169,6 +174,7 @@ const (
 	// and replace Pixelclock uint64 in packed struct v4l2_bt_timings so Go matches C's 124-byte packed size and 4-byte alignment.
 	text = regexp.MustCompile(`Stop\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Stop [8]byte")
 	text = regexp.MustCompile(`Raw\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Raw [8]uint32")
+	text = regexp.MustCompile(`Dev\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Dev [2]uint32")
 	text = regexp.MustCompile(`Pixelclock\s+uint64`).ReplaceAllString(text, "Pixelclock [8]byte")
 	if strings.Contains(text, "_Ctype_") {
 		return fmt.Errorf("unresolved _Ctype_ references in godefs output:\n%s", text)
@@ -219,6 +225,24 @@ type cV4L2Timecode C.struct_v4l2_timecode
 type cV4L2Fract C.struct_v4l2_fract
 type cV4L2Rect C.struct_v4l2_rect
 type cMediaDeviceInfo C.struct_media_device_info
+type cMediaV2Topology C.struct_media_v2_topology
+type cMediaV2Entity C.struct_media_v2_entity
+type cMediaV2Interface C.struct_media_v2_interface
+type cMediaV2IntfDevnode C.struct_media_v2_intf_devnode
+type cMediaV2Pad C.struct_media_v2_pad
+type cMediaV2Link C.struct_media_v2_link
+type cMediaEntityDesc C.struct_media_entity_desc
+type cMediaPadDesc C.struct_media_pad_desc
+type cMediaLinkDesc C.struct_media_link_desc
+type cMediaLinksEnum C.struct_media_links_enum
+type cV4L2MBusFrameFmt C.struct_v4l2_mbus_framefmt
+type cV4L2SubdevFormat C.struct_v4l2_subdev_format
+type cV4L2SubdevCrop C.struct_v4l2_subdev_crop
+type cV4L2SubdevMBusCodeEnum C.struct_v4l2_subdev_mbus_code_enum
+type cV4L2SubdevFrameSizeEnum C.struct_v4l2_subdev_frame_size_enum
+type cV4L2SubdevFrameInterval C.struct_v4l2_subdev_frame_interval
+type cV4L2SubdevFrameIntervalEnum C.struct_v4l2_subdev_frame_interval_enum
+type cV4L2SubdevSelection C.struct_v4l2_subdev_selection
 type cV4L2Capability C.struct_v4l2_capability
 type cV4L2Audio C.struct_v4l2_audio
 type cV4L2AudioOut C.struct_v4l2_audioout
@@ -274,6 +298,10 @@ type cV4L2Tuner C.struct_v4l2_tuner
 
 var ioctlConsts = []string{
 	"MEDIA_IOC_DEVICE_INFO",
+	"MEDIA_IOC_ENUM_ENTITIES",
+	"MEDIA_IOC_ENUM_LINKS",
+	"MEDIA_IOC_G_TOPOLOGY",
+	"MEDIA_IOC_SETUP_LINK",
 	"VIDIOC_CREATE_BUFS",
 	"VIDIOC_CROPCAP",
 	"VIDIOC_DECODER_CMD",
@@ -318,6 +346,17 @@ var ioctlConsts = []string{
 	"VIDIOC_REQBUFS",
 	"VIDIOC_STREAMOFF",
 	"VIDIOC_STREAMON",
+	"VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL",
+	"VIDIOC_SUBDEV_ENUM_FRAME_SIZE",
+	"VIDIOC_SUBDEV_ENUM_MBUS_CODE",
+	"VIDIOC_SUBDEV_G_CROP",
+	"VIDIOC_SUBDEV_G_FMT",
+	"VIDIOC_SUBDEV_G_FRAME_INTERVAL",
+	"VIDIOC_SUBDEV_G_SELECTION",
+	"VIDIOC_SUBDEV_S_CROP",
+	"VIDIOC_SUBDEV_S_FMT",
+	"VIDIOC_SUBDEV_S_FRAME_INTERVAL",
+	"VIDIOC_SUBDEV_S_SELECTION",
 	"VIDIOC_SUBSCRIBE_EVENT",
 	"VIDIOC_S_AUDIO",
 	"VIDIOC_S_AUDOUT",
@@ -1001,4 +1040,72 @@ var uapiConsts = []string{
 	"V4L2_SEL_TGT_CROP_DEFAULT",
 	"V4L2_SEL_TGT_NATIVE_SIZE",
 	"VIDEO_MAX_PLANES",
+	"MEDIA_ENT_ID_FLAG_NEXT",
+	"MEDIA_ENT_F_UNKNOWN",
+	"MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN",
+	"MEDIA_ENT_F_IO_V4L",
+	"MEDIA_ENT_F_CAM_SENSOR",
+	"MEDIA_ENT_F_FLASH",
+	"MEDIA_ENT_F_LENS",
+	"MEDIA_ENT_F_PROC_VIDEO_COMPOSER",
+	"MEDIA_ENT_F_PROC_VIDEO_PIXEL_FORMATTER",
+	"MEDIA_ENT_F_PROC_VIDEO_PIXEL_ENC_CONV",
+	"MEDIA_ENT_F_PROC_VIDEO_LUT",
+	"MEDIA_ENT_F_PROC_VIDEO_SCALER",
+	"MEDIA_ENT_F_PROC_VIDEO_STATISTICS",
+	"MEDIA_ENT_F_PROC_VIDEO_ENCODER",
+	"MEDIA_ENT_F_PROC_VIDEO_DECODER",
+	"MEDIA_ENT_F_PROC_VIDEO_ISP",
+	"MEDIA_ENT_F_VID_MUX",
+	"MEDIA_ENT_F_VID_IF_BRIDGE",
+	"MEDIA_ENT_FL_DEFAULT",
+	"MEDIA_ENT_FL_CONNECTOR",
+	"MEDIA_INTF_T_V4L_VIDEO",
+	"MEDIA_INTF_T_V4L_VBI",
+	"MEDIA_INTF_T_V4L_RADIO",
+	"MEDIA_INTF_T_V4L_SUBDEV",
+	"MEDIA_INTF_T_V4L_SWRADIO",
+	"MEDIA_INTF_T_V4L_TOUCH",
+	"MEDIA_PAD_FL_SINK",
+	"MEDIA_PAD_FL_SOURCE",
+	"MEDIA_PAD_FL_MUST_CONNECT",
+	"MEDIA_LNK_FL_ENABLED",
+	"MEDIA_LNK_FL_IMMUTABLE",
+	"MEDIA_LNK_FL_DYNAMIC",
+	"MEDIA_LNK_FL_LINK_TYPE",
+	"MEDIA_LNK_FL_DATA_LINK",
+	"MEDIA_LNK_FL_INTERFACE_LINK",
+	"MEDIA_LNK_FL_ANCILLARY_LINK",
+	"V4L2_SUBDEV_FORMAT_TRY",
+	"V4L2_SUBDEV_FORMAT_ACTIVE",
+	"MEDIA_BUS_FMT_FIXED",
+	"MEDIA_BUS_FMT_RGB565_2X8_LE",
+	"MEDIA_BUS_FMT_RGB888_1X24",
+	"MEDIA_BUS_FMT_BGR888_1X24",
+	"MEDIA_BUS_FMT_Y8_1X8",
+	"MEDIA_BUS_FMT_Y10_1X10",
+	"MEDIA_BUS_FMT_Y12_1X12",
+	"MEDIA_BUS_FMT_UYVY8_1X16",
+	"MEDIA_BUS_FMT_VYUY8_1X16",
+	"MEDIA_BUS_FMT_YUYV8_1X16",
+	"MEDIA_BUS_FMT_YVYU8_1X16",
+	"MEDIA_BUS_FMT_UYVY8_2X8",
+	"MEDIA_BUS_FMT_YUYV8_2X8",
+	"MEDIA_BUS_FMT_SBGGR8_1X8",
+	"MEDIA_BUS_FMT_SGBRG8_1X8",
+	"MEDIA_BUS_FMT_SGRBG8_1X8",
+	"MEDIA_BUS_FMT_SRGGB8_1X8",
+	"MEDIA_BUS_FMT_SBGGR10_1X10",
+	"MEDIA_BUS_FMT_SGBRG10_1X10",
+	"MEDIA_BUS_FMT_SGRBG10_1X10",
+	"MEDIA_BUS_FMT_SRGGB10_1X10",
+	"MEDIA_BUS_FMT_SBGGR12_1X12",
+	"MEDIA_BUS_FMT_SGBRG12_1X12",
+	"MEDIA_BUS_FMT_SGRBG12_1X12",
+	"MEDIA_BUS_FMT_SRGGB12_1X12",
+	"MEDIA_BUS_FMT_SBGGR16_1X16",
+	"MEDIA_BUS_FMT_SGBRG16_1X16",
+	"MEDIA_BUS_FMT_SGRBG16_1X16",
+	"MEDIA_BUS_FMT_SRGGB16_1X16",
+	"MEDIA_BUS_FMT_JPEG_1X8",
 }
