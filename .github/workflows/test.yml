@@ -1,18 +1,18 @@
 # .github/workflows/test.yml
 name: Tests
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26'
 
     - name: Build (CGO_ENABLED=0)
       run: |
@@ -36,12 +36,12 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.25'
+        go-version: '1.26'
 
     - name: Install build dependencies
       run: |

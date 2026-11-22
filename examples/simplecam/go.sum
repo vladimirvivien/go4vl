@@ -1,4 +1,4 @@
-github.com/vladimirvivien/go4vl v0.0.5 h1:jHuo/CZOAzYGzrSMOc7anOMNDr03uWH5c1B5kQ+Chnc=
-github.com/vladimirvivien/go4vl v0.0.5/go.mod h1:FP+/fG/X1DUdbZl9uN+l33vId1QneVn+W80JMc17OL8=
-golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c h1:F1jZWGFhYfh0Ci55sIpILtKKK8p3i2/krTr0H1rg74I=
-golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+github.com/vladimirvivien/go4vl v0.6.3 h1:c0xN0HlbQu2X4hdvqN682Lr3uQLO/iTDPNkksu8EgVA=
+github.com/vladimirvivien/go4vl v0.6.3/go.mod h1:iWUNl4OswQ/oekJXIS6S8MN5inoPOsbpF3m4azwrzsA=
+golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
+golang.org/x/sys v0.50.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=

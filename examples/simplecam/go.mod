@@ -1,7 +1,7 @@
 module github.com/vladimirvivien/go4vl/simplecam
 
-go 1.25
+go 1.26.0
 
-require github.com/vladimirvivien/go4vl v0.0.5
+require github.com/vladimirvivien/go4vl v0.6.3
 
-require golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+require golang.org/x/sys v0.50.0 // indirect
