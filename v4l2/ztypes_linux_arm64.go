@@ -9,7 +9,10 @@ const (
 	cMEDIA_IOC_ENUM_ENTITIES           uintptr = 0xc1007c01
 	cMEDIA_IOC_ENUM_LINKS              uintptr = 0xc0287c02
 	cMEDIA_IOC_G_TOPOLOGY              uintptr = 0xc0487c04
+	cMEDIA_IOC_REQUEST_ALLOC           uintptr = 0x80047c05
 	cMEDIA_IOC_SETUP_LINK              uintptr = 0xc0347c03
+	cMEDIA_REQUEST_IOC_QUEUE           uintptr = 0x7c80
+	cMEDIA_REQUEST_IOC_REINIT          uintptr = 0x7c81
 	cVIDIOC_CREATE_BUFS                uintptr = 0xc100565c
 	cVIDIOC_CROPCAP                    uintptr = 0xc02c563a
 	cVIDIOC_DECODER_CMD                uintptr = 0xc0485660

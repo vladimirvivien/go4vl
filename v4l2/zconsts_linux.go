@@ -730,4 +730,7 @@ const (
 	cMEDIA_BUS_FMT_SGRBG16_1X16                       = 0x301f
 	cMEDIA_BUS_FMT_SRGGB16_1X16                       = 0x3020
 	cMEDIA_BUS_FMT_JPEG_1X8                           = 0x4001
+	cV4L2_CTRL_WHICH_CUR_VAL                          = 0x0
+	cV4L2_CTRL_WHICH_DEF_VAL                          = 0xf000000
+	cV4L2_CTRL_WHICH_REQUEST_VAL                      = 0xf010000
 )
