@@ -20,12 +20,15 @@ import (
 	"unsafe"
 )
 
-// Additional control classes not defined in control_values.go
+// Additional control classes and which-value selectors for VIDIOC_{G,S,TRY}_EXT_CTRLS.
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/v4l2-controls.h
 const (
-	CtrlClassFMTx    CtrlClass = cV4L2_CTRL_CLASS_FM_TX    // FM Modulator controls
-	CtrlClassFMRx    CtrlClass = cV4L2_CTRL_CLASS_FM_RX    // FM Receiver controls
-	CtrlClassRFTuner CtrlClass = cV4L2_CTRL_CLASS_RF_TUNER // RF tuner controls
+	CtrlClassFMTx       CtrlClass = cV4L2_CTRL_CLASS_FM_TX       // FM Modulator controls
+	CtrlClassFMRx       CtrlClass = cV4L2_CTRL_CLASS_FM_RX       // FM Receiver controls
+	CtrlClassRFTuner    CtrlClass = cV4L2_CTRL_CLASS_RF_TUNER    // RF tuner controls
+	CtrlWhichCurVal     CtrlClass = cV4L2_CTRL_WHICH_CUR_VAL     // Get/set current control values
+	CtrlWhichDefVal     CtrlClass = cV4L2_CTRL_WHICH_DEF_VAL     // Get default control values
+	CtrlWhichRequestVal CtrlClass = cV4L2_CTRL_WHICH_REQUEST_VAL // Bind controls to a Media Request FD
 )
 
 // ExtControl represents a single extended control.
@@ -124,6 +127,7 @@ func (ec *ExtControl) GetCompoundData() []byte {
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 type ExtControls struct {
 	Class     CtrlClass
+	RequestFD int32
 	controls  []*ExtControl
 	errorIdx  uint32 // Index of control that caused error (after ioctl)
 }
@@ -151,6 +155,20 @@ func (ec *ExtControls) SetClass(class CtrlClass) {
 // GetClass returns the control class.
 func (ec *ExtControls) GetClass() CtrlClass {
 	return ec.Class
+}
+
+// SetRequestFD binds this control collection to a Media Request file descriptor
+// (allocated via AllocMediaRequest) and selects CtrlWhichRequestVal.
+func (ec *ExtControls) SetRequestFD(requestFD int32) {
+	ec.RequestFD = requestFD
+	if requestFD > 0 {
+		ec.Class = CtrlWhichRequestVal
+	}
+}
+
+// GetRequestFD returns the bound Media Request file descriptor (0 if unbound).
+func (ec *ExtControls) GetRequestFD() int32 {
+	return ec.RequestFD
 }
 
 // Add adds an extended control to the collection.
@@ -254,6 +272,12 @@ func prepareForIoctl(ec *ExtControls) (*cV4L2ExtControls, func(), error) {
 
 	var v4l2Ctrls cV4L2ExtControls
 	v4l2Ctrls.Ctrl_class = ec.Class
+	if ec.RequestFD > 0 {
+		v4l2Ctrls.Request_fd = ec.RequestFD
+		if v4l2Ctrls.Ctrl_class == 0 {
+			v4l2Ctrls.Ctrl_class = CtrlWhichRequestVal
+		}
+	}
 	v4l2Ctrls.Count = uint32(count)
 	v4l2Ctrls.Controls = &ctrlSlice[0]
 
