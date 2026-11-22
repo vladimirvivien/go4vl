@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	sys "syscall"
-
 	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
 
 // Decoder represents a V4L2 stateful video decoder device.

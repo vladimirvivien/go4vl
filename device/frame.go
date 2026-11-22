@@ -71,6 +71,9 @@ type Frame struct {
 	// pool is the FramePool this frame's buffer came from
 	pool *FramePool
 
+	// bufPtr holds the pooled slice header pointer so Release() returns it without allocating.
+	bufPtr *[]byte
+
 	// released tracks whether Release() has been called
 	released bool
 }
@@ -93,8 +96,12 @@ func (f *Frame) Release() {
 	}
 	f.released = true
 
-	// Return buffer to pool
-	f.pool.Put(f.Data)
+	if f.bufPtr != nil {
+		f.pool.putPtr(f.bufPtr)
+		f.bufPtr = nil
+	} else {
+		f.pool.Put(f.Data)
+	}
 	f.Data = nil
 }
 

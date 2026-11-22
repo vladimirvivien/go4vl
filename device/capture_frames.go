@@ -3,10 +3,9 @@ package device
 import (
 	"errors"
 	"fmt"
-	sys "syscall"
-	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
 
 // startFramesCapture launches the optimized streaming loop for GetFrames() API.
@@ -70,12 +69,12 @@ func (d *Device) startFramesCapture() {
 					}
 
 					// Buffer has valid frame data - use pooled buffer
-					poolBuf := d.framePool.Get(buff.BytesUsed)
+					poolPtr, poolBuf := d.framePool.getPtr(buff.BytesUsed)
 
 					// Safety check: ensure buffers are still valid before accessing
 					if buff.Index >= uint32(len(d.buffers)) || d.buffers[buff.Index] == nil {
 						// Buffers have been unmapped, exit gracefully
-						d.framePool.Put(poolBuf)
+						d.framePool.putPtr(poolPtr)
 						return
 					}
 
@@ -89,6 +88,7 @@ func (d *Device) startFramesCapture() {
 						Flags:     buff.Flags,
 						Index:     buff.Index,
 						pool:      d.framePool,
+						bufPtr:    poolPtr,
 						released:  false,
 					}
 
@@ -114,17 +114,7 @@ func (d *Device) startFramesCapture() {
 					// Other cases (no data, not mapped) are silently skipped
 				}
 
-				var queueErr error
-				switch ioMemType {
-				case v4l2.IOTypeUserPtr:
-					ptr := uintptr(unsafe.Pointer(&d.buffers[buff.Index][0]))
-					_, queueErr = v4l2.QueueBufferUserPtr(fd, bufType, buff.Index, ptr, uint32(len(d.buffers[buff.Index])))
-				case v4l2.IOTypeDMABuf:
-					_, queueErr = v4l2.QueueBufferDMABuf(fd, bufType, buff.Index, d.dmabufFDs[buff.Index], uint32(len(d.buffers[buff.Index])))
-				default:
-					_, queueErr = v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index)
-				}
-				if queueErr != nil {
+				if queueErr := d.queueBuffer(buff.Index); queueErr != nil {
 					select {
 					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", queueErr, buff):
 					default:

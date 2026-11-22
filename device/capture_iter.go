@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"iter"
 	"time"
-	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
 	sys "golang.org/x/sys/unix"
@@ -63,26 +62,11 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 		var frame Frame
 		checkedOut := -1
 
-		requeue := func(idx uint32) error {
-			switch ioMemType {
-			case v4l2.IOTypeUserPtr:
-				ptr := uintptr(unsafe.Pointer(&d.buffers[idx][0]))
-				_, err := v4l2.QueueBufferUserPtr(fd, bufType, idx, ptr, uint32(len(d.buffers[idx])))
-				return err
-			case v4l2.IOTypeDMABuf:
-				_, err := v4l2.QueueBufferDMABuf(fd, bufType, idx, d.dmabufFDs[idx], uint32(len(d.buffers[idx])))
-				return err
-			default:
-				_, err := v4l2.QueueBuffer(fd, ioMemType, bufType, idx)
-				return err
-			}
-		}
-
 		// Ensure any checked-out buffer is returned to the driver even if the
 		// caller's loop body panics.
 		defer func() {
 			if checkedOut >= 0 && d.streaming.Load() {
-				_ = requeue(uint32(checkedOut))
+				_ = d.queueBuffer(uint32(checkedOut))
 			}
 		}()
 
@@ -151,7 +135,7 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 			if !d.streaming.Load() {
 				return
 			}
-			if err := requeue(buff.Index); err != nil {
+			if err := d.queueBuffer(buff.Index); err != nil {
 				if keepGoing {
 					yield(nil, fmt.Errorf("device: frames requeue: %w", err))
 				}

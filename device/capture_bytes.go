@@ -3,10 +3,9 @@ package device
 import (
 	"errors"
 	"fmt"
-	sys "syscall"
-	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
 
 // startRawBytesCapture launches the legacy streaming loop for GetOutput() API.
@@ -116,17 +115,7 @@ func (d *Device) startRawBytesCapture() {
 					}
 				}
 
-				var queueErr error
-				switch ioMemType {
-				case v4l2.IOTypeUserPtr:
-					ptr := uintptr(unsafe.Pointer(&d.buffers[buff.Index][0]))
-					_, queueErr = v4l2.QueueBufferUserPtr(fd, bufType, buff.Index, ptr, uint32(len(d.buffers[buff.Index])))
-				case v4l2.IOTypeDMABuf:
-					_, queueErr = v4l2.QueueBufferDMABuf(fd, bufType, buff.Index, d.dmabufFDs[buff.Index], uint32(len(d.buffers[buff.Index])))
-				default:
-					_, queueErr = v4l2.QueueBuffer(fd, ioMemType, bufType, buff.Index)
-				}
-				if queueErr != nil {
+				if queueErr := d.queueBuffer(buff.Index); queueErr != nil {
 					select {
 					case d.streamErr <- fmt.Errorf("device: stream loop queue: %w: buff: %#v", queueErr, buff):
 					default:

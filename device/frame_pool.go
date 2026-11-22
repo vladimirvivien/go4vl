@@ -79,27 +79,28 @@ func NewFramePool(defaultCapacity int) *FramePool {
 //	copy(buf, frameData)
 //	pool.Put(buf)
 func (fp *FramePool) Get(size uint32) []byte {
+	_, buf := fp.getPtr(size)
+	return buf
+}
+
+func (fp *FramePool) getPtr(size uint32) (*[]byte, []byte) {
 	fp.gets.Add(1)
 
 	bufPtr := fp.pool.Get().(*[]byte)
 
-	// Check if buffer needs resizing
 	if cap(*bufPtr) < int(size) {
 		fp.resizes.Add(1)
 
-		// Allocate new buffer with extra capacity (2x requested size)
-		// This reduces future resize operations
 		newCap := int(size) * 2
 		if newCap < fp.defaultCap {
 			newCap = fp.defaultCap
 		}
 		*bufPtr = make([]byte, size, newCap)
 	} else {
-		// Reuse existing buffer, just adjust length
 		*bufPtr = (*bufPtr)[:size]
 	}
 
-	return *bufPtr
+	return bufPtr, *bufPtr
 }
 
 // Put returns a buffer to the pool for reuse.
@@ -120,11 +121,18 @@ func (fp *FramePool) Put(buf []byte) {
 	}
 
 	fp.puts.Add(1)
-
-	// Reset length to 0, preserving capacity
 	buf = buf[:0]
-
 	fp.pool.Put(&buf)
+}
+
+func (fp *FramePool) putPtr(bufPtr *[]byte) {
+	if bufPtr == nil || *bufPtr == nil || cap(*bufPtr) == 0 {
+		return
+	}
+
+	fp.puts.Add(1)
+	*bufPtr = (*bufPtr)[:0]
+	fp.pool.Put(bufPtr)
 }
 
 // Stats returns current pool statistics for monitoring and debugging.

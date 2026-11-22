@@ -1612,7 +1612,7 @@ func (d *Device) Start(ctx context.Context) error {
 	}
 
 	if !d.cap.IsStreamingSupported() {
-		return fmt.Errorf("device: start stream: %s", v4l2.ErrorUnsupportedFeature)
+		return fmt.Errorf("device: start stream: %w", v4l2.ErrorUnsupportedFeature)
 	}
 
 	if d.streaming.Load() || d.streamActive.Load() {
@@ -1662,7 +1662,7 @@ func (d *Device) Start(ctx context.Context) error {
 		if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
 			d.streaming.Store(false)
 			_, _ = v4l2.ResetBuffers(d)
-			return fmt.Errorf("device: make mapped buffers: %s", err)
+			return fmt.Errorf("device: make mapped buffers: %w", err)
 		}
 	}
 
@@ -1673,27 +1673,11 @@ func (d *Device) Start(ctx context.Context) error {
 	// For output devices, buffers are queued with frame data via WriteFrame, which calls
 	// StreamOn on the first queued frame.
 	if d.bufType != v4l2.BufTypeVideoOutput && d.bufType != v4l2.BufTypeVideoOutputMPlane {
-		for i := 0; i < int(d.config.bufSize); i++ {
-			switch d.config.ioType {
-			case v4l2.IOTypeUserPtr:
-				ptr := uintptr(unsafe.Pointer(&d.buffers[i][0]))
-				if _, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, uint32(i), ptr, uint32(len(d.buffers[i]))); err != nil {
-					d.streaming.Store(false)
-					_ = d.releaseBuffers(true)
-					return fmt.Errorf("device: buffer queueing: %w", err)
-				}
-			case v4l2.IOTypeDMABuf:
-				if _, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, uint32(i), d.dmabufFDs[i], d.config.pixFormat.SizeImage); err != nil {
-					d.streaming.Store(false)
-					_ = d.releaseBuffers(true)
-					return fmt.Errorf("device: buffer queueing: %w", err)
-				}
-			default:
-				if _, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, uint32(i)); err != nil {
-					d.streaming.Store(false)
-					_ = d.releaseBuffers(true)
-					return fmt.Errorf("device: buffer queueing: %w", err)
-				}
+		for i := range d.config.bufSize {
+			if err := d.queueBuffer(i); err != nil {
+				d.streaming.Store(false)
+				_ = d.releaseBuffers(true)
+				return fmt.Errorf("device: buffer queueing: %w", err)
 			}
 		}
 
@@ -1712,6 +1696,23 @@ func (d *Device) Start(ctx context.Context) error {
 	d.startCtx = ctx
 
 	return nil
+}
+
+// queueBuffer enqueues buffer slot idx to the V4L2 driver according to the device's
+// configured memory I/O type (MMAP, USERPTR, or DMABUF).
+func (d *Device) queueBuffer(idx uint32) error {
+	switch d.config.ioType {
+	case v4l2.IOTypeUserPtr:
+		ptr := uintptr(unsafe.Pointer(&d.buffers[idx][0]))
+		_, err := v4l2.QueueBufferUserPtr(d.fd, d.bufType, idx, ptr, uint32(len(d.buffers[idx])))
+		return err
+	case v4l2.IOTypeDMABuf:
+		_, err := v4l2.QueueBufferDMABuf(d.fd, d.bufType, idx, d.dmabufFDs[idx], uint32(len(d.buffers[idx])))
+		return err
+	default:
+		_, err := v4l2.QueueBuffer(d.fd, d.config.ioType, d.bufType, idx)
+		return err
+	}
 }
 
 // releaseBuffers unmaps memory-mapped buffers (MMAP/DMABuf) and optionally resets

@@ -44,11 +44,13 @@ func TestFramePool_Reuse(t *testing.T) {
 	buf2 := pool.Get(512)
 
 	stats := pool.Stats()
-	if stats.Allocs != 1 {
-		t.Errorf("Expected 1 allocation, got %d", stats.Allocs)
-	}
-	if stats.HitRate < 0.4 { // At least 50% hit rate with 2 gets, 1 alloc
-		t.Errorf("Expected hit rate >= 0.5, got %.2f", stats.HitRate)
+	if !raceEnabled {
+		if stats.Allocs != 1 {
+			t.Errorf("Expected 1 allocation, got %d", stats.Allocs)
+		}
+		if stats.HitRate < 0.4 { // At least 50% hit rate with 2 gets, 1 alloc
+			t.Errorf("Expected hit rate >= 0.5, got %.2f", stats.HitRate)
+		}
 	}
 
 	pool.Put(buf2)
