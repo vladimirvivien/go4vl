@@ -123,6 +123,12 @@ func (f *Frame) HasError() bool {
 	return f.Flags&v4l2.BufFlagError != 0
 }
 
+// IsMonotonicTimestamp reports whether the driver tagged this frame's kernel
+// timestamp as CLOCK_MONOTONIC (v4l2.BufFlagTimestampMonotonic).
+func (f *Frame) IsMonotonicTimestamp() bool {
+	return f.Flags&v4l2.BufFlagTimestampMask == v4l2.BufFlagTimestampMonotonic
+}
+
 // Clone returns a deep copy of the frame with its own independent Data slice.
 // The cloned frame is not attached to any buffer pool and does not require Release().
 // Use Clone when retaining a frame yielded by Device.Frames beyond the current iteration.

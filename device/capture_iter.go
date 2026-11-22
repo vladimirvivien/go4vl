@@ -134,7 +134,7 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 			if isMapped && !hasError && hasData {
 				frame = Frame{
 					Data:      d.buffers[buff.Index][:buff.BytesUsed],
-					Timestamp: time.Unix(int64(buff.Timestamp.Sec), int64(buff.Timestamp.Usec)*1000),
+					Timestamp: v4l2.BufferTimestamp(buff.Timestamp, buff.Flags, d.config.timestampMode),
 					Sequence:  buff.Sequence,
 					Flags:     buff.Flags,
 					Index:     buff.Index,

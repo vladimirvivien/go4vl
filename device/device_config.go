@@ -40,6 +40,9 @@ type config struct {
 
 	// bufType specifies the buffer type (capture or output)
 	bufType uint32
+
+	// timestampMode controls how kernel buffer timestamps are converted into Frame.Timestamp.
+	timestampMode v4l2.TimestampMode
 }
 
 // Option is a functional option for configuring a Device during initialization.
@@ -221,5 +224,13 @@ func WithVideoOutputEnabled() Option {
 func WithBufferType(bufType v4l2.BufType) Option {
 	return func(o *config) {
 		o.bufType = bufType
+	}
+}
+
+// WithTimestampMode configures how V4L2 buffer timestamps are converted into
+// Frame.Timestamp (v4l2.TimestampDefault, v4l2.TimestampAuto, or v4l2.TimestampMonoToAbs).
+func WithTimestampMode(mode v4l2.TimestampMode) Option {
+	return func(o *config) {
+		o.timestampMode = mode
 	}
 }

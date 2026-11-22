@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	sys "syscall"
-	"time"
 	"unsafe"
 
 	"github.com/vladimirvivien/go4vl/v4l2"
@@ -85,7 +84,7 @@ func (d *Device) startFramesCapture() {
 					// Create Frame object with metadata
 					frameObj := &Frame{
 						Data:      poolBuf,
-						Timestamp: time.Unix(int64(buff.Timestamp.Sec), int64(buff.Timestamp.Usec)*1000),
+						Timestamp: v4l2.BufferTimestamp(buff.Timestamp, buff.Flags, d.config.timestampMode),
 						Sequence:  buff.Sequence,
 						Flags:     buff.Flags,
 						Index:     buff.Index,
