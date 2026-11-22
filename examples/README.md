@@ -19,6 +19,7 @@
 * [selection_crop](./selection_crop/) - Query and set V4L2 selection rectangles (`VIDIOC_G_SELECTION` / `VIDIOC_S_SELECTION`).
 * [media_topology](./media_topology/) - Inspect `/dev/media*` entities, interfaces, pads, and links via `MEDIA_IOC_G_TOPOLOGY`.
 * [subdev_pipeline](./subdev_pipeline/) - Query and negotiate `/dev/v4l-subdev*` pad formats, media-bus codes, and selection rectangles.
+* [media_request](./media_request/) - Allocate, reinitialize, and bind Media Request FDs (`MEDIA_IOC_REQUEST_ALLOC`) for stateless hardware codecs.
 * [video_inputs](./video_inputs/) - Enumerate and select video inputs (for devices with multiple inputs).
 * [video_outputs](./video_outputs/) - Enumerate and select video outputs (for output devices and v4l2loopback).
 * [audio_inputs](./audio_inputs/) - Enumerate and select audio inputs (for webcams with mics, TV tuner cards).

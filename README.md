@@ -42,7 +42,7 @@ Working directly with V4L2 in Go requires complex ioctl marshaling and manual me
 * Zero-copy frame capture via `Device.Frames(ctx)` (`iter.Seq2[*device.Frame, error]`) as well as channel APIs (`GetFrames()`, `GetOutput()`)
 * Video output streaming (`Device.WriteFrame`) and direct `Read` / `Write` I/O
 * Multi-planar (`MPLANE`) formats/buffers, Selection API, DMA-BUF, and dual-queue M2M sessions (`v4l2.M2MSession`)
-* Media Controller v2 graph topology (`MEDIA_IOC_G_TOPOLOGY`, `MEDIA_IOC_SETUP_LINK`) and V4L2 Sub-device pad SDK (`VIDIOC_SUBDEV_*`)
+* Media Controller v2 graph topology (`MEDIA_IOC_G_TOPOLOGY`, `MEDIA_IOC_SETUP_LINK`), Media Request API (`MEDIA_IOC_REQUEST_ALLOC`), and V4L2 Sub-device pad SDK (`VIDIOC_SUBDEV_*`)
 * `v4l2.Poll` and `v4l2.Poller` (`epoll`) multiplexing `POLLIN | POLLOUT | POLLPRI`
 * Device enumeration, format negotiation, and user/extended/codec controls
 
@@ -255,6 +255,7 @@ This repository includes multiple examples demonstrating various capabilities:
 * **[selection_crop](./examples/selection_crop/)** - Selection API (`VIDIOC_G_SELECTION` / `VIDIOC_S_SELECTION`)
 * **[media_topology](./examples/media_topology/)** - Inspect `/dev/media*` entities, interfaces, pads, and links via `MEDIA_IOC_G_TOPOLOGY`
 * **[subdev_pipeline](./examples/subdev_pipeline/)** - Query and negotiate `/dev/v4l-subdev*` pad formats, media-bus codes, and selections
+* **[media_request](./examples/media_request/)** - Allocate, reinitialize, and bind Media Request FDs for stateless codecs
 * **[capture_frames](./examples/capture_frames/)** - Channel-based capture with metadata and buffer pooling
 * **[snapshot](./examples/snapshot/)** - Single-frame capture (legacy channel API)
 * **[device_info](./examples/device_info/)** - Query device information
