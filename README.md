@@ -49,7 +49,7 @@ Working directly with V4L2 in Go requires complex ioctl marshaling and manual me
 ## Prerequisites
 
 **Software:**
-* Go 1.25 or later
+* Go 1.26 or later
 * Linux kernel 5.10.x or later
 * V4L2 drivers (typically included in the Linux kernel)
 * *(Optional)* A C compiler and `linux-libc-dev` are only needed if regenerating ABI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` parity tests
@@ -77,27 +77,21 @@ sudo usermod -a -G video $USER
 # Log out and back in for changes to take effect
 ```
 
-**Note**: For detailed build instructions, including installing V4L2 headers, cross-compilation, and using custom kernel headers, see [docs/BUILD.md](./docs/BUILD.md).
+**Note**: For detailed build instructions, cross-compilation, and ABI verification, see [docs/BUILD.md](./docs/BUILD.md).
 
 ## Building
 
-To build the go4vl packages or examples:
+`go4vl` builds with `CGO_ENABLED=0` on Linux (`amd64` and `arm64`) with no C compiler or kernel headers required:
 
 ```bash
-# Build the v4l2 package
-go build ./v4l2
+# Build all packages and examples
+CGO_ENABLED=0 go build ./...
 
-# Build an example
-go build ./examples/snapshot
+# Cross-compile for 64-bit ARM (e.g., Raspberry Pi)
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./examples/iter_capture
 ```
 
-The build requires V4L2 kernel headers (typically from `linux-libc-dev` package). To use custom kernel headers, override the include path:
-
-```bash
-CGO_CFLAGS="-I/path/to/custom/headers" go build ./v4l2
-```
-
-For detailed build instructions including prerequisite installation, cross-compilation with Zig or Docker, and troubleshooting, see [docs/BUILD.md](./docs/BUILD.md).
+See [docs/BUILD.md](./docs/BUILD.md) for cross-compilation, Docker builds, and optional ABI regeneration (`go generate ./v4l2`).
 
 ## Quick Start
 
@@ -297,25 +291,25 @@ v4l2-ctl -d /dev/video0 --all
 v4l2-ctl -d /dev/video0 --list-formats-ext
 ```
 
-**Build errors:**
+**ABI regeneration / `cgo_verify` errors:**
 ```bash
-# Install build essentials
-sudo apt install build-essential
-
-# Install kernel headers
-sudo apt install linux-headers-$(uname -r)
+# Only needed if running `go generate ./v4l2` or `-tags=cgo_verify`
+sudo apt install build-essential linux-libc-dev
 ```
 
 ## Testing
 
-go4vl uses real V4L2 devices for testing with v4l2loopback virtual devices.
+`go4vl` includes unit tests, C ABI parity verification, and integration tests using `v4l2loopback` or real V4L2 hardware.
 
 ```bash
-# Run unit tests
-go test -v ./device ./v4l2 ./imgsupport
+# Run unit tests (no CGO or kernel headers required)
+CGO_ENABLED=0 go test -v ./device ./v4l2 ./imgsupport
 
-# Run integration tests (requires v4l2loopback)
-sudo go test -v -tags=integration ./test/...
+# Verify generated ABI layouts against host Linux headers
+CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
+
+# Run integration tests (requires v4l2loopback or a /dev/video* device)
+CGO_ENABLED=0 go test -v -tags=integration ./test/...
 ```
 
 See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing documentation including:

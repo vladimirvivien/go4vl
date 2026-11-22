@@ -1,6 +1,8 @@
 // Package imgsupport provides image format conversion utilities for V4L2 captured frames.
-// This package contains helper functions to convert between different pixel formats
-// commonly used in video capture applications.
+//
+// Deprecated: CPU pixel format conversion is outside the scope of Linux V4L2 and will
+// be moved to a standalone companion module (go4vl-convert). This package is frozen
+// and scheduled for removal in a future major release.
 //
 // # Overview
 //

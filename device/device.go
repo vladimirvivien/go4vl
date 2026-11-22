@@ -384,10 +384,8 @@ func (d *Device) MemIOType() v4l2.IOType {
 // Each frame is delivered as a byte slice containing the raw frame data in the
 // configured pixel format.
 //
-// Deprecated: Use GetFrames() instead. GetFrames() provides the same functionality
-// with significantly better performance through buffer pooling, using 540x less memory
-// (1 KB vs 614 KB per frame) and reducing GC pressure. This method will be removed
-// in a future version.
+// Deprecated: Use Frames(ctx) for zero-copy streaming or GetFrames() for pooled
+// channel streaming. This method will be removed in a future release.
 //
 // This method selects the legacy streaming mode. Once called, GetFrames() cannot be used
 // on this device instance. Call Stop() to reset the streaming mode.
@@ -487,11 +485,10 @@ func (d *Device) GetError() <-chan error {
 	return d.streamErr
 }
 
-// SetInput sets up an input channel for sending video data to output devices.
-// This method is currently not implemented and reserved for future use with
-// video output devices.
+// SetInput is a no-op placeholder retained for compatibility.
 //
-// TODO: Implement for video output device support
+// Deprecated: Use Device.WriteFrame(ctx, data) for streaming video output or
+// Device.Write / Device.WriteContext for read/write video output.
 func (d *Device) SetInput(in <-chan []byte) {
 
 }

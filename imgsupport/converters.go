@@ -9,6 +9,9 @@ import (
 
 // Yuyv2Jpeg converts a YUYV (YUV 4:2:2) formatted frame to JPEG format.
 //
+// Deprecated: Package imgsupport is frozen and scheduled for removal in favor of
+// a standalone format conversion module (go4vl-convert).
+//
 // YUYV is a packed pixel format where two pixels share chroma (color) information:
 //   - Each 4 bytes represent 2 pixels: [Y0][U][Y1][V]
 //   - Y0, Y1: Luminance values for pixel 0 and pixel 1

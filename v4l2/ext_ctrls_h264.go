@@ -5,10 +5,9 @@ import (
 	"unsafe"
 )
 
-// TODO - Need to figure out how to import the proper header files for H264 support
 const (
-	H264NumDPBEntries uint32 = 16 // C.V4L2_H264_NUM_DPB_ENTRIES
-	H264RefListLength uint32 = 32 // C.V4L2_H264_REF_LIST_LEN
+	H264NumDPBEntries uint32 = 16 // V4L2_H264_NUM_DPB_ENTRIES
+	H264RefListLength uint32 = 32 // V4L2_H264_REF_LIST_LEN
 )
 
 // ControlH264SPS (v4l2_ctrl_h264_sps)

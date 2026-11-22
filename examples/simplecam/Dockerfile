@@ -1,23 +1,16 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM crazymax/goxx:latest AS base
-
-ENV OUTPUT="simple-cam"
-ENV CGO_ENABLED=1
+FROM --platform=$BUILDPLATFORM golang:1.26 AS build
+ARG TARGETOS=linux
+ARG TARGETARCH=arm64
 WORKDIR /src
-
-FROM base AS build
-ARG TARGETPLATFORM
-RUN --mount=type=cache,sharing=private,target=/var/cache/apt \
-  --mount=type=cache,sharing=private,target=/var/lib/apt/lists \
-  goxx-apt-get install -y binutils gcc g++ pkg-config
-RUN --mount=type=bind,source=. \
-  --mount=type=cache,target=/root/.cache \
-  --mount=type=cache,target=/go/pkg/mod \
-  goxx-go build -o /out/${OUTPUT} .
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /out/simple-cam .
 
 FROM scratch AS artifact
-COPY --from=build /out /
+COPY --from=build /out/simple-cam /simple-cam
 
-## Build with the following command
-# docker build --platform "linux/arm/v6" --output "./build"  .
+# Build example:
+# docker build --platform linux/arm64 --output ./build .
