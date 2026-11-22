@@ -109,11 +109,13 @@ func send(fd, req, arg uintptr) error {
 		return nil
 	}
 	parsedErr := parseErrorType(errno)
-	switch parsedErr {
-	case ErrorUnsupported, ErrorSystem, ErrorBadArgument:
+	switch {
+	case errors.Is(parsedErr, ErrorUnsupported),
+		errors.Is(parsedErr, ErrorSystem),
+		errors.Is(parsedErr, ErrorBadArgument):
 		return parsedErr
-	case ErrorTimeout, ErrorTemporary:
-		// TODO add code for automatic retry/recovery
+	case errors.Is(parsedErr, ErrorTimeout),
+		errors.Is(parsedErr, ErrorTemporary):
 		return errno
 	default:
 		return errno

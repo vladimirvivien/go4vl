@@ -40,7 +40,7 @@ const (
 // See https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/videodev2.h
 type ExtControl struct {
 	ID    CtrlID
-	Value interface{} // int32, int64, string, or []byte
+	Value any // int32, int64, string, or []byte
 }
 
 // NewExtControl creates a new extended control with the specified ID for reading.

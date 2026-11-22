@@ -2,7 +2,9 @@ package v4l2
 
 import (
 	"errors"
-	sys "syscall"
+	"fmt"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // Error variables represent common V4L2 operation failures.
@@ -48,13 +50,13 @@ var (
 func parseErrorType(errno sys.Errno) error {
 	switch errno {
 	case sys.EBADF, sys.ENOMEM, sys.ENODEV, sys.EIO, sys.ENXIO, sys.EFAULT: // structural, terminal
-		return ErrorSystem
+		return fmt.Errorf("%w: %w", ErrorSystem, errno)
 	case sys.EINTR:
-		return ErrorInterrupted
+		return fmt.Errorf("%w: %w", ErrorInterrupted, errno)
 	case sys.EINVAL: // bad argument
-		return ErrorBadArgument
+		return fmt.Errorf("%w: %w", ErrorBadArgument, errno)
 	case sys.ENOTTY: // unsupported
-		return ErrorUnsupported
+		return fmt.Errorf("%w: %w", ErrorUnsupported, errno)
 	default:
 		if errno.Timeout() {
 			return ErrorTimeout

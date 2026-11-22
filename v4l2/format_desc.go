@@ -123,7 +123,7 @@ func GetAllFormatDescriptions(fd uintptr) (result []FormatDescription, err error
 func GetFormatDescriptionByEncoding(fd uintptr, enc FourCCType) (FormatDescription, error) {
 	descs, err := GetAllFormatDescriptions(fd)
 	if err != nil {
-		return FormatDescription{}, fmt.Errorf("format desc: encoding %s: %s", PixelFormats[enc], err)
+		return FormatDescription{}, fmt.Errorf("format desc: encoding %s: %w", PixelFormats[enc], err)
 	}
 	for _, desc := range descs {
 		if desc.PixelFormat == enc {

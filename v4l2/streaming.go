@@ -540,12 +540,13 @@ func DequeueBufferMPlane(fd uintptr, ioType IOType, bufType BufType, numPlanes u
 		return Buffer{}, fmt.Errorf("buffer dequeue mplane: invalid plane count %d", numPlanes)
 	}
 
-	cPlanes := make([]cV4L2Plane, numPlanes)
+	var cPlanesBuf [MaxPlanes]cV4L2Plane
+	cPlanes := cPlanesBuf[:numPlanes]
 	var pinner runtime.Pinner
 	pinner.Pin(&cPlanes[0])
 	defer func() {
 		pinner.Unpin()
-		runtime.KeepAlive(cPlanes)
+		runtime.KeepAlive(&cPlanesBuf)
 	}()
 
 	var v4l2Buf cV4L2Buffer
@@ -638,12 +639,13 @@ func QueryBuffer(fd uintptr, bufType BufType, ioType IOType, index uint32, numPl
 		if numPlanes == 0 || numPlanes > MaxPlanes {
 			return Buffer{}, fmt.Errorf("query buffer: invalid plane count %d", numPlanes)
 		}
-		cPlanes := make([]cV4L2Plane, numPlanes)
+		var cPlanesBuf [MaxPlanes]cV4L2Plane
+		cPlanes := cPlanesBuf[:numPlanes]
 		var pinner runtime.Pinner
 		pinner.Pin(&cPlanes[0])
 		defer func() {
 			pinner.Unpin()
-			runtime.KeepAlive(cPlanes)
+			runtime.KeepAlive(&cPlanesBuf)
 		}()
 
 		v4l2Buf.Length = numPlanes
@@ -682,7 +684,8 @@ func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
 		if len(buf.Planes) == 0 || len(buf.Planes) > MaxPlanes {
 			return Buffer{}, fmt.Errorf("buffer queue: invalid plane count %d", len(buf.Planes))
 		}
-		cPlanes := make([]cV4L2Plane, len(buf.Planes))
+		var cPlanesBuf [MaxPlanes]cV4L2Plane
+		cPlanes := cPlanesBuf[:len(buf.Planes)]
 		for i, p := range buf.Planes {
 			cPlanes[i] = cV4L2Plane{
 				Bytesused: p.BytesUsed,
@@ -696,7 +699,7 @@ func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
 		pinner.Pin(&cPlanes[0])
 		defer func() {
 			pinner.Unpin()
-			runtime.KeepAlive(cPlanes)
+			runtime.KeepAlive(&cPlanesBuf)
 		}()
 
 		v4l2Buf.Length = uint32(len(cPlanes))
