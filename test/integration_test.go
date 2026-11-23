@@ -294,21 +294,22 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 
 // BenchmarkIntegration_Frames benchmarks the zero-copy Frames(ctx) iterator API.
 func BenchmarkIntegration_Frames(b *testing.B) {
-	if testDevice1 == "" {
+	devPath := FindTestDevice(b)
+	if devPath == "" {
 		b.Skip("No test device available")
 	}
+	StartLoopbackProducerIfNeeded(b, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
-	dev, err := device.Open(testDevice1, device.WithBufferSize(4))
+	dev, err := device.Open(devPath, device.WithBufferSize(4))
 	if err != nil {
 		b.Fatalf("Failed to open device: %v", err)
 	}
-	defer dev.Close()
 
 	ctx := context.Background()
 	if err := dev.Start(ctx); err != nil {
+		_ = dev.Close()
 		b.Fatalf("Failed to start: %v", err)
 	}
-	defer dev.Stop()
 
 	b.ResetTimer()
 
@@ -323,6 +324,11 @@ func BenchmarkIntegration_Frames(b *testing.B) {
 			break
 		}
 	}
+
+	b.StopTimer()
+
+	_ = dev.Stop()
+	_ = dev.Close()
 }
 
 // BenchmarkIntegration_GetFrames benchmarks the optimized GetFrames() API with pooling
@@ -333,11 +339,13 @@ func BenchmarkIntegration_Frames(b *testing.B) {
 // - V4L2 buffer re-queue (syscall)
 // - Frame.Release() returning buffer to pool
 func BenchmarkIntegration_GetFrames(b *testing.B) {
-	if testDevice1 == "" {
+	devPath := FindTestDevice(b)
+	if devPath == "" {
 		b.Skip("No test device available")
 	}
+	StartLoopbackProducerIfNeeded(b, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
-	dev, err := device.Open(testDevice1, device.WithBufferSize(4))
+	dev, err := device.Open(devPath, device.WithBufferSize(4))
 	if err != nil {
 		b.Fatalf("Failed to open device: %v", err)
 	}
@@ -346,6 +354,7 @@ func BenchmarkIntegration_GetFrames(b *testing.B) {
 
 	ctx := context.Background()
 	if err := dev.Start(ctx); err != nil {
+		_ = dev.Close()
 		b.Fatalf("Failed to start: %v", err)
 	}
 
@@ -359,19 +368,21 @@ func BenchmarkIntegration_GetFrames(b *testing.B) {
 
 	b.StopTimer()
 
-	dev.Stop()
-	dev.Close()
+	_ = dev.Stop()
+	_ = dev.Close()
 }
 
 // BenchmarkIntegration_GetFrames_WithMetadata benchmarks GetFrames() with metadata access
 // This benchmark tests the realistic usage pattern where users access frame metadata
 // in addition to the frame data, demonstrating zero-cost metadata exposure.
 func BenchmarkIntegration_GetFrames_WithMetadata(b *testing.B) {
-	if testDevice1 == "" {
+	devPath := FindTestDevice(b)
+	if devPath == "" {
 		b.Skip("No test device available")
 	}
+	StartLoopbackProducerIfNeeded(b, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
-	dev, err := device.Open(testDevice1, device.WithBufferSize(4))
+	dev, err := device.Open(devPath, device.WithBufferSize(4))
 	if err != nil {
 		b.Fatalf("Failed to open device: %v", err)
 	}
@@ -380,6 +391,7 @@ func BenchmarkIntegration_GetFrames_WithMetadata(b *testing.B) {
 
 	ctx := context.Background()
 	if err := dev.Start(ctx); err != nil {
+		_ = dev.Close()
 		b.Fatalf("Failed to start: %v", err)
 	}
 
@@ -398,8 +410,8 @@ func BenchmarkIntegration_GetFrames_WithMetadata(b *testing.B) {
 
 	b.StopTimer()
 
-	dev.Stop()
-	dev.Close()
+	_ = dev.Stop()
+	_ = dev.Close()
 }
 
 // BenchmarkIntegration_Comparison was removed because running multiple device

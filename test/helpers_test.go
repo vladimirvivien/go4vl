@@ -174,9 +174,9 @@ func IsLoopbackDevice(path string) bool {
 
 // StartLoopbackProducerIfNeeded starts an in-process Go frame producer when
 // devPath is a v4l2loopback device, feeding synthetic YUYV frames via
-// Device.WriteFrame until the test finishes. On real hardware devices this is a
-// no-op.
-func StartLoopbackProducerIfNeeded(t *testing.T, devPath string, width, height uint32, pixFmt v4l2.FourCCType) {
+// Device.WriteFrame until the test or benchmark finishes. On real hardware
+// devices this is a no-op.
+func StartLoopbackProducerIfNeeded(t testing.TB, devPath string, width, height uint32, pixFmt v4l2.FourCCType) {
 	t.Helper()
 	if !IsLoopbackDevice(devPath) {
 		return
