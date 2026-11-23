@@ -269,4 +269,15 @@
 #define V4L2_EVENT_CTRL_CH_DIMENSIONS 0x0004
 #endif
 
+/* Linux 6.10 */
+#ifndef VIDIOC_REMOVE_BUFS
+struct v4l2_remove_buffers {
+	__u32 index;
+	__u32 count;
+	__u32 type;
+	__u32 reserved[13];
+};
+#define VIDIOC_REMOVE_BUFS _IOWR('V', 104, struct v4l2_remove_buffers)
+#endif
+
 #endif /* GO4VL_COMPAT_H */

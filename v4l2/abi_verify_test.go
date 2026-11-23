@@ -92,6 +92,7 @@ func TestABIStructSizes(t *testing.T) {
 		"cV4L2QueryMenu":         unsafe.Sizeof(cV4L2QueryMenu{}),
 		"cV4L2RequestBuffers":    unsafe.Sizeof(cV4L2RequestBuffers{}),
 		"RequestBuffers":         unsafe.Sizeof(RequestBuffers{}),
+		"cV4L2RemoveBuffers":     unsafe.Sizeof(cV4L2RemoveBuffers{}),
 		"cV4L2Selection":         unsafe.Sizeof(cV4L2Selection{}),
 		"cV4L2Standard":          unsafe.Sizeof(cV4L2Standard{}),
 		"cV4L2StreamParm":        unsafe.Sizeof(cV4L2StreamParm{}),

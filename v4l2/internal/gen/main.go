@@ -290,6 +290,7 @@ type cV4L2QueryCtrl C.struct_v4l2_queryctrl
 type cV4L2QueryExtCtrl C.struct_v4l2_query_ext_ctrl
 type cV4L2QueryMenu C.struct_v4l2_querymenu
 type cV4L2RequestBuffers C.struct_v4l2_requestbuffers
+type cV4L2RemoveBuffers C.struct_v4l2_remove_buffers
 type cV4L2Selection C.struct_v4l2_selection
 type cV4L2Standard C.struct_v4l2_standard
 type cV4L2StreamParm C.struct_v4l2_streamparm
@@ -338,6 +339,7 @@ var ioctlConsts = []string{
 	"VIDIOC_G_SELECTION",
 	"VIDIOC_G_STD",
 	"VIDIOC_G_TUNER",
+	"VIDIOC_PREPARE_BUF",
 	"VIDIOC_QBUF",
 	"VIDIOC_QUERYBUF",
 	"VIDIOC_QUERYCAP",
@@ -346,6 +348,7 @@ var ioctlConsts = []string{
 	"VIDIOC_QUERYSTD",
 	"VIDIOC_QUERY_DV_TIMINGS",
 	"VIDIOC_QUERY_EXT_CTRL",
+	"VIDIOC_REMOVE_BUFS",
 	"VIDIOC_REQBUFS",
 	"VIDIOC_STREAMOFF",
 	"VIDIOC_STREAMON",

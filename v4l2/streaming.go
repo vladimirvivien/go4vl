@@ -666,6 +666,17 @@ func QueryBuffer(fd uintptr, bufType BufType, ioType IOType, index uint32, numPl
 // QueueBufferWith enqueues a buffer with full caller control over v4l2_buffer metadata and planes (VIDIOC_QBUF).
 // Supports both single-planar and multi-planar buffer types across MMAP, USERPTR, and DMABUF memory modes.
 func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
+	return submitBufferIoctl(fd, cVIDIOC_QBUF, "buffer queue", buf)
+}
+
+// PrepareBuffer prepares a buffer for I/O off the hot path (VIDIOC_PREPARE_BUF), allowing
+// the driver to validate parameters and perform cache synchronization before VIDIOC_QBUF.
+// Supports both single-planar and multi-planar buffer types across MMAP, USERPTR, and DMABUF memory modes.
+func PrepareBuffer(fd uintptr, buf Buffer) (Buffer, error) {
+	return submitBufferIoctl(fd, cVIDIOC_PREPARE_BUF, "buffer prepare", buf)
+}
+
+func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 	v4l2Buf := cV4L2Buffer{
 		Index:     buf.Index,
 		Type:      buf.Type,
@@ -682,7 +693,7 @@ func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
 
 	if IsMultiPlanar(buf.Type) {
 		if len(buf.Planes) == 0 || len(buf.Planes) > MaxPlanes {
-			return Buffer{}, fmt.Errorf("buffer queue: invalid plane count %d", len(buf.Planes))
+			return Buffer{}, fmt.Errorf("%s: invalid plane count %d", op, len(buf.Planes))
 		}
 		var cPlanesBuf [MaxPlanes]cV4L2Plane
 		cPlanes := cPlanesBuf[:len(buf.Planes)]
@@ -705,8 +716,8 @@ func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
 		v4l2Buf.Length = uint32(len(cPlanes))
 		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
 
-		if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-			return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+		if err := send(fd, req, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+			return Buffer{}, fmt.Errorf("%s: %w", op, err)
 		}
 		return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
 	}
@@ -720,10 +731,24 @@ func QueueBufferWith(fd uintptr, buf Buffer) (Buffer, error) {
 		binary.NativeEndian.PutUint32(v4l2Buf.M[:4], buf.Info.Offset)
 	}
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
-		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
+	if err := send(fd, req, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		return Buffer{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return makeBuffer(v4l2Buf), nil
+}
+
+// RemoveBuffers deletes count buffers starting at index for bufType (VIDIOC_REMOVE_BUFS, Linux 6.10+).
+// Complements CreateBuffers for dynamically shrinking a buffer queue without stopping the stream.
+func RemoveBuffers(fd uintptr, bufType BufType, index, count uint32) error {
+	req := cV4L2RemoveBuffers{
+		Index: index,
+		Count: count,
+		Type:  bufType,
+	}
+	if err := send(fd, cVIDIOC_REMOVE_BUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+		return fmt.Errorf("remove buffers (index=%d count=%d): %w", index, count, err)
+	}
+	return nil
 }
 
 // MapMemoryBuffer maps a V4L2 MMAP buffer plane at offset with length into process memory.

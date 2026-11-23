@@ -46,6 +46,7 @@ const (
 	cVIDIOC_G_SELECTION                uintptr = 0xc040565e
 	cVIDIOC_G_STD                      uintptr = 0x80085617
 	cVIDIOC_G_TUNER                    uintptr = 0xc054561d
+	cVIDIOC_PREPARE_BUF                uintptr = 0xc058565d
 	cVIDIOC_QBUF                       uintptr = 0xc058560f
 	cVIDIOC_QUERYBUF                   uintptr = 0xc0585609
 	cVIDIOC_QUERYCAP                   uintptr = 0x80685600
@@ -54,6 +55,7 @@ const (
 	cVIDIOC_QUERYSTD                   uintptr = 0x8008563f
 	cVIDIOC_QUERY_DV_TIMINGS           uintptr = 0x80845663
 	cVIDIOC_QUERY_EXT_CTRL             uintptr = 0xc0e85667
+	cVIDIOC_REMOVE_BUFS                uintptr = 0xc0405668
 	cVIDIOC_REQBUFS                    uintptr = 0xc0145608
 	cVIDIOC_STREAMOFF                  uintptr = 0x40045613
 	cVIDIOC_STREAMON                   uintptr = 0x40045612
@@ -664,6 +666,12 @@ type cV4L2RequestBuffers struct {
 	Capabilities uint32
 	Flags        uint8
 	Reserved     [3]uint8
+}
+type cV4L2RemoveBuffers struct {
+	Index    uint32
+	Count    uint32
+	Type     uint32
+	Reserved [13]uint32
 }
 type cV4L2Selection struct {
 	Type     uint32
