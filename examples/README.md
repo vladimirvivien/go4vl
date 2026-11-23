@@ -17,6 +17,7 @@
 * [device_info](./device_info) - Uses go4vl to query and print device and format information.
 * [format](./format) - Shows how to query and apply device and format information.
 * [mplane_capture](./mplane_capture/) - Query and negotiate multi-planar (`MPLANE`) formats, plane buffers, and DMA-BUF plane export.
+* [meta_capture](./meta_capture/) - Discover and inspect V4L2 metadata capture/output nodes (`GetMetaFormat`, `TryMetaFormat`).
 * [selection_crop](./selection_crop/) - Query and set V4L2 selection rectangles (`VIDIOC_G_SELECTION` / `VIDIOC_S_SELECTION`).
 * [media_topology](./media_topology/) - Inspect `/dev/media*` entities, interfaces, pads, and links via `MEDIA_IOC_G_TOPOLOGY`.
 * [subdev_pipeline](./subdev_pipeline/) - Query and negotiate `/dev/v4l-subdev*` pad formats, media-bus codes, and selection rectangles.
