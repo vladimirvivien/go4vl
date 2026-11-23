@@ -59,7 +59,9 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 		ioMemType := d.MemIOType()
 		bufType := d.BufferType()
 
+		isMPlane := v4l2.IsMultiPlanar(bufType)
 		var frame Frame
+		var planeSlices [v4l2.MaxPlanes][]byte
 		checkedOut := -1
 
 		// Ensure any checked-out buffer is returned to the driver even if the
@@ -94,7 +96,12 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 				return
 			}
 
-			buff, err := v4l2.DequeueBuffer(fd, ioMemType, bufType)
+			var buff v4l2.Buffer
+			if isMPlane {
+				buff, err = v4l2.DequeueBufferMPlane(fd, ioMemType, bufType, d.numPlanes)
+			} else {
+				buff, err = v4l2.DequeueBuffer(fd, ioMemType, bufType)
+			}
 			if err != nil {
 				if errors.Is(err, sys.EAGAIN) {
 					continue
@@ -106,22 +113,63 @@ func (d *Device) Frames(ctx context.Context) iter.Seq2[*Frame, error] {
 			if !d.streaming.Load() {
 				return
 			}
-			if buff.Index >= uint32(len(d.buffers)) || d.buffers[buff.Index] == nil {
+			if isMPlane {
+				if buff.Index >= uint32(len(d.buffersMPlane)) || len(d.buffersMPlane[buff.Index]) == 0 {
+					return
+				}
+			} else if buff.Index >= uint32(len(d.buffers)) || d.buffers[buff.Index] == nil {
 				return
 			}
 
 			isMapped := (ioMemType == v4l2.IOTypeUserPtr) || (buff.Flags&v4l2.BufFlagMapped != 0)
 			hasError := buff.Flags&v4l2.BufFlagError != 0
 			hasData := buff.BytesUsed > 0
+			if isMPlane {
+				hasData = false
+				for _, pl := range buff.Planes {
+					if pl.BytesUsed > 0 {
+						hasData = true
+						break
+					}
+				}
+			}
 
 			keepGoing := true
 			if isMapped && !hasError && hasData {
-				frame = Frame{
-					Data:      d.buffers[buff.Index][:buff.BytesUsed],
-					Timestamp: v4l2.BufferTimestamp(buff.Timestamp, buff.Flags, d.config.timestampMode),
-					Sequence:  buff.Sequence,
-					Flags:     buff.Flags,
-					Index:     buff.Index,
+				if isMPlane {
+					n := len(buff.Planes)
+					if n > len(d.buffersMPlane[buff.Index]) {
+						n = len(d.buffersMPlane[buff.Index])
+					}
+					for p := range n {
+						pl := buff.Planes[p]
+						raw := d.buffersMPlane[buff.Index][p]
+						start := pl.DataOffset
+						end := pl.BytesUsed
+						if end > uint32(len(raw)) {
+							end = uint32(len(raw))
+						}
+						if start > end {
+							start = end
+						}
+						planeSlices[p] = raw[start:end]
+					}
+					frame = Frame{
+						Data:      planeSlices[0],
+						Planes:    planeSlices[:n],
+						Timestamp: v4l2.BufferTimestamp(buff.Timestamp, buff.Flags, d.config.timestampMode),
+						Sequence:  buff.Sequence,
+						Flags:     buff.Flags,
+						Index:     buff.Index,
+					}
+				} else {
+					frame = Frame{
+						Data:      d.buffers[buff.Index][:buff.BytesUsed],
+						Timestamp: v4l2.BufferTimestamp(buff.Timestamp, buff.Flags, d.config.timestampMode),
+						Sequence:  buff.Sequence,
+						Flags:     buff.Flags,
+						Index:     buff.Index,
+					}
 				}
 				checkedOut = int(buff.Index)
 				keepGoing = yield(&frame, nil)

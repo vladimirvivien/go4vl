@@ -54,6 +54,12 @@ type Device struct {
 	// buffers holds memory-mapped buffers used for zero-copy frame transfer
 	buffers [][]byte
 
+	// buffersMPlane holds per-buffer, per-plane mapped slices for multi-planar (MPLANE) streams.
+	buffersMPlane [][][]byte
+
+	// numPlanes holds the active plane count for multi-planar streams (0 for single-planar).
+	numPlanes uint32
+
 	// requestedBuf contains the buffer request parameters negotiated with the driver
 	requestedBuf v4l2.RequestBuffers
 
@@ -212,17 +218,31 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 			return nil, fmt.Errorf("device open: %s: does not support video capture: %w", path, v4l2.ErrorUnsupportedFeature)
 		}
 		dev.bufType = v4l2.BufTypeVideoCapture
+	case v4l2.BufTypeVideoCaptureMPlane:
+		if !cap.IsVideoCaptureMultiplanarSupported() {
+			return nil, fmt.Errorf("device open: %s: does not support multi-planar video capture: %w", path, v4l2.ErrorUnsupportedFeature)
+		}
+		dev.bufType = v4l2.BufTypeVideoCaptureMPlane
 	case v4l2.BufTypeVideoOutput:
 		if !cap.IsVideoOutputSupported() {
 			return nil, fmt.Errorf("device open: %s: does not support video output: %w", path, v4l2.ErrorUnsupportedFeature)
 		}
 		dev.bufType = v4l2.BufTypeVideoOutput
+	case v4l2.BufTypeVideoOutputMPlane:
+		if !cap.IsVideoOutputMultiplanerSupported() {
+			return nil, fmt.Errorf("device open: %s: does not support multi-planar video output: %w", path, v4l2.ErrorUnsupportedFeature)
+		}
+		dev.bufType = v4l2.BufTypeVideoOutputMPlane
 	case 0:
 		switch {
 		case cap.IsVideoCaptureSupported():
 			dev.bufType = v4l2.BufTypeVideoCapture
+		case cap.IsVideoCaptureMultiplanarSupported():
+			dev.bufType = v4l2.BufTypeVideoCaptureMPlane
 		case cap.IsVideoOutputSupported():
 			dev.bufType = v4l2.BufTypeVideoOutput
+		case cap.IsVideoOutputMultiplanerSupported():
+			dev.bufType = v4l2.BufTypeVideoOutputMPlane
 		default:
 			return nil, fmt.Errorf("device open: %s: %w", path, v4l2.ErrorUnsupportedFeature)
 		}
@@ -249,15 +269,30 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 		}
 	}
 
-	// set pix format
-	if dev.config.pixFormat != (v4l2.PixFormat{}) {
-		if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
-			return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
+	// set pix format (single-planar or multi-planar)
+	if v4l2.IsMultiPlanar(dev.bufType) {
+		if dev.config.pixFormatMPlane != nil {
+			if err := dev.SetPixFormatMPlane(*dev.config.pixFormatMPlane); err != nil {
+				return nil, fmt.Errorf("device open: %s: set mplane format: %w", path, err)
+			}
+		} else {
+			mfmt, err := v4l2.GetPixFormatMPlane(dev.fd, dev.bufType)
+			if err != nil {
+				return nil, fmt.Errorf("device open: %s: get default mplane format: %w", path, err)
+			}
+			dev.config.pixFormatMPlane = &mfmt
+			dev.numPlanes = uint32(mfmt.NumPlanes)
 		}
 	} else {
-		dev.config.pixFormat, err = v4l2.GetPixFormatByType(dev.fd, dev.bufType)
-		if err != nil {
-			return nil, fmt.Errorf("device open: %s: get default format: %w", path, err)
+		if dev.config.pixFormat != (v4l2.PixFormat{}) {
+			if err := dev.SetPixFormat(dev.config.pixFormat); err != nil {
+				return nil, fmt.Errorf("device open: %s: set format: %w", path, err)
+			}
+		} else {
+			dev.config.pixFormat, err = v4l2.GetPixFormatByType(dev.fd, dev.bufType)
+			if err != nil {
+				return nil, fmt.Errorf("device open: %s: get default format: %w", path, err)
+			}
 		}
 	}
 
@@ -562,9 +597,39 @@ func (d *Device) SetPixFormat(pixFmt v4l2.PixFormat) error {
 	return nil
 }
 
+// GetPixFormatMPlane returns the current multi-planar pixel format configuration.
+func (d *Device) GetPixFormatMPlane() (v4l2.PixFormatMPlane, error) {
+	if !v4l2.IsMultiPlanar(d.bufType) {
+		return v4l2.PixFormatMPlane{}, v4l2.ErrorUnsupportedFeature
+	}
+	if d.config.pixFormatMPlane == nil {
+		mfmt, err := v4l2.GetPixFormatMPlane(d.fd, d.bufType)
+		if err != nil {
+			return v4l2.PixFormatMPlane{}, fmt.Errorf("device: %w", err)
+		}
+		d.config.pixFormatMPlane = &mfmt
+		d.numPlanes = uint32(mfmt.NumPlanes)
+	}
+	return *d.config.pixFormatMPlane, nil
+}
+
+// SetPixFormatMPlane configures the multi-planar pixel format for video capture or output.
+func (d *Device) SetPixFormatMPlane(pixFmt v4l2.PixFormatMPlane) error {
+	if !v4l2.IsMultiPlanar(d.bufType) {
+		return v4l2.ErrorUnsupportedFeature
+	}
+	actual, err := v4l2.SetPixFormatMPlane(d.fd, d.bufType, pixFmt)
+	if err != nil {
+		return fmt.Errorf("device: %w", err)
+	}
+	d.config.pixFormatMPlane = &actual
+	d.numPlanes = uint32(actual.NumPlanes)
+	return nil
+}
+
 // GetFormatDescription returns the format description at the specified index.
 func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error) {
-	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
+	if !d.supportsVideoIO() {
 		return v4l2.FormatDescription{}, v4l2.ErrorUnsupportedFeature
 	}
 
@@ -573,11 +638,18 @@ func (d *Device) GetFormatDescription(idx uint32) (v4l2.FormatDescription, error
 
 // GetFormatDescriptions returns all pixel formats supported by the device.
 func (d *Device) GetFormatDescriptions() ([]v4l2.FormatDescription, error) {
-	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
+	if !d.supportsVideoIO() {
 		return nil, v4l2.ErrorUnsupportedFeature
 	}
 
 	return v4l2.GetAllFormatDescriptionsByType(d.fd, d.bufType)
+}
+
+func (d *Device) supportsVideoIO() bool {
+	return d.cap.IsVideoCaptureSupported() ||
+		d.cap.IsVideoOutputSupported() ||
+		d.cap.IsVideoCaptureMultiplanarSupported() ||
+		d.cap.IsVideoOutputMultiplanerSupported()
 }
 
 // GetVideoInputIndex returns the currently selected video input index.
@@ -1273,7 +1345,7 @@ func (d *Device) GetDVTimingsCap(pad uint32) (v4l2.DVTimingsCap, error) {
 // For capture devices, this includes the frame interval (FPS) and capture modes.
 // Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
-	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
+	if !d.supportsVideoIO() {
 		return v4l2.StreamParam{}, v4l2.ErrorUnsupportedFeature
 	}
 	return v4l2.GetStreamParam(d.fd, d.bufType)
@@ -1289,7 +1361,7 @@ func (d *Device) GetStreamParam() (v4l2.StreamParam, error) {
 //
 // Returns ErrorUnsupportedFeature if the device doesn't support streaming parameters.
 func (d *Device) SetStreamParam(param v4l2.StreamParam) error {
-	if !d.cap.IsVideoCaptureSupported() && !d.cap.IsVideoOutputSupported() {
+	if !d.supportsVideoIO() {
 		return v4l2.ErrorUnsupportedFeature
 	}
 	return v4l2.SetStreamParam(d.fd, d.bufType, param)
@@ -1631,38 +1703,46 @@ func (d *Device) Start(ctx context.Context) error {
 	d.config.bufSize = bufReq.Count
 	d.requestedBuf = bufReq
 
-	// set up buffers based on I/O type
-	switch d.config.ioType {
-	case v4l2.IOTypeUserPtr:
-		d.buffers = v4l2.AllocateUserBuffers(int(d.config.bufSize), d.config.pixFormat.SizeImage)
-	case v4l2.IOTypeDMABuf:
-		if len(d.dmabufFDs) == 0 {
+	// set up buffers based on I/O type (single-planar or multi-planar)
+	if v4l2.IsMultiPlanar(d.bufType) {
+		if err := d.initMPlaneBuffers(); err != nil {
 			d.streaming.Store(false)
-			_, _ = v4l2.ResetBuffers(d)
-			return fmt.Errorf("device: DMA-BUF mode requires file descriptors via AddDMABufferFDs")
+			_ = d.releaseBuffers(true)
+			return err
 		}
-		if len(d.dmabufFDs) < int(d.config.bufSize) {
-			d.streaming.Store(false)
-			_, _ = v4l2.ResetBuffers(d)
-			return fmt.Errorf("device: DMA-BUF mode requires %d fds, got %d", d.config.bufSize, len(d.dmabufFDs))
-		}
-		// mmap the DMA-BUF fds so capture loops can read frame data
-		d.buffers = make([][]byte, d.config.bufSize)
-		for i := 0; i < int(d.config.bufSize); i++ {
-			buf, err := sys.Mmap(int(d.dmabufFDs[i]), 0, int(d.config.pixFormat.SizeImage),
-				sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
-			if err != nil {
+	} else {
+		switch d.config.ioType {
+		case v4l2.IOTypeUserPtr:
+			d.buffers = v4l2.AllocateUserBuffers(int(d.config.bufSize), d.config.pixFormat.SizeImage)
+		case v4l2.IOTypeDMABuf:
+			if len(d.dmabufFDs) == 0 {
 				d.streaming.Store(false)
-				_ = d.releaseBuffers(true)
-				return fmt.Errorf("device: mmap dmabuf fd %d: %w", d.dmabufFDs[i], err)
+				_, _ = v4l2.ResetBuffers(d)
+				return fmt.Errorf("device: DMA-BUF mode requires file descriptors via AddDMABufferFDs")
 			}
-			d.buffers[i] = buf
-		}
-	default: // IOTypeMMAP
-		if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
-			d.streaming.Store(false)
-			_, _ = v4l2.ResetBuffers(d)
-			return fmt.Errorf("device: make mapped buffers: %w", err)
+			if len(d.dmabufFDs) < int(d.config.bufSize) {
+				d.streaming.Store(false)
+				_, _ = v4l2.ResetBuffers(d)
+				return fmt.Errorf("device: DMA-BUF mode requires %d fds, got %d", d.config.bufSize, len(d.dmabufFDs))
+			}
+			// mmap the DMA-BUF fds so capture loops can read frame data
+			d.buffers = make([][]byte, d.config.bufSize)
+			for i := 0; i < int(d.config.bufSize); i++ {
+				buf, err := sys.Mmap(int(d.dmabufFDs[i]), 0, int(d.config.pixFormat.SizeImage),
+					sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
+				if err != nil {
+					d.streaming.Store(false)
+					_ = d.releaseBuffers(true)
+					return fmt.Errorf("device: mmap dmabuf fd %d: %w", d.dmabufFDs[i], err)
+				}
+				d.buffers[i] = buf
+			}
+		default: // IOTypeMMAP
+			if d.buffers, err = v4l2.MapMemoryBuffers(d); err != nil {
+				d.streaming.Store(false)
+				_, _ = v4l2.ResetBuffers(d)
+				return fmt.Errorf("device: make mapped buffers: %w", err)
+			}
 		}
 	}
 
@@ -1698,9 +1778,100 @@ func (d *Device) Start(ctx context.Context) error {
 	return nil
 }
 
+func (d *Device) initMPlaneBuffers() error {
+	if d.numPlanes == 0 {
+		d.numPlanes = 1
+	}
+	count := int(d.config.bufSize)
+	d.buffersMPlane = make([][][]byte, count)
+	d.buffers = make([][]byte, count)
+
+	switch d.config.ioType {
+	case v4l2.IOTypeUserPtr:
+		for i := range count {
+			planes := make([][]byte, d.numPlanes)
+			for p := range d.numPlanes {
+				var sz uint32
+				if d.config.pixFormatMPlane != nil && int(p) < len(d.config.pixFormatMPlane.PlaneFmt) {
+					sz = d.config.pixFormatMPlane.PlaneFmt[p].SizeImage
+				}
+				planes[p] = make([]byte, sz)
+			}
+			d.buffersMPlane[i] = planes
+			d.buffers[i] = planes[0]
+		}
+	case v4l2.IOTypeDMABuf:
+		if len(d.dmabufFDs) < count*int(d.numPlanes) {
+			return fmt.Errorf("device: multi-planar DMA-BUF requires %d fds, got %d", count*int(d.numPlanes), len(d.dmabufFDs))
+		}
+		for i := range count {
+			planes := make([][]byte, d.numPlanes)
+			for p := range d.numPlanes {
+				var sz uint32
+				if d.config.pixFormatMPlane != nil && int(p) < len(d.config.pixFormatMPlane.PlaneFmt) {
+					sz = d.config.pixFormatMPlane.PlaneFmt[p].SizeImage
+				}
+				fdIdx := i*int(d.numPlanes) + int(p)
+				mapped, err := sys.Mmap(int(d.dmabufFDs[fdIdx]), 0, int(sz), sys.PROT_READ|sys.PROT_WRITE, sys.MAP_SHARED)
+				if err != nil {
+					d.buffersMPlane[i] = planes
+					return fmt.Errorf("device: mmap mplane dmabuf fd %d: %w", d.dmabufFDs[fdIdx], err)
+				}
+				planes[p] = mapped
+			}
+			d.buffersMPlane[i] = planes
+			d.buffers[i] = planes[0]
+		}
+	default: // IOTypeMMAP
+		for i := range count {
+			buf, err := v4l2.QueryBuffer(d.fd, d.bufType, d.config.ioType, uint32(i), d.numPlanes)
+			if err != nil {
+				return fmt.Errorf("device: query mplane buffer %d: %w", i, err)
+			}
+			planes := make([][]byte, len(buf.Planes))
+			for p, pl := range buf.Planes {
+				mapped, err := v4l2.MapMemoryBuffer(d.fd, int64(pl.Info.MemOffset), int(pl.Length))
+				if err != nil {
+					d.buffersMPlane[i] = planes
+					return fmt.Errorf("device: map mplane buffer %d plane %d: %w", i, p, err)
+				}
+				planes[p] = mapped
+			}
+			d.buffersMPlane[i] = planes
+			if len(planes) > 0 {
+				d.buffers[i] = planes[0]
+			}
+		}
+	}
+	return nil
+}
+
 // queueBuffer enqueues buffer slot idx to the V4L2 driver according to the device's
-// configured memory I/O type (MMAP, USERPTR, or DMABUF).
+// configured memory I/O type (MMAP, USERPTR, or DMABUF) and buffer type (single or multi-planar).
 func (d *Device) queueBuffer(idx uint32) error {
+	if v4l2.IsMultiPlanar(d.bufType) {
+		planes := make([]v4l2.Plane, d.numPlanes)
+		for p := range d.numPlanes {
+			pl := v4l2.Plane{Length: uint32(len(d.buffersMPlane[idx][p]))}
+			switch d.config.ioType {
+			case v4l2.IOTypeUserPtr:
+				if len(d.buffersMPlane[idx][p]) > 0 {
+					pl.Info.UserPtr = uintptr(unsafe.Pointer(&d.buffersMPlane[idx][p][0]))
+				}
+			case v4l2.IOTypeDMABuf:
+				pl.Info.FD = d.dmabufFDs[int(idx)*int(d.numPlanes)+int(p)]
+			}
+			planes[p] = pl
+		}
+		_, err := v4l2.QueueBufferWith(d.fd, v4l2.Buffer{
+			Index:  idx,
+			Type:   d.bufType,
+			Memory: d.config.ioType,
+			Planes: planes,
+		})
+		return err
+	}
+
 	switch d.config.ioType {
 	case v4l2.IOTypeUserPtr:
 		ptr := uintptr(unsafe.Pointer(&d.buffers[idx][0]))
@@ -1719,7 +1890,21 @@ func (d *Device) queueBuffer(idx uint32) error {
 // kernel buffer allocations. USERPTR buffers are Go-managed slices and must not be munmapped.
 func (d *Device) releaseBuffers(resetDriver bool) error {
 	var errs []error
-	if len(d.buffers) > 0 {
+	if len(d.buffersMPlane) > 0 {
+		if d.config.ioType != v4l2.IOTypeUserPtr {
+			for _, planes := range d.buffersMPlane {
+				for _, slice := range planes {
+					if slice != nil {
+						if err := v4l2.UnmapMemoryBuffer(slice); err != nil {
+							errs = append(errs, err)
+						}
+					}
+				}
+			}
+		}
+		d.buffersMPlane = nil
+		d.buffers = nil
+	} else if len(d.buffers) > 0 {
 		switch d.config.ioType {
 		case v4l2.IOTypeMMAP, 0:
 			if err := v4l2.UnmapMemoryBuffers(d); err != nil {

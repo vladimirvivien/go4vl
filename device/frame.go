@@ -44,9 +44,13 @@ import (
 // (subsequent calls are no-ops).
 type Frame struct {
 	// Data contains the raw frame data in the device's pixel format.
-	// The format can be determined by calling device.GetPixFormat().
-	// This slice is valid only until Release() is called.
+	// For multi-planar streams, Data aliases Planes[0] when at least one plane is present.
+	// This slice is valid only until Release() is called (or the current Frames iteration ends).
 	Data []byte
+
+	// Planes holds per-plane slices for multi-planar (MPLANE) capture streams.
+	// Nil for single-planar streams.
+	Planes [][]byte
 
 	// Timestamp is the capture time of this frame.
 	// The timestamp source depends on the driver configuration.
@@ -136,17 +140,29 @@ func (f *Frame) IsMonotonicTimestamp() bool {
 	return f.Flags&v4l2.BufFlagTimestampMask == v4l2.BufFlagTimestampMonotonic
 }
 
-// Clone returns a deep copy of the frame with its own independent Data slice.
+// Clone returns a deep copy of the frame with its own independent Data and Planes slices.
 // The cloned frame is not attached to any buffer pool and does not require Release().
 // Use Clone when retaining a frame yielded by Device.Frames beyond the current iteration.
 func (f *Frame) Clone() *Frame {
 	var dataCopy []byte
-	if f.Data != nil {
+	var planesCopy [][]byte
+	if len(f.Planes) > 0 {
+		planesCopy = make([][]byte, len(f.Planes))
+		for i, p := range f.Planes {
+			if p != nil {
+				cp := make([]byte, len(p))
+				copy(cp, p)
+				planesCopy[i] = cp
+			}
+		}
+		dataCopy = planesCopy[0]
+	} else if f.Data != nil {
 		dataCopy = make([]byte, len(f.Data))
 		copy(dataCopy, f.Data)
 	}
 	return &Frame{
 		Data:      dataCopy,
+		Planes:    planesCopy,
 		Timestamp: f.Timestamp,
 		Sequence:  f.Sequence,
 		Flags:     f.Flags,

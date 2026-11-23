@@ -32,6 +32,9 @@ type config struct {
 	// pixFormat defines the pixel format, frame dimensions, and color space
 	pixFormat v4l2.PixFormat
 
+	// pixFormatMPlane defines the multi-planar pixel format when using MPLANE buffer types.
+	pixFormatMPlane *v4l2.PixFormatMPlane
+
 	// bufSize is the number of buffers to allocate for streaming
 	bufSize uint32
 
@@ -119,6 +122,15 @@ func WithIOMethod(method IOMethod) Option {
 func WithPixFormat(pixFmt v4l2.PixFormat) Option {
 	return func(o *config) {
 		o.pixFormat = pixFmt
+	}
+}
+
+// WithPixFormatMPlane configures the multi-planar pixel format (v4l2.PixFormatMPlane)
+// for devices using BufTypeVideoCaptureMPlane or BufTypeVideoOutputMPlane.
+func WithPixFormatMPlane(pixFmt v4l2.PixFormatMPlane) Option {
+	return func(o *config) {
+		pf := pixFmt
+		o.pixFormatMPlane = &pf
 	}
 }
 
