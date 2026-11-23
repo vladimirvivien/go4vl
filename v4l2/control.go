@@ -86,7 +86,7 @@ func (c Control) GetMenuItems() (result []ControlMenuItem, err error) {
 		var qryMenu cV4L2QueryMenu
 		qryMenu.Id = c.ID
 		qryMenu.Index = uint32(idx)
-		if err = send(c.fd, cVIDIOC_QUERYMENU, uintptr(unsafe.Pointer(&qryMenu))); err != nil {
+		if err = send(c.fd, cVIDIOC_QUERYMENU, unsafe.Pointer(&qryMenu)); err != nil {
 			continue
 		}
 		result = append(result, makeCtrlMenu(c.Type, qryMenu))
@@ -102,7 +102,7 @@ func GetControlValue(fd uintptr, id CtrlID) (CtrlValue, error) {
 	var ctrl cV4L2Control
 	ctrl.Id = id
 
-	if err := send(fd, cVIDIOC_G_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
+	if err := send(fd, cVIDIOC_G_CTRL, unsafe.Pointer(&ctrl)); err != nil {
 		return 0, fmt.Errorf("get control value: VIDIOC_G_CTRL: id %d: %w", id, err)
 	}
 
@@ -126,7 +126,7 @@ func SetControlValue(fd uintptr, id CtrlID, val CtrlValue) error {
 	ctrl.Id = id
 	ctrl.Value = val
 
-	if err := send(fd, cVIDIOC_S_CTRL, uintptr(unsafe.Pointer(&ctrl))); err != nil {
+	if err := send(fd, cVIDIOC_S_CTRL, unsafe.Pointer(&ctrl)); err != nil {
 		return fmt.Errorf("set control value: id %d: %w", id, err)
 	}
 
@@ -139,7 +139,7 @@ func QueryControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	var qryCtrl cV4L2QueryCtrl
 	qryCtrl.Id = id
 
-	if err := send(fd, cVIDIOC_QUERYCTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYCTRL, unsafe.Pointer(&qryCtrl)); err != nil {
 		return Control{}, fmt.Errorf("query control info: VIDIOC_QUERYCTRL: id %d: %w", id, err)
 	}
 	control := makeControl(qryCtrl)

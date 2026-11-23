@@ -364,7 +364,7 @@ func (dvc DVTimingsCap) GetBTTimingsCap() BTTimingsCap {
 func GetDVTimings(fd uintptr) (DVTimings, error) {
 	var timings cV4L2DVTimings
 
-	if err := send(fd, cVIDIOC_G_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
+	if err := send(fd, cVIDIOC_G_DV_TIMINGS, unsafe.Pointer(&timings)); err != nil {
 		return DVTimings{}, fmt.Errorf("v4l2: VIDIOC_G_DV_TIMINGS failed: %w", err)
 	}
 
@@ -381,7 +381,7 @@ func GetDVTimings(fd uintptr) (DVTimings, error) {
 //	    log.Fatal(err)
 //	}
 func SetDVTimings(fd uintptr, timings DVTimings) error {
-	if err := send(fd, cVIDIOC_S_DV_TIMINGS, uintptr(unsafe.Pointer(&timings.v4l2DVTimings))); err != nil {
+	if err := send(fd, cVIDIOC_S_DV_TIMINGS, unsafe.Pointer(&timings.v4l2DVTimings)); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_DV_TIMINGS failed: %w", err)
 	}
 	return nil
@@ -402,7 +402,7 @@ func SetDVTimings(fd uintptr, timings DVTimings) error {
 func QueryDVTimings(fd uintptr) (DVTimings, error) {
 	var timings cV4L2DVTimings
 
-	if err := send(fd, cVIDIOC_QUERY_DV_TIMINGS, uintptr(unsafe.Pointer(&timings))); err != nil {
+	if err := send(fd, cVIDIOC_QUERY_DV_TIMINGS, unsafe.Pointer(&timings)); err != nil {
 		return DVTimings{}, fmt.Errorf("v4l2: VIDIOC_QUERY_DV_TIMINGS failed: %w", err)
 	}
 
@@ -424,7 +424,7 @@ func EnumerateDVTimings(fd uintptr, index uint32, pad uint32) (EnumDVTimings, er
 	enumTimings.Index = index
 	enumTimings.Pad = pad
 
-	if err := send(fd, cVIDIOC_ENUM_DV_TIMINGS, uintptr(unsafe.Pointer(&enumTimings))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_DV_TIMINGS, unsafe.Pointer(&enumTimings)); err != nil {
 		return EnumDVTimings{}, fmt.Errorf("v4l2: VIDIOC_ENUM_DV_TIMINGS failed for index %d: %w", index, err)
 	}
 
@@ -477,7 +477,7 @@ func GetDVTimingsCap(fd uintptr, pad uint32) (DVTimingsCap, error) {
 	cap.Pad = pad
 	cap.Type = cV4L2_DV_BT_656_1120
 
-	if err := send(fd, cVIDIOC_DV_TIMINGS_CAP, uintptr(unsafe.Pointer(&cap))); err != nil {
+	if err := send(fd, cVIDIOC_DV_TIMINGS_CAP, unsafe.Pointer(&cap)); err != nil {
 		return DVTimingsCap{}, fmt.Errorf("v4l2: VIDIOC_DV_TIMINGS_CAP failed: %w", err)
 	}
 

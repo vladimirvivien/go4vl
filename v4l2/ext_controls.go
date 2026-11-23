@@ -323,7 +323,7 @@ func GetExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, cVIDIOC_G_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_G_EXT_CTRLS, unsafe.Pointer(v4l2Ctrls)); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_G_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -343,7 +343,7 @@ func SetExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, cVIDIOC_S_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_S_EXT_CTRLS, unsafe.Pointer(v4l2Ctrls)); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_S_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -363,7 +363,7 @@ func TryExtControls(fd uintptr, ctrls *ExtControls) error {
 	}
 	defer cleanup()
 
-	if err := send(fd, cVIDIOC_TRY_EXT_CTRLS, uintptr(unsafe.Pointer(v4l2Ctrls))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_EXT_CTRLS, unsafe.Pointer(v4l2Ctrls)); err != nil {
 		updateFromIoctl(ctrls, v4l2Ctrls) // Update error index
 		return fmt.Errorf("v4l2: VIDIOC_TRY_EXT_CTRLS failed: error at index %d: %w", ctrls.GetErrorIndex(), err)
 	}
@@ -446,7 +446,7 @@ func QueryExtControlInfo(fd uintptr, id CtrlID) (Control, error) {
 	var qryCtrl cV4L2QueryExtCtrl
 	qryCtrl.Id = id
 
-	if err := send(fd, cVIDIOC_QUERY_EXT_CTRL, uintptr(unsafe.Pointer(&qryCtrl))); err != nil {
+	if err := send(fd, cVIDIOC_QUERY_EXT_CTRL, unsafe.Pointer(&qryCtrl)); err != nil {
 		return Control{}, fmt.Errorf("query ext control info: VIDIOC_QUERY_EXT_CTRL: id %d: %w", id, err)
 	}
 	control := makeExtControl(qryCtrl)

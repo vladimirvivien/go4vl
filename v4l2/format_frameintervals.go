@@ -77,7 +77,7 @@ func GetFormatFrameInterval(fd uintptr, index uint32, encoding FourCCType, width
 	interval.Width = width
 	interval.Height = height
 
-	if err := send(fd, cVIDIOC_ENUM_FRAMEINTERVALS, uintptr(unsafe.Pointer(&interval))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FRAMEINTERVALS, unsafe.Pointer(&interval)); err != nil {
 		return FrameIntervalEnum{}, fmt.Errorf("frame interval: index %d: %w", index, err)
 	}
 	return getFrameInterval(interval)

@@ -236,7 +236,7 @@ func (s *Standard) String() string {
 func GetStandard(fd uintptr) (StdId, error) {
 	var stdId uint64
 
-	if err := send(fd, cVIDIOC_G_STD, uintptr(unsafe.Pointer(&stdId))); err != nil {
+	if err := send(fd, cVIDIOC_G_STD, unsafe.Pointer(&stdId)); err != nil {
 		return 0, fmt.Errorf("v4l2: VIDIOC_G_STD failed: %w", err)
 	}
 
@@ -255,7 +255,7 @@ func GetStandard(fd uintptr) (StdId, error) {
 func SetStandard(fd uintptr, stdId StdId) error {
 	cStdId := uint64(stdId)
 
-	if err := send(fd, cVIDIOC_S_STD, uintptr(unsafe.Pointer(&cStdId))); err != nil {
+	if err := send(fd, cVIDIOC_S_STD, unsafe.Pointer(&cStdId)); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_STD failed: %w", err)
 	}
 
@@ -275,7 +275,7 @@ func SetStandard(fd uintptr, stdId StdId) error {
 func QueryStandard(fd uintptr) (StdId, error) {
 	var stdId uint64
 
-	if err := send(fd, cVIDIOC_QUERYSTD, uintptr(unsafe.Pointer(&stdId))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYSTD, unsafe.Pointer(&stdId)); err != nil {
 		return 0, fmt.Errorf("v4l2: VIDIOC_QUERYSTD failed: %w", err)
 	}
 
@@ -292,7 +292,7 @@ func QueryStandard(fd uintptr) (StdId, error) {
 func EnumStandard(fd uintptr, index uint32) (Standard, error) {
 	std := NewStandard(index)
 
-	if err := send(fd, cVIDIOC_ENUMSTD, uintptr(unsafe.Pointer(&std.v4l2Standard))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMSTD, unsafe.Pointer(&std.v4l2Standard)); err != nil {
 		return Standard{}, fmt.Errorf("v4l2: VIDIOC_ENUMSTD failed for index %d: %w", index, err)
 	}
 

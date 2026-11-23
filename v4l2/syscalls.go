@@ -87,10 +87,17 @@ func WriteDevice(fd uintptr, buf []byte) (int, error) {
 	return n, nil
 }
 
+// ioctlSyscall invokes the Linux ioctl syscall. Swapped in unit tests to simulate
+// kernel responses without requiring V4L2 hardware.
+var ioctlSyscall = func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+	_, _, errno := sys.Syscall(sys.SYS_IOCTL, fd, req, uintptr(arg))
+	return errno
+}
+
 // ioctl is a wrapper for Syscall(SYS_IOCTL)
-func ioctl(fd, req, arg uintptr) (err sys.Errno) {
+func ioctl(fd, req uintptr, arg unsafe.Pointer) (err sys.Errno) {
 	for {
-		_, _, errno := sys.Syscall(sys.SYS_IOCTL, fd, req, arg)
+		errno := ioctlSyscall(fd, req, arg)
 		switch errno {
 		case 0:
 			return 0
@@ -103,7 +110,7 @@ func ioctl(fd, req, arg uintptr) (err sys.Errno) {
 }
 
 // send sends a request to the kernel (via ioctl syscall)
-func send(fd, req, arg uintptr) error {
+func send(fd, req uintptr, arg unsafe.Pointer) error {
 	errno := ioctl(fd, req, arg)
 	if errno == 0 {
 		return nil

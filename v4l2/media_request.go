@@ -23,7 +23,7 @@ type MediaRequest struct {
 // Call Close when the request is no longer needed.
 func AllocMediaRequest(mediaFD uintptr) (*MediaRequest, error) {
 	var reqFD int32
-	if err := send(mediaFD, cMEDIA_IOC_REQUEST_ALLOC, uintptr(unsafe.Pointer(&reqFD))); err != nil {
+	if err := send(mediaFD, cMEDIA_IOC_REQUEST_ALLOC, unsafe.Pointer(&reqFD)); err != nil {
 		return nil, fmt.Errorf("media alloc request: %w", err)
 	}
 	return &MediaRequest{fd: reqFD}, nil
@@ -44,7 +44,7 @@ func (r *MediaRequest) Queue() error {
 	if r == nil || r.fd < 0 {
 		return fmt.Errorf("media queue request: request is closed")
 	}
-	if err := send(uintptr(r.fd), cMEDIA_REQUEST_IOC_QUEUE, 0); err != nil {
+	if err := send(uintptr(r.fd), cMEDIA_REQUEST_IOC_QUEUE, nil); err != nil {
 		return fmt.Errorf("media queue request (fd %d): %w", r.fd, err)
 	}
 	return nil
@@ -56,7 +56,7 @@ func (r *MediaRequest) Reinit() error {
 	if r == nil || r.fd < 0 {
 		return fmt.Errorf("media reinit request: request is closed")
 	}
-	if err := send(uintptr(r.fd), cMEDIA_REQUEST_IOC_REINIT, 0); err != nil {
+	if err := send(uintptr(r.fd), cMEDIA_REQUEST_IOC_REINIT, nil); err != nil {
 		return fmt.Errorf("media reinit request (fd %d): %w", r.fd, err)
 	}
 	return nil

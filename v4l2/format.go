@@ -779,7 +779,7 @@ func GetPixFormatByType(fd uintptr, bufType BufType) (PixFormat, error) {
 	var v4l2Format cV4L2Format
 	v4l2Format.Type = bufType
 
-	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_G_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormat{}, fmt.Errorf("pix format failed: %w", err)
 	}
 
@@ -801,7 +801,7 @@ func SetPixFormatByType(fd uintptr, bufType BufType, pixFmt PixFormat) error {
 	v4l2Format.Type = bufType
 	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatToC(pixFmt)
 
-	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_S_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return fmt.Errorf("pix format failed: %w", err)
 	}
 	return nil
@@ -821,7 +821,7 @@ func TryPixFormat(fd uintptr, bufType BufType, pixFmt PixFormat) (PixFormat, err
 	v4l2Format.Type = bufType
 	*(*cV4L2PixFormat)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatToC(pixFmt)
 
-	if err := send(fd, cVIDIOC_TRY_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormat{}, fmt.Errorf("try pix format failed: %w", err)
 	}
 

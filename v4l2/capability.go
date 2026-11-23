@@ -237,7 +237,7 @@ type Capability struct {
 // This function issues the VIDIOC_QUERYCAP ioctl to retrieve device information.
 func GetCapability(fd uintptr) (Capability, error) {
 	var v4l2Cap cV4L2Capability
-	if err := send(fd, cVIDIOC_QUERYCAP, uintptr(unsafe.Pointer(&v4l2Cap))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYCAP, unsafe.Pointer(&v4l2Cap)); err != nil {
 		return Capability{}, fmt.Errorf("capability: %w", err)
 	}
 	return Capability{

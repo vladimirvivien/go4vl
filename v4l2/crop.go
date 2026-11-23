@@ -22,7 +22,7 @@ func GetCropCapability(fd uintptr, bufType BufType) (CropCapability, error) {
 	var cap cV4L2CropCap
 	cap.Type = bufType
 
-	if err := send(fd, cVIDIOC_CROPCAP, uintptr(unsafe.Pointer(&cap))); err != nil {
+	if err := send(fd, cVIDIOC_CROPCAP, unsafe.Pointer(&cap)); err != nil {
 		return CropCapability{}, fmt.Errorf("crop capability: %w", err)
 	}
 
@@ -40,7 +40,7 @@ func GetCropRect(fd uintptr, bufType BufType) (Rect, error) {
 	var crop cV4L2Crop
 	crop.Type = bufType
 
-	if err := send(fd, cVIDIOC_G_CROP, uintptr(unsafe.Pointer(&crop))); err != nil {
+	if err := send(fd, cVIDIOC_G_CROP, unsafe.Pointer(&crop)); err != nil {
 		return Rect{}, fmt.Errorf("get crop: %w", err)
 	}
 	return Rect(crop.C), nil
@@ -53,7 +53,7 @@ func SetCropRectByType(fd uintptr, bufType BufType, r Rect) error {
 	crop.Type = bufType
 	crop.C = cV4L2Rect(r)
 
-	if err := send(fd, cVIDIOC_S_CROP, uintptr(unsafe.Pointer(&crop))); err != nil {
+	if err := send(fd, cVIDIOC_S_CROP, unsafe.Pointer(&crop)); err != nil {
 		return fmt.Errorf("set crop: %w", err)
 	}
 	return nil

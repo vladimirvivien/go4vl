@@ -85,7 +85,7 @@ func GetFormatFrameSize(fd uintptr, index uint32, encoding FourCCType) (FrameSiz
 	frmSizeEnum.Index = index
 	frmSizeEnum.Format = encoding
 
-	if err := send(fd, cVIDIOC_ENUM_FRAMESIZES, uintptr(unsafe.Pointer(&frmSizeEnum))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FRAMESIZES, unsafe.Pointer(&frmSizeEnum)); err != nil {
 		return FrameSizeEnum{}, fmt.Errorf("frame size: index %d: %w", index, err)
 	}
 	return getFrameSize(frmSizeEnum), nil
@@ -99,7 +99,7 @@ func GetFormatFrameSizes(fd uintptr, encoding FourCCType) (result []FrameSizeEnu
 		frmSizeEnum.Index = index
 		frmSizeEnum.Format = encoding
 
-		if err = send(fd, cVIDIOC_ENUM_FRAMESIZES, uintptr(unsafe.Pointer(&frmSizeEnum))); err != nil {
+		if err = send(fd, cVIDIOC_ENUM_FRAMESIZES, unsafe.Pointer(&frmSizeEnum)); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break
 			}
@@ -134,7 +134,7 @@ func GetAllFormatFrameSizes(fd uintptr) (result []FrameSizeEnum, err error) {
 			frmSizeEnum.Index = index
 			frmSizeEnum.Format = format.PixelFormat
 
-			if err = send(fd, cVIDIOC_ENUM_FRAMESIZES, uintptr(unsafe.Pointer(&frmSizeEnum))); err != nil {
+			if err = send(fd, cVIDIOC_ENUM_FRAMESIZES, unsafe.Pointer(&frmSizeEnum)); err != nil {
 				if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 					break
 				}

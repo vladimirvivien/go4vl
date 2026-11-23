@@ -55,7 +55,7 @@ func GetStreamParam(fd uintptr, bufType BufType) (StreamParam, error) {
 	var v4l2Param cV4L2StreamParm
 	v4l2Param.Type = bufType
 
-	if err := send(fd, cVIDIOC_G_PARM, uintptr(unsafe.Pointer(&v4l2Param))); err != nil {
+	if err := send(fd, cVIDIOC_G_PARM, unsafe.Pointer(&v4l2Param)); err != nil {
 		return StreamParam{}, fmt.Errorf("stream param: %w", err)
 	}
 
@@ -85,7 +85,7 @@ func SetStreamParam(fd uintptr, bufType BufType, param StreamParam) error {
 		*(*cV4L2OutputParm)(unsafe.Pointer(&v4l2Parm.Parm[0])) = *(*cV4L2OutputParm)(unsafe.Pointer(&param.Output))
 	}
 
-	if err := send(fd, cVIDIOC_S_PARM, uintptr(unsafe.Pointer(&v4l2Parm))); err != nil {
+	if err := send(fd, cVIDIOC_S_PARM, unsafe.Pointer(&v4l2Parm)); err != nil {
 		return fmt.Errorf("stream param: %w", err)
 	}
 

@@ -198,7 +198,7 @@ func GetSubdevFormat(fd uintptr, pad uint32, which SubdevFormatWhich) (SubdevFor
 		Which: which,
 		Pad:   pad,
 	}
-	if err := send(fd, cVIDIOC_SUBDEV_G_FMT, uintptr(unsafe.Pointer(&cFmt))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_G_FMT, unsafe.Pointer(&cFmt)); err != nil {
 		return SubdevFormat{}, fmt.Errorf("subdev get format (pad %d): %w", pad, err)
 	}
 	return SubdevFormat{
@@ -218,7 +218,7 @@ func SetSubdevFormat(fd uintptr, format SubdevFormat) (SubdevFormat, error) {
 		Format: toCMBusFrameFmt(format.Format),
 		Stream: format.Stream,
 	}
-	if err := send(fd, cVIDIOC_SUBDEV_S_FMT, uintptr(unsafe.Pointer(&cFmt))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_S_FMT, unsafe.Pointer(&cFmt)); err != nil {
 		return SubdevFormat{}, fmt.Errorf("subdev set format (pad %d): %w", format.Pad, err)
 	}
 	return SubdevFormat{
@@ -239,7 +239,7 @@ func EnumSubdevMBusCodes(fd uintptr, pad uint32, which SubdevFormatWhich) ([]Sub
 			Index: idx,
 			Which: which,
 		}
-		if err := send(fd, cVIDIOC_SUBDEV_ENUM_MBUS_CODE, uintptr(unsafe.Pointer(&cEnum))); err != nil {
+		if err := send(fd, cVIDIOC_SUBDEV_ENUM_MBUS_CODE, unsafe.Pointer(&cEnum)); err != nil {
 			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
 				break
 			}
@@ -268,7 +268,7 @@ func EnumSubdevFrameSizes(fd uintptr, pad uint32, code MBusFormatCode, which Sub
 			Code:  code,
 			Which: which,
 		}
-		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_SIZE, uintptr(unsafe.Pointer(&cEnum))); err != nil {
+		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_SIZE, unsafe.Pointer(&cEnum)); err != nil {
 			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
 				break
 			}
@@ -293,7 +293,7 @@ func EnumSubdevFrameSizes(fd uintptr, pad uint32, code MBusFormatCode, which Sub
 // via VIDIOC_SUBDEV_G_FRAME_INTERVAL.
 func GetSubdevFrameInterval(fd uintptr, pad uint32) (SubdevFrameInterval, error) {
 	cIval := cV4L2SubdevFrameInterval{Pad: pad}
-	if err := send(fd, cVIDIOC_SUBDEV_G_FRAME_INTERVAL, uintptr(unsafe.Pointer(&cIval))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_G_FRAME_INTERVAL, unsafe.Pointer(&cIval)); err != nil {
 		return SubdevFrameInterval{}, fmt.Errorf("subdev get frame interval (pad %d): %w", pad, err)
 	}
 	return SubdevFrameInterval{
@@ -313,7 +313,7 @@ func SetSubdevFrameInterval(fd uintptr, ival SubdevFrameInterval) (SubdevFrameIn
 		Stream:   ival.Stream,
 		Which:    ival.Which,
 	}
-	if err := send(fd, cVIDIOC_SUBDEV_S_FRAME_INTERVAL, uintptr(unsafe.Pointer(&cIval))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_S_FRAME_INTERVAL, unsafe.Pointer(&cIval)); err != nil {
 		return SubdevFrameInterval{}, fmt.Errorf("subdev set frame interval (pad %d): %w", ival.Pad, err)
 	}
 	return SubdevFrameInterval{
@@ -337,7 +337,7 @@ func EnumSubdevFrameIntervals(fd uintptr, pad uint32, code MBusFormatCode, width
 			Height: height,
 			Which:  which,
 		}
-		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL, uintptr(unsafe.Pointer(&cEnum))); err != nil {
+		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL, unsafe.Pointer(&cEnum)); err != nil {
 			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
 				break
 			}
@@ -365,7 +365,7 @@ func GetSubdevSelection(fd uintptr, pad uint32, which SubdevFormatWhich, target 
 		Pad:    pad,
 		Target: target,
 	}
-	if err := send(fd, cVIDIOC_SUBDEV_G_SELECTION, uintptr(unsafe.Pointer(&cSel))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_G_SELECTION, unsafe.Pointer(&cSel)); err != nil {
 		return SubdevSelection{}, fmt.Errorf("subdev get selection (pad %d, target 0x%x): %w", pad, target, err)
 	}
 	return SubdevSelection{
@@ -399,7 +399,7 @@ func SetSubdevSelection(fd uintptr, sel SubdevSelection) (SubdevSelection, error
 		},
 		Stream: sel.Stream,
 	}
-	if err := send(fd, cVIDIOC_SUBDEV_S_SELECTION, uintptr(unsafe.Pointer(&cSel))); err != nil {
+	if err := send(fd, cVIDIOC_SUBDEV_S_SELECTION, unsafe.Pointer(&cSel)); err != nil {
 		return SubdevSelection{}, fmt.Errorf("subdev set selection (pad %d, target 0x%x): %w", sel.Pad, sel.Target, err)
 	}
 	return SubdevSelection{

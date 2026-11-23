@@ -285,7 +285,7 @@ func SendEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
 	v4l2Cmd.Cmd = cmd.Cmd
 	v4l2Cmd.Flags = cmd.Flags
 
-	if err := send(fd, cVIDIOC_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_ENCODER_CMD, unsafe.Pointer(&v4l2Cmd)); err != nil {
 		return fmt.Errorf("encoder cmd: %w", err)
 	}
 
@@ -312,7 +312,7 @@ func TryEncoderCmd(fd uintptr, cmd *EncoderCmd) error {
 	v4l2Cmd.Cmd = cmd.Cmd
 	v4l2Cmd.Flags = cmd.Flags
 
-	if err := send(fd, cVIDIOC_TRY_ENCODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_ENCODER_CMD, unsafe.Pointer(&v4l2Cmd)); err != nil {
 		return fmt.Errorf("try encoder cmd: %w", err)
 	}
 
@@ -354,7 +354,7 @@ func SendDecoderCmd(fd uintptr, cmd *DecoderCmd) error {
 		*formatPtr = cmd.StartFormat
 	}
 
-	if err := send(fd, cVIDIOC_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_DECODER_CMD, unsafe.Pointer(&v4l2Cmd)); err != nil {
 		return fmt.Errorf("decoder cmd: %w", err)
 	}
 
@@ -405,7 +405,7 @@ func TryDecoderCmd(fd uintptr, cmd *DecoderCmd) error {
 		*formatPtr = cmd.StartFormat
 	}
 
-	if err := send(fd, cVIDIOC_TRY_DECODER_CMD, uintptr(unsafe.Pointer(&v4l2Cmd))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_DECODER_CMD, unsafe.Pointer(&v4l2Cmd)); err != nil {
 		return fmt.Errorf("try decoder cmd: %w", err)
 	}
 
@@ -547,7 +547,7 @@ func getPixFormatForType(fd uintptr, bufType BufType) (PixFormat, error) {
 	var v4l2Format cV4L2Format
 	v4l2Format.Type = bufType
 
-	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_G_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormat{}, fmt.Errorf("get pix format: %w", err)
 	}
 
@@ -582,7 +582,7 @@ func setPixFormatForType(fd uintptr, bufType BufType, pixFmt PixFormat) error {
 	v4l2PixFmt.Sizeimage = pixFmt.SizeImage
 	v4l2PixFmt.Colorspace = pixFmt.Colorspace
 
-	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_S_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return fmt.Errorf("set pix format: %w", err)
 	}
 	return nil
@@ -605,7 +605,7 @@ func requestBuffersForType(fd uintptr, bufType BufType, count uint32, ioType IOT
 	req.Type = bufType
 	req.Memory = ioType
 
-	if err := send(fd, cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(fd, cVIDIOC_REQBUFS, unsafe.Pointer(&req)); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 
@@ -631,7 +631,7 @@ func mapMemoryBuffersForType(fd uintptr, bufType BufType, count uint32) ([][]byt
 		v4l2Buf.Memory = IOTypeMMAP
 		v4l2Buf.Index = i
 
-		if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		if err := send(fd, cVIDIOC_QUERYBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 			return nil, fmt.Errorf("query buffer %d: %w", i, err)
 		}
 
@@ -655,7 +655,7 @@ func QueueBufferOutput(fd uintptr, ioType IOType, index uint32, bytesUsed uint32
 	v4l2Buf.Index = index
 	v4l2Buf.Bytesused = bytesUsed
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("queue buffer: %w", err)
 	}
 
@@ -669,7 +669,7 @@ func QueueBufferCapture(fd uintptr, ioType IOType, index uint32) (Buffer, error)
 	v4l2Buf.Memory = ioType
 	v4l2Buf.Index = index
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("queue buffer: %w", err)
 	}
 
@@ -689,7 +689,7 @@ func DequeueBufferCapture(fd uintptr, ioType IOType) (Buffer, error) {
 // StreamOnOutput starts streaming on the OUTPUT queue.
 func StreamOnOutput(fd uintptr) error {
 	bufType := BufTypeVideoOutput
-	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMON, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream on output: %w", err)
 	}
 	return nil
@@ -698,7 +698,7 @@ func StreamOnOutput(fd uintptr) error {
 // StreamOnCapture starts streaming on the CAPTURE queue.
 func StreamOnCapture(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMON, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream on capture: %w", err)
 	}
 	return nil
@@ -707,7 +707,7 @@ func StreamOnCapture(fd uintptr) error {
 // StreamOffOutput stops streaming on the OUTPUT queue.
 func StreamOffOutput(fd uintptr) error {
 	bufType := BufTypeVideoOutput
-	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMOFF, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream off output: %w", err)
 	}
 	return nil
@@ -716,7 +716,7 @@ func StreamOffOutput(fd uintptr) error {
 // StreamOffCapture stops streaming on the CAPTURE queue.
 func StreamOffCapture(fd uintptr) error {
 	bufType := BufTypeVideoCapture
-	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMOFF, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream off capture: %w", err)
 	}
 	return nil

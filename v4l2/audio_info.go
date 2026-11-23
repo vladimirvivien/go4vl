@@ -117,7 +117,7 @@ func (a AudioOutInfo) HasAVL() bool {
 func GetAudioInfo(fd uintptr, index uint32) (AudioInfo, error) {
 	var audio cV4L2Audio
 	audio.Index = index
-	if err := send(fd, cVIDIOC_ENUMAUDIO, uintptr(unsafe.Pointer(&audio))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMAUDIO, unsafe.Pointer(&audio)); err != nil {
 		return AudioInfo{}, fmt.Errorf("audio input info: index %d: %w", index, err)
 	}
 	return AudioInfo{v4l2Audio: audio}, nil
@@ -130,7 +130,7 @@ func GetAllAudioInfo(fd uintptr) (result []AudioInfo, err error) {
 	for {
 		var audio cV4L2Audio
 		audio.Index = index
-		if err = send(fd, cVIDIOC_ENUMAUDIO, uintptr(unsafe.Pointer(&audio))); err != nil {
+		if err = send(fd, cVIDIOC_ENUMAUDIO, unsafe.Pointer(&audio)); err != nil {
 			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
 				break
 			}
@@ -146,7 +146,7 @@ func GetAllAudioInfo(fd uintptr) (result []AudioInfo, err error) {
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-audio.html
 func GetCurrentAudio(fd uintptr) (AudioInfo, error) {
 	var audio cV4L2Audio
-	if err := send(fd, cVIDIOC_G_AUDIO, uintptr(unsafe.Pointer(&audio))); err != nil {
+	if err := send(fd, cVIDIOC_G_AUDIO, unsafe.Pointer(&audio)); err != nil {
 		return AudioInfo{}, fmt.Errorf("audio input get: %w", err)
 	}
 	return AudioInfo{v4l2Audio: audio}, nil
@@ -157,7 +157,7 @@ func GetCurrentAudio(fd uintptr) (AudioInfo, error) {
 func SetAudio(fd uintptr, index uint32) error {
 	var audio cV4L2Audio
 	audio.Index = index
-	if err := send(fd, cVIDIOC_S_AUDIO, uintptr(unsafe.Pointer(&audio))); err != nil {
+	if err := send(fd, cVIDIOC_S_AUDIO, unsafe.Pointer(&audio)); err != nil {
 		return fmt.Errorf("audio input set: index %d: %w", index, err)
 	}
 	return nil
@@ -177,7 +177,7 @@ func SetAudioMode(fd uintptr, mode AudioMode) error {
 	audio.Index = current.GetIndex()
 	audio.Mode = mode
 
-	if err := send(fd, cVIDIOC_S_AUDIO, uintptr(unsafe.Pointer(&audio))); err != nil {
+	if err := send(fd, cVIDIOC_S_AUDIO, unsafe.Pointer(&audio)); err != nil {
 		return fmt.Errorf("audio input set mode: %w", err)
 	}
 	return nil
@@ -188,7 +188,7 @@ func SetAudioMode(fd uintptr, mode AudioMode) error {
 func GetAudioOutInfo(fd uintptr, index uint32) (AudioOutInfo, error) {
 	var audioOut cV4L2AudioOut
 	audioOut.Index = index
-	if err := send(fd, cVIDIOC_ENUMAUDOUT, uintptr(unsafe.Pointer(&audioOut))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMAUDOUT, unsafe.Pointer(&audioOut)); err != nil {
 		return AudioOutInfo{}, fmt.Errorf("audio output info: index %d: %w", index, err)
 	}
 	return AudioOutInfo{v4l2AudioOut: audioOut}, nil
@@ -201,7 +201,7 @@ func GetAllAudioOutInfo(fd uintptr) (result []AudioOutInfo, err error) {
 	for {
 		var audioOut cV4L2AudioOut
 		audioOut.Index = index
-		if err = send(fd, cVIDIOC_ENUMAUDOUT, uintptr(unsafe.Pointer(&audioOut))); err != nil {
+		if err = send(fd, cVIDIOC_ENUMAUDOUT, unsafe.Pointer(&audioOut)); err != nil {
 			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
 				break
 			}
@@ -217,7 +217,7 @@ func GetAllAudioOutInfo(fd uintptr) (result []AudioOutInfo, err error) {
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-audout.html
 func GetCurrentAudioOut(fd uintptr) (AudioOutInfo, error) {
 	var audioOut cV4L2AudioOut
-	if err := send(fd, cVIDIOC_G_AUDOUT, uintptr(unsafe.Pointer(&audioOut))); err != nil {
+	if err := send(fd, cVIDIOC_G_AUDOUT, unsafe.Pointer(&audioOut)); err != nil {
 		return AudioOutInfo{}, fmt.Errorf("audio output get: %w", err)
 	}
 	return AudioOutInfo{v4l2AudioOut: audioOut}, nil
@@ -228,7 +228,7 @@ func GetCurrentAudioOut(fd uintptr) (AudioOutInfo, error) {
 func SetAudioOut(fd uintptr, index uint32) error {
 	var audioOut cV4L2AudioOut
 	audioOut.Index = index
-	if err := send(fd, cVIDIOC_S_AUDOUT, uintptr(unsafe.Pointer(&audioOut))); err != nil {
+	if err := send(fd, cVIDIOC_S_AUDOUT, unsafe.Pointer(&audioOut)); err != nil {
 		return fmt.Errorf("audio output set: index %d: %w", index, err)
 	}
 	return nil
@@ -248,7 +248,7 @@ func SetAudioOutMode(fd uintptr, mode AudioMode) error {
 	audioOut.Index = current.GetIndex()
 	audioOut.Mode = mode
 
-	if err := send(fd, cVIDIOC_S_AUDOUT, uintptr(unsafe.Pointer(&audioOut))); err != nil {
+	if err := send(fd, cVIDIOC_S_AUDOUT, unsafe.Pointer(&audioOut)); err != nil {
 		return fmt.Errorf("audio output set mode: %w", err)
 	}
 	return nil

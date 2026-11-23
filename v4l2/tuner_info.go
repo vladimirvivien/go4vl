@@ -320,7 +320,7 @@ func GetTunerInfo(fd uintptr, index uint32) (TunerInfo, error) {
 	var tuner cV4L2Tuner
 	tuner.Index = index
 
-	if err := send(fd, cVIDIOC_G_TUNER, uintptr(unsafe.Pointer(&tuner))); err != nil {
+	if err := send(fd, cVIDIOC_G_TUNER, unsafe.Pointer(&tuner)); err != nil {
 		return TunerInfo{}, fmt.Errorf("v4l2: VIDIOC_G_TUNER failed for index %d: %w", index, err)
 	}
 
@@ -336,7 +336,7 @@ func GetTunerInfo(fd uintptr, index uint32) (TunerInfo, error) {
 //	tuner.v4l2Tuner.audmode = C.V4L2_TUNER_MODE_STEREO
 //	err := v4l2.SetTuner(fd, tuner)
 func SetTuner(fd uintptr, tuner TunerInfo) error {
-	if err := send(fd, cVIDIOC_S_TUNER, uintptr(unsafe.Pointer(&tuner.v4l2Tuner))); err != nil {
+	if err := send(fd, cVIDIOC_S_TUNER, unsafe.Pointer(&tuner.v4l2Tuner)); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_TUNER failed: %w", err)
 	}
 	return nil
@@ -387,7 +387,7 @@ func GetModulatorInfo(fd uintptr, index uint32) (ModulatorInfo, error) {
 	var modulator cV4L2Modulator
 	modulator.Index = index
 
-	if err := send(fd, cVIDIOC_G_MODULATOR, uintptr(unsafe.Pointer(&modulator))); err != nil {
+	if err := send(fd, cVIDIOC_G_MODULATOR, unsafe.Pointer(&modulator)); err != nil {
 		return ModulatorInfo{}, fmt.Errorf("v4l2: VIDIOC_G_MODULATOR failed for index %d: %w", index, err)
 	}
 
@@ -403,7 +403,7 @@ func GetModulatorInfo(fd uintptr, index uint32) (ModulatorInfo, error) {
 //	mod.v4l2Modulator.txsubchans = C.V4L2_TUNER_SUB_STEREO
 //	err := v4l2.SetModulator(fd, mod)
 func SetModulator(fd uintptr, modulator ModulatorInfo) error {
-	if err := send(fd, cVIDIOC_S_MODULATOR, uintptr(unsafe.Pointer(&modulator.v4l2Modulator))); err != nil {
+	if err := send(fd, cVIDIOC_S_MODULATOR, unsafe.Pointer(&modulator.v4l2Modulator)); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_MODULATOR failed: %w", err)
 	}
 	return nil
@@ -454,7 +454,7 @@ func GetFrequency(fd uintptr, tunerIndex uint32) (FrequencyInfo, error) {
 	var frequency cV4L2Frequency
 	frequency.Tuner = tunerIndex
 
-	if err := send(fd, cVIDIOC_G_FREQUENCY, uintptr(unsafe.Pointer(&frequency))); err != nil {
+	if err := send(fd, cVIDIOC_G_FREQUENCY, unsafe.Pointer(&frequency)); err != nil {
 		return FrequencyInfo{}, fmt.Errorf("v4l2: VIDIOC_G_FREQUENCY failed for tuner %d: %w", tunerIndex, err)
 	}
 
@@ -475,7 +475,7 @@ func SetFrequency(fd uintptr, tunerIndex uint32, tunerType TunerType, frequency 
 	freq.Type = tunerType
 	freq.Frequency = frequency
 
-	if err := send(fd, cVIDIOC_S_FREQUENCY, uintptr(unsafe.Pointer(&freq))); err != nil {
+	if err := send(fd, cVIDIOC_S_FREQUENCY, unsafe.Pointer(&freq)); err != nil {
 		return fmt.Errorf("v4l2: VIDIOC_S_FREQUENCY failed: %w", err)
 	}
 	return nil
@@ -501,7 +501,7 @@ func GetFrequencyBandInfo(fd uintptr, tunerIndex uint32, tunerType TunerType, ba
 	band.Type = tunerType
 	band.Index = bandIndex
 
-	if err := send(fd, cVIDIOC_ENUM_FREQ_BANDS, uintptr(unsafe.Pointer(&band))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FREQ_BANDS, unsafe.Pointer(&band)); err != nil {
 		return FrequencyBandInfo{}, fmt.Errorf("v4l2: VIDIOC_ENUM_FREQ_BANDS failed for tuner %d band %d: %w", tunerIndex, bandIndex, err)
 	}
 

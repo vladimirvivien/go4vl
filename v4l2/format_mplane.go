@@ -91,7 +91,7 @@ func GetPixFormatMPlane(fd uintptr, bufType BufType) (PixFormatMPlane, error) {
 	var v4l2Format cV4L2Format
 	v4l2Format.Type = bufType
 
-	if err := send(fd, cVIDIOC_G_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_G_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormatMPlane{}, fmt.Errorf("get mplane format: %w", err)
 	}
 
@@ -109,7 +109,7 @@ func SetPixFormatMPlane(fd uintptr, bufType BufType, pixFmt PixFormatMPlane) (Pi
 	v4l2Format.Type = bufType
 	*(*cV4L2PixFormatMPlane)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatMPlaneToC(pixFmt)
 
-	if err := send(fd, cVIDIOC_S_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_S_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormatMPlane{}, fmt.Errorf("set mplane format: %w", err)
 	}
 
@@ -127,7 +127,7 @@ func TryPixFormatMPlane(fd uintptr, bufType BufType, pixFmt PixFormatMPlane) (Pi
 	v4l2Format.Type = bufType
 	*(*cV4L2PixFormatMPlane)(unsafe.Pointer(&v4l2Format.Fmt[0])) = pixFormatMPlaneToC(pixFmt)
 
-	if err := send(fd, cVIDIOC_TRY_FMT, uintptr(unsafe.Pointer(&v4l2Format))); err != nil {
+	if err := send(fd, cVIDIOC_TRY_FMT, unsafe.Pointer(&v4l2Format)); err != nil {
 		return PixFormatMPlane{}, fmt.Errorf("try mplane format: %w", err)
 	}
 

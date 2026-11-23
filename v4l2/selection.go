@@ -47,7 +47,7 @@ func GetSelection(fd uintptr, bufType BufType, target SelectionTarget) (Selectio
 	sel.Type = bufType
 	sel.Target = target
 
-	if err := send(fd, cVIDIOC_G_SELECTION, uintptr(unsafe.Pointer(&sel))); err != nil {
+	if err := send(fd, cVIDIOC_G_SELECTION, unsafe.Pointer(&sel)); err != nil {
 		return Selection{}, fmt.Errorf("get selection: target 0x%x: %w", target, err)
 	}
 
@@ -68,7 +68,7 @@ func SetSelection(fd uintptr, sel Selection) (Selection, error) {
 		R:      cV4L2Rect(sel.Rect),
 	}
 
-	if err := send(fd, cVIDIOC_S_SELECTION, uintptr(unsafe.Pointer(&cSel))); err != nil {
+	if err := send(fd, cVIDIOC_S_SELECTION, unsafe.Pointer(&cSel)); err != nil {
 		return Selection{}, fmt.Errorf("set selection: target 0x%x: %w", sel.Target, err)
 	}
 

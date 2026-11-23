@@ -200,7 +200,7 @@ type MediaLinkDesc struct {
 // GetMediaDeviceInfo retrieves media information for specified device, if supported.
 func GetMediaDeviceInfo(fd uintptr) (MediaDeviceInfo, error) {
 	var mdi cMediaDeviceInfo
-	if err := send(fd, cMEDIA_IOC_DEVICE_INFO, uintptr(unsafe.Pointer(&mdi))); err != nil {
+	if err := send(fd, cMEDIA_IOC_DEVICE_INFO, unsafe.Pointer(&mdi)); err != nil {
 		return MediaDeviceInfo{}, fmt.Errorf("media device info: %w", err)
 	}
 	return MediaDeviceInfo{
@@ -220,7 +220,7 @@ func GetMediaTopology(fd uintptr) (MediaTopology, error) {
 	const maxRetries = 3
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		var probe cMediaV2Topology
-		if err := send(fd, cMEDIA_IOC_G_TOPOLOGY, uintptr(unsafe.Pointer(&probe))); err != nil {
+		if err := send(fd, cMEDIA_IOC_G_TOPOLOGY, unsafe.Pointer(&probe)); err != nil {
 			return MediaTopology{}, fmt.Errorf("media get topology (probe): %w", err)
 		}
 
@@ -253,7 +253,7 @@ func GetMediaTopology(fd uintptr) (MediaTopology, error) {
 			topo.Ptr_links = uint64(uintptr(unsafe.Pointer(&cLinks[0])))
 		}
 
-		err := send(fd, cMEDIA_IOC_G_TOPOLOGY, uintptr(unsafe.Pointer(&topo)))
+		err := send(fd, cMEDIA_IOC_G_TOPOLOGY, unsafe.Pointer(&topo))
 		pinner.Unpin()
 		runtime.KeepAlive(cEntities)
 		runtime.KeepAlive(cInterfaces)
@@ -330,7 +330,7 @@ func SetupMediaLink(fd uintptr, link MediaLinkDesc) error {
 		},
 		Flags: link.Flags,
 	}
-	if err := send(fd, cMEDIA_IOC_SETUP_LINK, uintptr(unsafe.Pointer(&cLink))); err != nil {
+	if err := send(fd, cMEDIA_IOC_SETUP_LINK, unsafe.Pointer(&cLink)); err != nil {
 		return fmt.Errorf("media setup link: %w", err)
 	}
 	return nil
@@ -341,7 +341,7 @@ func SetupMediaLink(fd uintptr, link MediaLinkDesc) error {
 func EnumMediaEntity(fd uintptr, id uint32) (MediaEntityDesc, error) {
 	var desc cMediaEntityDesc
 	desc.Id = id
-	if err := send(fd, cMEDIA_IOC_ENUM_ENTITIES, uintptr(unsafe.Pointer(&desc))); err != nil {
+	if err := send(fd, cMEDIA_IOC_ENUM_ENTITIES, unsafe.Pointer(&desc)); err != nil {
 		return MediaEntityDesc{}, fmt.Errorf("media enum entity 0x%x: %w", id, err)
 	}
 	return MediaEntityDesc{
@@ -392,7 +392,7 @@ func EnumMediaLinks(fd uintptr, entityID uint32, numPads, numLinks uint16) ([]Me
 		enum.Links = &cLinks[0]
 	}
 
-	err := send(fd, cMEDIA_IOC_ENUM_LINKS, uintptr(unsafe.Pointer(&enum)))
+	err := send(fd, cMEDIA_IOC_ENUM_LINKS, unsafe.Pointer(&enum))
 	pinner.Unpin()
 	runtime.KeepAlive(cPads)
 	runtime.KeepAlive(cLinks)

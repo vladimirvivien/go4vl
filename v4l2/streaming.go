@@ -303,7 +303,7 @@ type PlaneInfo struct {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOn(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.Fd(), cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_STREAMON, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
@@ -314,7 +314,7 @@ func StreamOn(dev StreamingDevice) error {
 // https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-streamon.html
 func StreamOff(dev StreamingDevice) error {
 	bufType := dev.BufferType()
-	if err := send(dev.Fd(), cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_STREAMOFF, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
@@ -332,7 +332,7 @@ func InitBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	req.Type = dev.BufferType()
 	req.Memory = dev.MemIOType()
 
-	if err := send(dev.Fd(), cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_REQBUFS, unsafe.Pointer(&req)); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w: type not supported", err)
 	}
 
@@ -351,7 +351,7 @@ func ResetBuffers(dev StreamingDevice) (RequestBuffers, error) {
 	req.Type = dev.BufferType()
 	req.Memory = dev.MemIOType()
 
-	if err := send(dev.Fd(), cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_REQBUFS, unsafe.Pointer(&req)); err != nil {
 		return RequestBuffers{}, fmt.Errorf("reset buffers VIDIOC_REQBUFS(0): %w", err)
 	}
 
@@ -366,7 +366,7 @@ func GetBuffer(dev StreamingDevice, index uint32) (Buffer, error) {
 	v4l2Buf.Memory = dev.MemIOType()
 	v4l2Buf.Index = index
 
-	if err := send(dev.Fd(), cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(dev.Fd(), cVIDIOC_QUERYBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("query buffer: type not supported: %w", err)
 	}
 
@@ -446,7 +446,7 @@ func QueueBuffer(fd uintptr, ioType IOType, bufType BufType, index uint32) (Buff
 	v4l2Buf.Memory = ioType
 	v4l2Buf.Index = index
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue: %w", err)
 	}
 
@@ -464,7 +464,7 @@ func QueueBufferUserPtr(fd uintptr, bufType BufType, index uint32, ptr uintptr, 
 	v4l2Buf.Length = length
 	*(*uintptr)(unsafe.Pointer(&v4l2Buf.M[0])) = ptr
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue userptr: %w", err)
 	}
 
@@ -482,7 +482,7 @@ func QueueBufferDMABuf(fd uintptr, bufType BufType, index uint32, dmabufFD int32
 	v4l2Buf.Length = length
 	*(*int32)(unsafe.Pointer(&v4l2Buf.M[0])) = dmabufFD
 
-	if err := send(fd, cVIDIOC_QBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("buffer queue dmabuf: %w", err)
 	}
 
@@ -499,7 +499,7 @@ func ExportBufferPlane(devFD uintptr, bufType BufType, index, plane, flags uint3
 	exp.Plane = plane
 	exp.Flags = flags
 
-	if err := send(devFD, cVIDIOC_EXPBUF, uintptr(unsafe.Pointer(&exp))); err != nil {
+	if err := send(devFD, cVIDIOC_EXPBUF, unsafe.Pointer(&exp)); err != nil {
 		return 0, fmt.Errorf("export buffer: %w", err)
 	}
 	return exp.Fd, nil
@@ -522,7 +522,7 @@ func DequeueBuffer(fd uintptr, ioType IOType, bufType BufType) (Buffer, error) {
 	v4l2Buf.Type = bufType
 	v4l2Buf.Memory = ioType
 
-	err := send(fd, cVIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf)))
+	err := send(fd, cVIDIOC_DQBUF, unsafe.Pointer(&v4l2Buf))
 	if err != nil {
 		return Buffer{}, fmt.Errorf("buffer dequeue: %w", err)
 	}
@@ -555,7 +555,7 @@ func DequeueBufferMPlane(fd uintptr, ioType IOType, bufType BufType, numPlanes u
 	v4l2Buf.Length = numPlanes
 	binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
 
-	if err := send(fd, cVIDIOC_DQBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_DQBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("buffer dequeue mplane: %w", err)
 	}
 
@@ -564,7 +564,7 @@ func DequeueBufferMPlane(fd uintptr, ioType IOType, bufType BufType, numPlanes u
 
 // StreamOnType starts streaming for the specified buffer type directly on fd (VIDIOC_STREAMON).
 func StreamOnType(fd uintptr, bufType BufType) error {
-	if err := send(fd, cVIDIOC_STREAMON, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMON, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream on: %w", err)
 	}
 	return nil
@@ -572,7 +572,7 @@ func StreamOnType(fd uintptr, bufType BufType) error {
 
 // StreamOffType stops streaming for the specified buffer type directly on fd (VIDIOC_STREAMOFF).
 func StreamOffType(fd uintptr, bufType BufType) error {
-	if err := send(fd, cVIDIOC_STREAMOFF, uintptr(unsafe.Pointer(&bufType))); err != nil {
+	if err := send(fd, cVIDIOC_STREAMOFF, unsafe.Pointer(&bufType)); err != nil {
 		return fmt.Errorf("stream off: %w", err)
 	}
 	return nil
@@ -586,7 +586,7 @@ func RequestBuffersForType(fd uintptr, bufType BufType, ioType IOType, count uin
 	req.Type = bufType
 	req.Memory = ioType
 
-	if err := send(fd, cVIDIOC_REQBUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(fd, cVIDIOC_REQBUFS, unsafe.Pointer(&req)); err != nil {
 		return RequestBuffers{}, fmt.Errorf("request buffers: %w", err)
 	}
 
@@ -614,7 +614,7 @@ func CreateBuffers(fd uintptr, count uint32, ioType IOType, bufType BufType, pix
 		*(*cV4L2PixFormat)(unsafe.Pointer(&cb.Format.Fmt[0])) = pixFormatToC(*pixFmt)
 	}
 
-	if err := send(fd, cVIDIOC_CREATE_BUFS, uintptr(unsafe.Pointer(&cb))); err != nil {
+	if err := send(fd, cVIDIOC_CREATE_BUFS, unsafe.Pointer(&cb)); err != nil {
 		return CreateBuffersResult{}, fmt.Errorf("create buffers: %w", err)
 	}
 
@@ -651,13 +651,13 @@ func QueryBuffer(fd uintptr, bufType BufType, ioType IOType, index uint32, numPl
 		v4l2Buf.Length = numPlanes
 		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
 
-		if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		if err := send(fd, cVIDIOC_QUERYBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 			return Buffer{}, fmt.Errorf("query buffer: %w", err)
 		}
 		return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
 	}
 
-	if err := send(fd, cVIDIOC_QUERYBUF, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, cVIDIOC_QUERYBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("query buffer: %w", err)
 	}
 	return makeBuffer(v4l2Buf), nil
@@ -716,7 +716,7 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 		v4l2Buf.Length = uint32(len(cPlanes))
 		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
 
-		if err := send(fd, req, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+		if err := send(fd, req, unsafe.Pointer(&v4l2Buf)); err != nil {
 			return Buffer{}, fmt.Errorf("%s: %w", op, err)
 		}
 		return makeBufferWithPlanes(v4l2Buf, cPlanes), nil
@@ -731,7 +731,7 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 		binary.NativeEndian.PutUint32(v4l2Buf.M[:4], buf.Info.Offset)
 	}
 
-	if err := send(fd, req, uintptr(unsafe.Pointer(&v4l2Buf))); err != nil {
+	if err := send(fd, req, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("%s: %w", op, err)
 	}
 	return makeBuffer(v4l2Buf), nil
@@ -745,7 +745,7 @@ func RemoveBuffers(fd uintptr, bufType BufType, index, count uint32) error {
 		Count: count,
 		Type:  bufType,
 	}
-	if err := send(fd, cVIDIOC_REMOVE_BUFS, uintptr(unsafe.Pointer(&req))); err != nil {
+	if err := send(fd, cVIDIOC_REMOVE_BUFS, unsafe.Pointer(&req)); err != nil {
 		return fmt.Errorf("remove buffers (index=%d count=%d): %w", index, count, err)
 	}
 	return nil

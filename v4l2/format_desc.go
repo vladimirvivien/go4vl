@@ -80,7 +80,7 @@ func GetFormatDescriptionByType(fd uintptr, bufType BufType, index uint32) (Form
 	fmtDesc.Index = index
 	fmtDesc.Type = bufType
 
-	if err := send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
+	if err := send(fd, cVIDIOC_ENUM_FMT, unsafe.Pointer(&fmtDesc)); err != nil {
 		return FormatDescription{}, fmt.Errorf("format desc: index %d: %w", index, err)
 	}
 	return makeFormatDescription(fmtDesc), nil
@@ -99,7 +99,7 @@ func GetAllFormatDescriptionsByType(fd uintptr, bufType BufType) (result []Forma
 		fmtDesc.Index = index
 		fmtDesc.Type = bufType
 
-		if err = send(fd, cVIDIOC_ENUM_FMT, uintptr(unsafe.Pointer(&fmtDesc))); err != nil {
+		if err = send(fd, cVIDIOC_ENUM_FMT, unsafe.Pointer(&fmtDesc)); err != nil {
 			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
 				break
 			}

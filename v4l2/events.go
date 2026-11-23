@@ -255,7 +255,7 @@ func (e *Event) GetRawData() []byte {
 // SubscribeEvent subscribes to an event type.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-subscribe-event.html
 func SubscribeEvent(fd uintptr, sub *EventSubscription) error {
-	if err := send(fd, cVIDIOC_SUBSCRIBE_EVENT, uintptr(unsafe.Pointer(&sub.v4l2EventSubscription))); err != nil {
+	if err := send(fd, cVIDIOC_SUBSCRIBE_EVENT, unsafe.Pointer(&sub.v4l2EventSubscription)); err != nil {
 		return fmt.Errorf("subscribe event: type %d: %w", sub.GetType(), err)
 	}
 	return nil
@@ -264,7 +264,7 @@ func SubscribeEvent(fd uintptr, sub *EventSubscription) error {
 // UnsubscribeEvent unsubscribes from an event type.
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-subscribe-event.html
 func UnsubscribeEvent(fd uintptr, sub *EventSubscription) error {
-	if err := send(fd, cVIDIOC_UNSUBSCRIBE_EVENT, uintptr(unsafe.Pointer(&sub.v4l2EventSubscription))); err != nil {
+	if err := send(fd, cVIDIOC_UNSUBSCRIBE_EVENT, unsafe.Pointer(&sub.v4l2EventSubscription)); err != nil {
 		return fmt.Errorf("unsubscribe event: type %d: %w", sub.GetType(), err)
 	}
 	return nil
@@ -274,7 +274,7 @@ func UnsubscribeEvent(fd uintptr, sub *EventSubscription) error {
 // See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-dqevent.html
 func DequeueEvent(fd uintptr) (*Event, error) {
 	event := &Event{}
-	if err := send(fd, cVIDIOC_DQEVENT, uintptr(unsafe.Pointer(&event.v4l2Event))); err != nil {
+	if err := send(fd, cVIDIOC_DQEVENT, unsafe.Pointer(&event.v4l2Event)); err != nil {
 		return nil, fmt.Errorf("dequeue event: %w", err)
 	}
 	return event, nil

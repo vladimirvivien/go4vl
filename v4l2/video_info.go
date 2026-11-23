@@ -156,7 +156,7 @@ func (o OutputInfo) GetCapabilities() uint32 {
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-input.html
 func GetCurrentVideoInputIndex(fd uintptr) (int32, error) {
 	var index int32
-	if err := send(fd, cVIDIOC_G_INPUT, uintptr(unsafe.Pointer(&index))); err != nil {
+	if err := send(fd, cVIDIOC_G_INPUT, unsafe.Pointer(&index)); err != nil {
 		return -1, fmt.Errorf("video input get: %w", err)
 	}
 	return index, nil
@@ -167,7 +167,7 @@ func GetCurrentVideoInputIndex(fd uintptr) (int32, error) {
 func GetVideoInputInfo(fd uintptr, index uint32) (InputInfo, error) {
 	var input cV4L2Input
 	input.Index = index
-	if err := send(fd, cVIDIOC_ENUMINPUT, uintptr(unsafe.Pointer(&input))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMINPUT, unsafe.Pointer(&input)); err != nil {
 		return InputInfo{}, fmt.Errorf("video input info: index %d: %w", index, err)
 	}
 	return InputInfo{v4l2Input: input}, nil
@@ -180,7 +180,7 @@ func GetAllVideoInputInfo(fd uintptr) (result []InputInfo, err error) {
 	for {
 		var input cV4L2Input
 		input.Index = index
-		if err = send(fd, cVIDIOC_ENUMINPUT, uintptr(unsafe.Pointer(&input))); err != nil {
+		if err = send(fd, cVIDIOC_ENUMINPUT, unsafe.Pointer(&input)); err != nil {
 			// ErrorBadArgument (EINVAL) indicates no more inputs (end of enumeration)
 			if errors.Is(err, ErrorBadArgument) {
 				break
@@ -196,7 +196,7 @@ func GetAllVideoInputInfo(fd uintptr) (result []InputInfo, err error) {
 // SetVideoInputIndex sets the current video input index
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-s-input.html
 func SetVideoInputIndex(fd uintptr, index int32) error {
-	if err := send(fd, cVIDIOC_S_INPUT, uintptr(unsafe.Pointer(&index))); err != nil {
+	if err := send(fd, cVIDIOC_S_INPUT, unsafe.Pointer(&index)); err != nil {
 		return fmt.Errorf("video input set: index %d: %w", index, err)
 	}
 	return nil
@@ -206,7 +206,7 @@ func SetVideoInputIndex(fd uintptr, index int32) error {
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-g-output.html
 func GetCurrentVideoOutputIndex(fd uintptr) (int32, error) {
 	var index int32
-	if err := send(fd, cVIDIOC_G_OUTPUT, uintptr(unsafe.Pointer(&index))); err != nil {
+	if err := send(fd, cVIDIOC_G_OUTPUT, unsafe.Pointer(&index)); err != nil {
 		return -1, fmt.Errorf("video output get: %w", err)
 	}
 	return index, nil
@@ -215,7 +215,7 @@ func GetCurrentVideoOutputIndex(fd uintptr) (int32, error) {
 // SetVideoOutputIndex sets the current video output index
 // See https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-s-output.html
 func SetVideoOutputIndex(fd uintptr, index int32) error {
-	if err := send(fd, cVIDIOC_S_OUTPUT, uintptr(unsafe.Pointer(&index))); err != nil {
+	if err := send(fd, cVIDIOC_S_OUTPUT, unsafe.Pointer(&index)); err != nil {
 		return fmt.Errorf("video output set: index %d: %w", index, err)
 	}
 	return nil
@@ -226,7 +226,7 @@ func SetVideoOutputIndex(fd uintptr, index int32) error {
 func GetVideoOutputInfo(fd uintptr, index uint32) (OutputInfo, error) {
 	var output cV4L2Output
 	output.Index = index
-	if err := send(fd, cVIDIOC_ENUMOUTPUT, uintptr(unsafe.Pointer(&output))); err != nil {
+	if err := send(fd, cVIDIOC_ENUMOUTPUT, unsafe.Pointer(&output)); err != nil {
 		return OutputInfo{}, fmt.Errorf("video output info: index %d: %w", index, err)
 	}
 	return OutputInfo{v4l2Output: output}, nil
@@ -239,7 +239,7 @@ func GetAllVideoOutputInfo(fd uintptr) (result []OutputInfo, err error) {
 	for {
 		var output cV4L2Output
 		output.Index = index
-		if err = send(fd, cVIDIOC_ENUMOUTPUT, uintptr(unsafe.Pointer(&output))); err != nil {
+		if err = send(fd, cVIDIOC_ENUMOUTPUT, unsafe.Pointer(&output)); err != nil {
 			// ErrorBadArgument (EINVAL) indicates no more outputs (end of enumeration)
 			if errors.Is(err, ErrorBadArgument) {
 				break
