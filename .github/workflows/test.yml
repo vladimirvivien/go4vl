@@ -18,9 +18,12 @@ jobs:
       run: |
         CGO_ENABLED=0 go build ./...
         CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
+        CGO_ENABLED=0 go test -tags=integration -c ./test -o /dev/null
+        (cd examples/simplecam && CGO_ENABLED=0 go build -o /dev/null .)
+        (cd examples/webcam && CGO_ENABLED=0 go build -o /dev/null .)
 
     - name: Run Unit Tests (CGO_ENABLED=0)
-      run: CGO_ENABLED=0 go test -v ./v4l2 ./device
+      run: CGO_ENABLED=0 go test -v -cover ./v4l2 ./device
 
     - name: Vet (CGO_ENABLED=0)
       run: CGO_ENABLED=0 go vet ./v4l2 ./device
@@ -81,6 +84,10 @@ jobs:
         echo "=== Video devices ==="
         ls -la /dev/video*
 
-    - name: Run Integration Tests
+    - name: Run Integration Tests (CGO_ENABLED=0)
       run: |
-        CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11
+        CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11 -require-streaming
+
+    - name: Run Integration Tests (Race Detector)
+      run: |
+        CGO_ENABLED=1 go test -race -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11 -require-streaming
