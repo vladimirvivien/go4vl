@@ -175,14 +175,16 @@ func runEncoder(ctx context.Context, camera *device.Device, encoder *device.Enco
 		case <-ctx.Done():
 			return nil
 
-		case frame, ok := <-camera.GetOutput():
+		case frame, ok := <-camera.GetFrames():
 			if !ok {
 				return nil
 			}
+			raw := frame.Clone().Data
+			frame.Release()
 
 			// Send frame to encoder
 			select {
-			case encoder.GetInput() <- frame:
+			case encoder.GetInput() <- raw:
 				frameCount++
 			case <-ctx.Done():
 				return nil

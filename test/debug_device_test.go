@@ -31,10 +31,6 @@ func TestDebug_OpenDevice(t *testing.T) {
 	t.Logf("  Video Capture: %v", cap.IsVideoCaptureSupported())
 	t.Logf("  Streaming: %v", cap.IsStreamingSupported())
 
-	// Try to get output channel
-	t.Logf("Getting output channel...")
-	_ = dev.GetOutput()
-
 	t.Logf("Starting capture...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -46,8 +42,9 @@ func TestDebug_OpenDevice(t *testing.T) {
 
 	t.Logf("Waiting for first frame...")
 	select {
-	case frame := <-dev.GetOutput():
-		t.Logf("SUCCESS! Got frame of %d bytes", len(frame))
+	case frame := <-dev.GetFrames():
+		t.Logf("SUCCESS! Got frame of %d bytes", len(frame.Data))
+		frame.Release()
 	case <-time.After(3 * time.Second):
 		t.Fatal("Timeout waiting for frame")
 	}

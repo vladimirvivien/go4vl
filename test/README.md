@@ -62,12 +62,12 @@ go test -v -tags=integration ./test/... -run TestV4L2
 
 ### Running Benchmarks
 
-Benchmarks compare the legacy `GetOutput()` API vs the optimized `GetFrames()` API with buffer pooling.
+Benchmarks compare `Frames(ctx)` (zero-copy iterator) vs `GetFrames()` (pooled channel).
 
 Due to V4L2 driver limitations, benchmarks must be run **individually**:
 
 ```bash
-go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem -benchtime=3s -run=^$ ./test -args -use-device-emulation=/dev/video42,/dev/video43
+go test -tags=integration -bench=BenchmarkIntegration_Frames -benchmem -benchtime=3s -run=^$ ./test -args -use-device-emulation=/dev/video42,/dev/video43
 go test -tags=integration -bench=BenchmarkIntegration_GetFrames -benchmem -benchtime=3s -run=^$ ./test -args -use-device-emulation=/dev/video42,/dev/video43
 ```
 

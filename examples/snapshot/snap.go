@@ -15,19 +15,19 @@ func main() {
 	}
 	defer dev.Close()
 
-	if err := dev.Start(context.TODO()); err != nil {
+	ctx := context.Background()
+	if err := dev.Start(ctx); err != nil {
 		log.Fatal(err)
 	}
+	defer dev.Stop()
 
-	frame := <-dev.GetOutput()
-
-	file, err := os.Create("pic.jpg")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	if _, err := file.Write(frame); err != nil {
-		log.Fatal(err)
+	for frame, err := range dev.Frames(ctx) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile("pic.jpg", frame.Data, 0o644); err != nil {
+			log.Fatal(err)
+		}
+		break
 	}
 }

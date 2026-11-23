@@ -39,11 +39,15 @@ Once the device starts, the code sets up a loop to capture incoming video frame 
 ```go
 func main() {
 ...
-	for frame := range device.GetOutput() {
+	for frame, err := range device.Frames(ctx) {
+		if err != nil {
+			log.Printf("frame error: %s", err)
+			break
+		}
 		fileName := fmt.Sprintf("capture_%d.jpg", count)
 		file, err := os.Create(fileName)
 		...
-		if _, err := file.Write(frame); err != nil {
+		if _, err := file.Write(frame.Data); err != nil {
 			log.Printf("failed to write file %s: %s", fileName, err)
 			continue
 		}

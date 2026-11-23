@@ -115,19 +115,22 @@ func main() {
 	// process frames from capture channel
 	count := 0
 	log.Printf("Capturing %d frames (buffers: %d, %d fps)...", totalFrames, device.BufferCount(), fps)
-	for frame := range device.GetOutput() {
+	for frame, err := range device.Frames(ctx) {
+		if err != nil {
+			log.Fatalf("capture frame: %s", err)
+		}
 		if count >= totalFrames {
 			break
 		}
 		count++
 
-		if len(frame) == 0 {
+		if len(frame.Data) == 0 {
 			log.Println("received frame size 0")
 			continue
 		}
 
-		log.Printf("captured %d bytes", len(frame))
-		img, fmtName, err := image.Decode(bytes.NewReader(frame))
+		log.Printf("captured %d bytes", len(frame.Data))
+		img, fmtName, err := image.Decode(bytes.NewReader(frame.Data))
 		if err != nil {
 			log.Printf("failed to decode jpeg: %s", err)
 			continue
@@ -147,7 +150,7 @@ func main() {
 			continue
 		}
 
-		if _, err := file.Write(frame); err != nil {
+		if _, err := file.Write(frame.Data); err != nil {
 			log.Printf("failed to write file %s: %s", fileName, err)
 			file.Close()
 			continue

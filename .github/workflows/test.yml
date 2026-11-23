@@ -20,10 +20,10 @@ jobs:
         CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
 
     - name: Run Unit Tests (CGO_ENABLED=0)
-      run: CGO_ENABLED=0 go test -v ./v4l2 ./device ./imgsupport
+      run: CGO_ENABLED=0 go test -v ./v4l2 ./device
 
     - name: Vet (CGO_ENABLED=0)
-      run: CGO_ENABLED=0 go vet ./v4l2 ./device ./imgsupport
+      run: CGO_ENABLED=0 go vet ./v4l2 ./device
 
     - name: Install C headers for ABI parity verification
       run: |

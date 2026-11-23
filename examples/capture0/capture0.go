@@ -38,21 +38,16 @@ func main() {
 	count := 0
 	log.Printf("Capturing %d frames...", totalFrames)
 
-	for frame := range device.GetOutput() {
-		fileName := fmt.Sprintf("capture_%d.jpg", count)
-		file, err := os.Create(fileName)
+	for frame, err := range device.Frames(ctx) {
 		if err != nil {
-			log.Printf("failed to create file %s: %s", fileName, err)
-			continue
+			log.Fatalf("capture frame: %s", err)
 		}
-		if _, err := file.Write(frame); err != nil {
+		fileName := fmt.Sprintf("capture_%d.jpg", count)
+		if err := os.WriteFile(fileName, frame.Data, 0o644); err != nil {
 			log.Printf("failed to write file %s: %s", fileName, err)
 			continue
 		}
 		log.Printf("Saved file: %s", fileName)
-		if err := file.Close(); err != nil {
-			log.Printf("failed to close file %s: %s", fileName, err)
-		}
 		count++
 		if count >= totalFrames {
 			break

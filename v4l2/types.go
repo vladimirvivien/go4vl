@@ -10,8 +10,6 @@ type Device interface {
 	Fd() uintptr
 	Capability() Capability
 	MemIOType() IOType
-	GetOutput() <-chan []byte
-	SetInput(<-chan []byte)
 	Close() error
 }
 

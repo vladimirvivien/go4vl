@@ -38,7 +38,7 @@ func TestDevice_StructFields(t *testing.T) {
 		},
 	}
 	dev.streaming.Store(false)
-	dev.output = make(chan []byte, 2)
+	dev.frames = make(chan *Frame, 2)
 	dev.streamErr = make(chan error, 1)
 
 	if dev.path != "/dev/video0" {
@@ -187,21 +187,19 @@ func TestDevice_MemIOType(t *testing.T) {
 	}
 }
 
-// TestDevice_GetOutput tests the GetOutput() method
-func TestDevice_GetOutput(t *testing.T) {
-	// Create buffered channel
-	output := make(chan []byte, 2)
-	dev := Device{output: output}
+// TestDevice_GetFrames tests the GetFrames() method
+func TestDevice_GetFrames(t *testing.T) {
+	frames := make(chan *Frame, 2)
+	dev := Device{frames: frames}
 
-	result := dev.GetOutput()
-	if result != output {
-		t.Error("GetOutput() should return the output channel")
+	result := dev.GetFrames()
+	if result != frames {
+		t.Error("GetFrames() should return the frames channel")
 	}
 
-	// Test that it's read-only by verifying it's a receive-only channel
-	_, ok := (interface{}(result)).(<-chan []byte)
+	_, ok := (any(result)).(<-chan *Frame)
 	if !ok {
-		t.Error("GetOutput() should return a read-only channel")
+		t.Error("GetFrames() should return a read-only channel")
 	}
 }
 
@@ -634,8 +632,8 @@ func TestDevice_ZeroValues(t *testing.T) {
 	if dev.Buffers() != nil {
 		t.Errorf("Buffers = %v, want nil", dev.Buffers())
 	}
-	if dev.GetOutput() != nil {
-		t.Errorf("GetOutput = %v, want nil", dev.GetOutput())
+	if dev.GetFrames() != nil {
+		t.Errorf("GetFrames = %v, want nil", dev.GetFrames())
 	}
 	if dev.GetError() != nil {
 		t.Errorf("GetError = %v, want nil", dev.GetError())
@@ -707,43 +705,12 @@ func TestDevice_SetCropRect_UnsupportedFeature(t *testing.T) {
 	}
 }
 
-// TestDevice_StreamingMutualExclusivity tests that GetOutput and GetFrames are mutually exclusive
+// TestDevice_StreamingMutualExclusivity tests that GetFrames and Frames are mutually exclusive
 func TestDevice_StreamingMutualExclusivity(t *testing.T) {
-	t.Run("GetOutput_then_GetFrames", func(t *testing.T) {
-		dev := Device{}
-		dev.output = make(chan []byte, 2)
-
-		// First call to GetOutput() should succeed
-		ch1 := dev.GetOutput()
-		if ch1 == nil {
-			t.Error("First GetOutput() should return valid channel")
-		}
-		if dev.streamingMode.Load() != 1 {
-			t.Errorf("streamingMode = %d, want 1 (GetOutput)", dev.streamingMode.Load())
-		}
-
-		// Second call to GetOutput() should still work (same mode)
-		ch2 := dev.GetOutput()
-		if ch2 == nil {
-			t.Error("Second GetOutput() should return valid channel")
-		}
-
-		// Call to GetFrames() should panic (different mode)
-		func() {
-			defer func() {
-				if r := recover(); r == nil {
-					t.Error("GetFrames() after GetOutput() should panic")
-				}
-			}()
-			dev.GetFrames()
-		}()
-	})
-
-	t.Run("GetFrames_then_GetOutput", func(t *testing.T) {
+	t.Run("GetFrames_idempotent", func(t *testing.T) {
 		dev := Device{}
 		dev.frames = make(chan *Frame, 2)
 
-		// First call to GetFrames() should succeed
 		ch1 := dev.GetFrames()
 		if ch1 == nil {
 			t.Error("First GetFrames() should return valid channel")
@@ -752,41 +719,31 @@ func TestDevice_StreamingMutualExclusivity(t *testing.T) {
 			t.Errorf("streamingMode = %d, want 2 (GetFrames)", dev.streamingMode.Load())
 		}
 
-		// Second call to GetFrames() should still work (same mode)
 		ch2 := dev.GetFrames()
 		if ch2 == nil {
 			t.Error("Second GetFrames() should return valid channel")
 		}
+	})
 
-		// Call to GetOutput() should panic (different mode)
+	t.Run("Frames_then_GetFrames_panics", func(t *testing.T) {
+		dev := Device{}
+		dev.streamingMode.Store(3) // Frames iterator mode
+
 		func() {
 			defer func() {
 				if r := recover(); r == nil {
-					t.Error("GetOutput() after GetFrames() should panic")
+					t.Error("GetFrames() while Frames() mode is active should panic")
 				}
 			}()
-			dev.GetOutput()
+			dev.GetFrames()
 		}()
 	})
 
 	t.Run("Stop_resets_mode", func(t *testing.T) {
 		dev := Device{}
-		dev.output = make(chan []byte, 2)
-
-		// Set to GetOutput mode (without streaming, so capture goroutine is not launched)
-		ch := dev.GetOutput()
-		if ch == nil {
-			t.Error("GetOutput() should succeed initially")
-		}
-
-		// Manually reset streaming mode (simulates what Stop() does when streaming is active)
+		dev.streamingMode.Store(3)
 		dev.streamingMode.Store(0)
 
-		if dev.streamingMode.Load() != 0 {
-			t.Errorf("After mode reset, streamingMode = %d, want 0", dev.streamingMode.Load())
-		}
-
-		// Now GetFrames() should work
 		dev.frames = make(chan *Frame, 2)
 		framesCh := dev.GetFrames()
 		if framesCh == nil {
@@ -1070,7 +1027,7 @@ func TestDevice_StopAndClose_CleanupAfterContextCancel(t *testing.T) {
 			bufType:     v4l2.BufTypeVideoCapture,
 			config:      config{ioType: v4l2.IOTypeMMAP, bufSize: 2},
 			buffers:     [][]byte{buf0, buf1},
-			output:      make(chan []byte, 1),
+			frames:      make(chan *Frame, 1),
 			streamErr:   make(chan error, 1),
 			captureDone: done,
 		}
@@ -1088,7 +1045,7 @@ func TestDevice_StopAndClose_CleanupAfterContextCancel(t *testing.T) {
 		if dev.streamActive.Load() {
 			t.Error("expected streamActive to be false after Stop()")
 		}
-		if dev.output != nil || dev.frames != nil || dev.streamErr != nil || dev.captureDone != nil {
+		if dev.frames != nil || dev.streamErr != nil || dev.captureDone != nil {
 			t.Error("expected channels to be reset to nil after Stop()")
 		}
 		// Re-munmapping must fail with EINVAL because Stop() already unmapped the pages.

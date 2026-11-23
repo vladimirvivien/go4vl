@@ -43,9 +43,12 @@
 //	defer dev.Stop()
 //
 //	// Capture frames
-//	for frame := range dev.GetOutput() {
+//	for frame, err := range dev.Frames(ctx) {
+//	    if err != nil {
+//	        log.Fatal(err)
+//	    }
 //	    // Process frame data
-//	    processFrame(frame)
+//	    processFrame(frame.Data)
 //	}
 //
 // # Device Discovery
@@ -100,5 +103,5 @@
 // # Thread Safety
 //
 // Device methods are NOT thread-safe and should be called from a single goroutine.
-// The output channel returned by GetOutput() is safe for concurrent reads.
+// The frame channel returned by GetFrames() is safe for concurrent reads.
 package device

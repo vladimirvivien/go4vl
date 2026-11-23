@@ -87,7 +87,7 @@ func main() {
 Next, start the device and make the device stream available via package variable `frames`:
 
 ```go
-var frames <-chan []byte
+var frames <-chan *device.Frame
 
 func main() {
 ...
@@ -100,7 +100,7 @@ func main() {
 		device.Close()
 	}()
 
-	frames = device.GetOutput()
+	frames = device.GetFrames()
 
 }
 ```
@@ -108,7 +108,7 @@ func main() {
 The last major step is to start an HTTP server to serve the video buffers, as images, and the page for the webcam:
 
 ```go
-var frames <-chan []byte
+var frames <-chan *device.Frame
 
 func main() {
 ...

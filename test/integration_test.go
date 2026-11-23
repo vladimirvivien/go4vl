@@ -152,16 +152,21 @@ func TestIntegration_BasicStreaming(t *testing.T) {
 
 	for {
 		select {
-		case frame := <-dev.GetOutput():
-			if len(frame) == 0 {
+		case frame, ok := <-dev.GetFrames():
+			if !ok {
+				goto done
+			}
+			if len(frame.Data) == 0 {
 				emptyFrames++
+				frame.Release()
 				continue
 			}
 			frameCount++
 
 			// Validate frame
-			ValidateYUYVFrame(t, frame, 640, 480)
-			t.Logf("Frame %d: %d bytes (valid YUYV)", frameCount, len(frame))
+			ValidateYUYVFrame(t, frame.Data, 640, 480)
+			t.Logf("Frame %d: %d bytes (valid YUYV)", frameCount, len(frame.Data))
+			frame.Release()
 
 			if frameCount >= 10 {
 				goto done
@@ -204,10 +209,14 @@ func TestIntegration_StopStart(t *testing.T) {
 	captureLoop:
 		for {
 			select {
-			case frame := <-dev.GetOutput():
-				if len(frame) > 0 {
+			case frame, ok := <-dev.GetFrames():
+				if !ok {
+					break captureLoop
+				}
+				if len(frame.Data) > 0 {
 					frameCount++
 				}
+				frame.Release()
 				if frameCount >= 3 {
 					break captureLoop
 				}
@@ -243,8 +252,9 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 	framesChan := make(chan int)
 	go func() {
 		count := 0
-		for range dev.GetOutput() {
+		for frame := range dev.GetFrames() {
 			count++
+			frame.Release()
 		}
 		framesChan <- count
 	}()
@@ -272,23 +282,15 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 // ============================================================================
 // BENCHMARKS
 // ============================================================================
-// Benchmarks compare GetOutput() vs GetFrames() APIs.
-//
-// Results: GetFrames() is 2% faster and uses 600x less memory (1 KB vs 600 KB
-// per frame) due to buffer pooling, dramatically reducing GC pressure.
+// Benchmarks compare Frames(ctx) (zero-copy iterator) vs GetFrames() (pooled channel).
 //
 // Run individually with -run=^$ (v4l2 driver limitation):
-//   sudo go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem -run=^$ ./test
+//   sudo go test -tags=integration -bench=BenchmarkIntegration_Frames -benchmem -run=^$ ./test
 //   sudo go test -tags=integration -bench=BenchmarkIntegration_GetFrames -benchmem -run=^$ ./test
 // ============================================================================
 
-// BenchmarkIntegration_GetOutput benchmarks the legacy GetOutput() API
-// This benchmark measures the complete end-to-end pipeline including:
-// - V4L2 buffer dequeue (syscall)
-// - Memory copy from mmap buffer to output buffer (direct allocation)
-// - Channel send operation
-// - V4L2 buffer re-queue (syscall)
-func BenchmarkIntegration_GetOutput(b *testing.B) {
+// BenchmarkIntegration_Frames benchmarks the zero-copy Frames(ctx) iterator API.
+func BenchmarkIntegration_Frames(b *testing.B) {
 	if testDevice1 == "" {
 		b.Skip("No test device available")
 	}
@@ -299,8 +301,6 @@ func BenchmarkIntegration_GetOutput(b *testing.B) {
 	}
 	defer dev.Close()
 
-	_ = dev.GetOutput()
-
 	ctx := context.Background()
 	if err := dev.Start(ctx); err != nil {
 		b.Fatalf("Failed to start: %v", err)
@@ -309,9 +309,16 @@ func BenchmarkIntegration_GetOutput(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		frame := <-dev.GetOutput()
-		_ = frame
+	i := 0
+	for frame, err := range dev.Frames(ctx) {
+		if err != nil {
+			b.Fatalf("Frames error: %v", err)
+		}
+		_ = frame.Data
+		i++
+		if i >= b.N {
+			break
+		}
 	}
 }
 
@@ -395,11 +402,11 @@ func BenchmarkIntegration_GetFrames_WithMetadata(b *testing.B) {
 // BenchmarkIntegration_Comparison was removed because running multiple device
 // benchmarks in the same process causes v4l2 driver-level conflicts.
 // Use the individual benchmarks instead:
-//   - BenchmarkIntegration_GetOutput for the legacy API
-//   - BenchmarkIntegration_GetFrames for the pooled API
+//   - BenchmarkIntegration_Frames for the zero-copy iterator API
+//   - BenchmarkIntegration_GetFrames for the pooled channel API
 //
 // To compare both APIs, run them separately with -run=^$ to skip tests:
-//   sudo go test -tags=integration -bench=BenchmarkIntegration_GetOutput -benchmem -run=^$ ./test
+//   sudo go test -tags=integration -bench=BenchmarkIntegration_Frames -benchmem -run=^$ ./test
 //   sudo go test -tags=integration -bench=BenchmarkIntegration_GetFrames -benchmem -run=^$ ./test
 //
 // Note: Each runs in a separate process, avoiding device conflicts.

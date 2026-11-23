@@ -13,7 +13,7 @@ This example demonstrates the new `GetFrames()` API which provides frame metadat
 
 ## Performance Benefits
 
-Compared to the legacy `GetOutput()` API, `GetFrames()` provides:
+`GetFrames()` provides:
 
 - **60-80% fewer allocations** through buffer pooling
 - **Reduced GC pressure** from buffer reuse
@@ -122,31 +122,8 @@ frame.Release()
 processLater(saved)  // OK: using copy
 ```
 
-## Comparison with GetOutput()
-
-### Legacy API (GetOutput)
-```go
-for frameData := range dev.GetOutput() {
-    // frameData is a fresh allocation every time
-    // No metadata available
-    // Higher GC pressure
-    processFrame(frameData)
-}
-```
-
-### New API (GetFrames)
-```go
-for frame := range dev.GetFrames() {
-    // frame.Data uses pooled buffer (reused)
-    // Metadata: Timestamp, Sequence, Flags
-    // Lower GC pressure
-    processFrame(frame.Data)
-    frame.Release()  // Return buffer to pool
-}
-```
-
 ## See Also
 
-- [capture0](../capture0) - Basic capture example with `GetOutput()`
+- [capture0](../capture0) - Basic capture example using `Frames(ctx)`
 - [Frame type documentation](../../device/frame.go)
 - [FramePool documentation](../../device/frame_pool.go)

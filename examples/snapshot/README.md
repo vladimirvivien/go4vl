@@ -32,7 +32,8 @@ Next, the source code use variable `dev` to capture the frame and save the binar
 ```go
 func main() {
     ...
-	frame := <-dev.GetOutput()
+	frame := <-dev.GetFrames()
+	defer frame.Release()
 
 	file, err := os.Create("pic.jpg")
 	if err != nil {
@@ -40,7 +41,7 @@ func main() {
 	}
 	defer file.Close()
 
-	if _, err := file.Write(frame); err != nil {
+	if _, err := file.Write(frame.Data); err != nil {
 		log.Fatal(err)
 	}
 }

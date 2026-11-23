@@ -450,18 +450,18 @@ func runDeviceBenchmark(config BenchmarkConfig) BenchmarkResults {
 	lastFrameTime := time.Now()
 	startTime := time.Now()
 
-	for frame := range dev.GetOutput() {
+	for frame := range dev.GetFrames() {
 		now := time.Now()
 		frameTime := now.Sub(lastFrameTime)
 
-		if len(frame) == 0 {
+		if len(frame.Data) == 0 {
 			results.FramesDropped++
 			if config.Verbose {
 				log.Printf("Frame %d: DROPPED", results.FramesCaptured+results.FramesDropped)
 			}
 		} else {
 			results.FramesCaptured++
-			results.TotalBytes += uint64(len(frame))
+			results.TotalBytes += uint64(len(frame.Data))
 			frameTimes = append(frameTimes, frameTime)
 
 			if config.Verbose && results.FramesCaptured%100 == 0 {
@@ -469,6 +469,7 @@ func runDeviceBenchmark(config BenchmarkConfig) BenchmarkResults {
 					float64(results.FramesCaptured)/time.Since(startTime).Seconds())
 			}
 		}
+		frame.Release()
 
 		lastFrameTime = now
 	}

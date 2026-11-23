@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	frames <-chan []byte
+	frames <-chan *device.Frame
 )
 
 func imageServ(w http.ResponseWriter, req *http.Request) {
@@ -23,17 +23,18 @@ func imageServ(w http.ResponseWriter, req *http.Request) {
 	partHeader := make(textproto.MIMEHeader)
 	partHeader.Add("Content-Type", "image/jpeg")
 
-	var frame []byte
-	for frame = range frames {
+	for frame := range frames {
 		partWriter, err := mimeWriter.CreatePart(partHeader)
 		if err != nil {
+			frame.Release()
 			log.Printf("failed to create multi-part writer: %s", err)
 			return
 		}
 
-		if _, err := partWriter.Write(frame); err != nil {
+		if _, err := partWriter.Write(frame.Data); err != nil {
 			log.Printf("failed to write image: %s", err)
 		}
+		frame.Release()
 	}
 }
 
@@ -56,7 +57,7 @@ func main() {
 		log.Fatalf("camera start: %s", err)
 	}
 
-	frames = camera.GetOutput()
+	frames = camera.GetFrames()
 
 	log.Printf("Serving images: [%s/stream]", port)
 	http.HandleFunc("/stream", imageServ)

@@ -9,7 +9,7 @@ type IOMethod int
 
 const (
 	// IOMethodStreaming uses continuous streaming with memory-mapped buffers.
-	// This is the default. Use Start/GetFrames/GetOutput/Stop to capture frames.
+	// This is the default. Use Start/Frames/GetFrames/Stop to capture frames.
 	// Requires V4L2_CAP_STREAMING.
 	IOMethodStreaming IOMethod = iota
 

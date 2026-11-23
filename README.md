@@ -39,7 +39,7 @@ Working directly with V4L2 in Go requires complex ioctl marshaling and manual me
 
 ## Features
 
-* Zero-copy frame capture via `Device.Frames(ctx)` (`iter.Seq2[*device.Frame, error]`) as well as channel APIs (`GetFrames()`, `GetOutput()`)
+* Zero-copy frame capture via `Device.Frames(ctx)` (`iter.Seq2[*device.Frame, error]`) and pooled channel streaming via `Device.GetFrames()`
 * Video output streaming (`Device.WriteFrame`) and direct `Read` / `Write` I/O
 * Multi-planar (`MPLANE`) formats/buffers, Selection API, DMA-BUF, and dual-queue M2M sessions (`v4l2.M2MSession`)
 * Media Controller v2 graph topology (`MEDIA_IOC_G_TOPOLOGY`, `MEDIA_IOC_SETUP_LINK`), Media Request API (`MEDIA_IOC_REQUEST_ALLOC`), and V4L2 Sub-device pad SDK (`VIDIOC_SUBDEV_*`)
@@ -138,9 +138,8 @@ See complete examples: [examples/iter_snapshot/main.go](./examples/iter_snapshot
 ## API Overview
 
 **Core packages:**
-* **`device`** - High-level device operations (open, start, capture, close)
-* **`v4l2`** - Low-level V4L2 types and ioctls
-* **`imgsupport`** - Image format conversion utilities
+* **`device`** - High-level device operations (open, start, zero-copy `Frames` iterator, capture, output, close)
+* **`v4l2`** - Low-level V4L2, Media Controller, Sub-device, and Media Request UAPI types and ioctls
 
 **Key concepts:**
 
@@ -225,16 +224,6 @@ for frame := range dev.GetFrames() {
 }
 ```
 
-**Streaming (Legacy Channel API):**
-```go
-ctx := context.Background()
-dev.Start(ctx)
-
-for frame := range dev.GetOutput() {
-    processFrame(frame)
-}
-```
-
 Full API documentation: [pkg.go.dev/github.com/vladimirvivien/go4vl](https://pkg.go.dev/github.com/vladimirvivien/go4vl)
 
 ## Examples
@@ -303,7 +292,7 @@ sudo apt install build-essential linux-libc-dev
 
 ```bash
 # Run unit tests (no CGO or kernel headers required)
-CGO_ENABLED=0 go test -v ./device ./v4l2 ./imgsupport
+CGO_ENABLED=0 go test -v ./device ./v4l2
 
 # Verify generated ABI layouts against host Linux headers
 CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI

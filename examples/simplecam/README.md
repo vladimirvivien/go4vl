@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("camera start: %s", err)
 	}
 
-	frames = camera.GetOutput()
+	frames = camera.GetFrames()
 
 	log.Printf("Serving images: [%s/stream]", port)
 	http.HandleFunc("/stream", imageServ)

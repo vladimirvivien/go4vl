@@ -24,8 +24,7 @@ import (
 // pass it to another goroutine.
 //
 // Call Start(ctx) before ranging over Frames(ctx). Once Frames is used for a
-// Start/Stop cycle, GetFrames() and GetOutput() cannot be used until Stop() is
-// called.
+// Start/Stop cycle, GetFrames() cannot be used until Stop() is called.
 //
 // Example:
 //

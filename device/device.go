@@ -26,7 +26,7 @@ const openDeviceFlags = sys.O_RDWR | sys.O_NONBLOCK | sys.O_CLOEXEC
 //     MUST be called from a single goroutine. Concurrent calls to these methods will
 //     cause race conditions and undefined behavior.
 //
-//   - GetOutput() and GetError() return channels that are safe to read from concurrently.
+//   - GetFrames() and GetError() return channels that are safe to read from concurrently.
 //     Multiple goroutines can safely read from these channels.
 //
 //   - It is safe to call configuration methods while another goroutine reads from the
@@ -71,15 +71,12 @@ type Device struct {
 	// independent of capture-loop exit so Stop()/Close() always release resources.
 	streamActive atomic.Bool
 
-	// streamingMode tracks which API is being used (0=none, 1=GetOutput, 2=GetFrames)
-	// This ensures mutual exclusivity between the two streaming approaches
+	// streamingMode tracks which API is being used (0=none, 2=GetFrames, 3=Frames)
+	// This ensures mutual exclusivity between streaming approaches
 	streamingMode atomic.Int32
 
 	// frames is the channel that delivers Frame objects with metadata to consumers
 	frames chan *Frame
-
-	// output is the channel that delivers captured video frames to consumers (legacy API)
-	output chan []byte
 
 	// streamErr is the channel that delivers streaming errors to consumers
 	streamErr chan error
@@ -89,7 +86,7 @@ type Device struct {
 	captureDone chan struct{}
 
 	// startCtx is the context passed to Start(), stored for use by capture goroutines
-	// launched later from GetOutput()/GetFrames()
+	// launched later from GetFrames()
 	startCtx context.Context
 
 	// captureStarted ensures the capture goroutine is launched exactly once per Start() cycle
@@ -116,7 +113,7 @@ type Device struct {
 // The device is opened in read-write mode with non-blocking I/O.
 //
 // The I/O method determines which APIs are available after opening:
-//   - IOMethodStreaming (default): Use Start/GetFrames/GetOutput/Stop for continuous capture
+//   - IOMethodStreaming (default): Use Start/Frames/GetFrames/Stop for continuous capture
 //   - IOMethodReadWrite: Use Read/ReadFrame for synchronous frame access
 //
 // Parameters:
@@ -415,83 +412,19 @@ func (d *Device) MemIOType() v4l2.IOType {
 	return d.config.ioType
 }
 
-// GetOutput returns a read-only channel that delivers captured video frames.
-// Each frame is delivered as a byte slice containing the raw frame data in the
-// configured pixel format.
-//
-// Deprecated: Use Frames(ctx) for zero-copy streaming or GetFrames() for pooled
-// channel streaming. This method will be removed in a future release.
-//
-// This method selects the legacy streaming mode. Once called, GetFrames() cannot be used
-// on this device instance. Call Stop() to reset the streaming mode.
-//
-// The channel is created when the device starts streaming and buffered according to
-// the configured buffer size. Frames are delivered continuously while streaming.
-//
-// The channel is closed when Stop() is called or the context is cancelled.
-// Consumers should handle channel closure gracefully.
-//
-// Frame format depends on the configured pixel format (e.g., MJPEG, YUYV, H264).
-// Use GetPixFormat() to determine the current format.
-//
-// Example:
-//
-//	for frame := range dev.GetOutput() {
-//	    // Process frame data
-//	    fmt.Printf("Received frame: %d bytes\n", len(frame))
-//	}
-func (d *Device) GetOutput() <-chan []byte {
-	// Set streaming mode to GetOutput (mode 1)
-	// CompareAndSwap ensures first-caller-wins semantics
-	if d.streamingMode.CompareAndSwap(0, 1) {
-		// Successfully claimed GetOutput mode
-	} else if d.streamingMode.Load() != 1 {
-		panic("device: GetOutput() called but GetFrames() streaming mode already active")
-	}
-	// Launch capture goroutine on first call after Start()
-	if d.streaming.Load() && d.captureStarted.CompareAndSwap(false, true) {
-		d.startRawBytesCapture()
-	}
-	return d.output
-}
-
 // GetFrames returns a read-only channel that delivers captured video frames
 // with metadata. Each Frame includes the raw frame data, timestamp, sequence number,
 // and buffer flags.
 //
-// This method selects the optimized streaming mode with buffer pooling. Once called,
-// GetOutput() cannot be used on this device instance. Call Stop() to reset the streaming mode.
+// This method selects the pooled-channel streaming mode. Once called, Frames(ctx)
+// cannot be used on this device instance until Stop() is called.
 //
 // Users MUST call Frame.Release() when done processing to return the buffer to the pool.
-//
-// The channel is created when the device starts streaming and buffered according to
-// the configured buffer size. Frames are delivered continuously while streaming.
-//
-// The channel is closed when Stop() is called or the context is cancelled.
-// Consumers should handle channel closure gracefully.
-//
-// Example:
-//
-//	for frame := range dev.GetFrames() {
-//	    // Process frame data and metadata
-//	    fmt.Printf("Frame %d: %d bytes at %v\n",
-//	        frame.Sequence, len(frame.Data), frame.Timestamp)
-//
-//	    // Check if it's a keyframe
-//	    if frame.IsKeyFrame() {
-//	        fmt.Println("Keyframe detected")
-//	    }
-//
-//	    // IMPORTANT: Always release when done
-//	    frame.Release()
-//	}
 func (d *Device) GetFrames() <-chan *Frame {
-	// Set streaming mode to GetFrames (mode 2)
-	// CompareAndSwap ensures first-caller-wins semantics
 	if d.streamingMode.CompareAndSwap(0, 2) {
 		// Successfully claimed GetFrames mode
 	} else if d.streamingMode.Load() != 2 {
-		panic("device: GetFrames() called but GetOutput() streaming mode already active")
+		panic("device: GetFrames() called while another streaming mode is active")
 	}
 	// Launch capture goroutine on first call after Start()
 	if d.streaming.Load() && d.captureStarted.CompareAndSwap(false, true) {
@@ -501,31 +434,8 @@ func (d *Device) GetFrames() <-chan *Frame {
 }
 
 // GetError returns a read-only channel that delivers streaming errors.
-// Errors are sent when critical issues occur during streaming, such as:
-//   - Failed buffer dequeue operations
-//   - Failed buffer requeue operations
-//   - Driver errors
-//
-// The channel is created when Start() is called and closed when Stop() is called
-// or the context is cancelled.
-//
-// Consumers should monitor this channel to detect streaming failures:
-//
-//	go func() {
-//	    for err := range dev.GetError() {
-//	        log.Printf("Streaming error: %v", err)
-//	    }
-//	}()
 func (d *Device) GetError() <-chan error {
 	return d.streamErr
-}
-
-// SetInput is a no-op placeholder retained for compatibility.
-//
-// Deprecated: Use Device.WriteFrame(ctx, data) for streaming video output or
-// Device.Write / Device.WriteContext for read/write video output.
-func (d *Device) SetInput(in <-chan []byte) {
-
 }
 
 // GetCropCapability returns the cropping capabilities for video capture devices,
@@ -1652,7 +1562,7 @@ func (d *Device) DequeueEvent() (*v4l2.Event, error) {
 //  4. Starts the streaming I/O
 //  5. Launches a goroutine to handle frame delivery
 //
-// Frames are delivered through the channel returned by GetOutput().
+// Frames are delivered through Frames(ctx) or the channel returned by GetFrames().
 // The stream continues until Stop() is called or the context is cancelled.
 //
 // Returns an error if:
@@ -1671,7 +1581,10 @@ func (d *Device) DequeueEvent() (*v4l2.Event, error) {
 //	}
 //	defer dev.Stop()
 //
-//	for frame := range dev.GetOutput() {
+//	for frame, err := range dev.Frames(ctx) {
+//	    if err != nil {
+//	        log.Fatal(err)
+//	    }
 //	    // Process frames until context timeout
 //	}
 func (d *Device) Start(ctx context.Context) error {
@@ -1990,7 +1903,6 @@ func (d *Device) Stop() error {
 	d.captureStarted.Store(false)
 	// Set channels to nil so they can be recreated on next Start()
 	// The goroutine will close them before exiting
-	d.output = nil
 	d.frames = nil
 	d.streamErr = nil
 	d.captureDone = nil

@@ -29,11 +29,12 @@ func Example_basicCapture() {
 	defer dev.Stop()
 
 	// Capture a single frame
-	frame := <-dev.GetOutput()
-	fmt.Printf("Captured frame: %d bytes\n", len(frame))
+	frame := <-dev.GetFrames()
+	defer frame.Release()
+	fmt.Printf("Captured frame: %d bytes\n", len(frame.Data))
 
 	// Save to file (assuming JPEG format)
-	if err := os.WriteFile("snapshot.jpg", frame, 0644); err != nil {
+	if err := os.WriteFile("snapshot.jpg", frame.Data, 0644); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -97,10 +98,14 @@ func Example_continuousCapture() {
 
 	// Process frames until timeout
 	frameCount := 0
-	for frame := range dev.GetOutput() {
+	for frame, err := range dev.Frames(ctx) {
+		if err != nil {
+			log.Printf("frame error: %v", err)
+			break
+		}
 		frameCount++
 		// Process frame here (e.g., encode, analyze, forward)
-		fmt.Printf("Frame %d: %d bytes\n", frameCount, len(frame))
+		fmt.Printf("Frame %d: %d bytes\n", frameCount, len(frame.Data))
 
 		// Example: Stop after 100 frames
 		if frameCount >= 100 {
@@ -203,17 +208,19 @@ func Example_errorHandling() {
 	// Capture with error recovery
 	for {
 		select {
-		case frame, ok := <-dev.GetOutput():
+		case frame, ok := <-dev.GetFrames():
 			if !ok {
 				fmt.Println("Stream ended")
 				return
 			}
-			if len(frame) == 0 {
+			if len(frame.Data) == 0 {
+				frame.Release()
 				fmt.Println("Received empty frame, skipping")
 				continue
 			}
 			// Process valid frame
-			fmt.Printf("Got frame: %d bytes\n", len(frame))
+			fmt.Printf("Got frame: %d bytes\n", len(frame.Data))
+			frame.Release()
 
 		case <-ctx.Done():
 			fmt.Println("Capture timeout")
@@ -241,8 +248,11 @@ func ExampleDevice_Start() {
 	defer dev.Stop()
 
 	// Capture frames
-	for frame := range dev.GetOutput() {
-		fmt.Printf("Frame received: %d bytes\n", len(frame))
+	for frame, err := range dev.Frames(ctx) {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Frame received: %d bytes\n", len(frame.Data))
 		// Cancel after first frame for this example
 		cancel()
 		break

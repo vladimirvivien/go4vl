@@ -32,13 +32,6 @@ func (m *mockDevice) MemIOType() IOType {
 	return IOTypeMMAP
 }
 
-func (m *mockDevice) GetOutput() <-chan []byte {
-	return nil
-}
-
-func (m *mockDevice) SetInput(<-chan []byte) {
-}
-
 func (m *mockDevice) Close() error {
 	return nil
 }

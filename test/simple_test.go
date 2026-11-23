@@ -124,11 +124,14 @@ func TestSimple_StreamIfPossible(t *testing.T) {
 
 	// Try to get one frame
 	select {
-	case frame := <-dev.GetOutput():
-		if len(frame) > 0 {
-			t.Logf("✓ Successfully captured frame: %d bytes", len(frame))
+	case frame := <-dev.GetFrames():
+		if frame != nil && len(frame.Data) > 0 {
+			t.Logf("✓ Successfully captured frame: %d bytes", len(frame.Data))
 		} else {
 			t.Log("✗ Received empty frame")
+		}
+		if frame != nil {
+			frame.Release()
 		}
 	case <-time.After(1 * time.Second):
 		t.Log("✗ Timeout waiting for frame (device might not be producing frames)")

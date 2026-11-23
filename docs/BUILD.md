@@ -51,8 +51,8 @@ ENTRYPOINT ["/app"]
 
 ```bash
 # Unit tests and vet (no CGO required)
-CGO_ENABLED=0 go test -v ./v4l2 ./device ./imgsupport
-CGO_ENABLED=0 go vet ./v4l2 ./device ./imgsupport
+CGO_ENABLED=0 go test -v ./v4l2 ./device
+CGO_ENABLED=0 go vet ./v4l2 ./device
 
 # Integration tests against real hardware or v4l2loopback
 CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device=/dev/video0

@@ -107,14 +107,14 @@ Unit tests validate the core functionality without requiring V4L2 devices.
 
 ```bash
 # Run all unit tests
-go test -v ./device ./v4l2 ./imgsupport
+go test -v ./device ./v4l2
 
 # Run specific package tests
 go test -v ./v4l2
 go test -v ./device
 
 # Run with coverage
-go test -coverprofile=coverage.out ./device ./v4l2 ./imgsupport
+go test -coverprofile=coverage.out ./device ./v4l2
 go tool cover -html=coverage.out -o coverage.html
 
 # Clean test cache
@@ -196,7 +196,7 @@ jobs:
         go-version: '1.25'
 
     - name: Run Unit Tests
-      run: go test -v ./device ./v4l2 ./imgsupport
+      run: go test -v ./device ./v4l2
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -301,7 +301,7 @@ sudo apt-get install linux-headers-$(uname -r)
 
 ```bash
 go clean -testcache
-go test -count=1 -v ./device ./v4l2 ./imgsupport
+go test -count=1 -v ./device ./v4l2
 ```
 
 ## Performance Testing
@@ -324,7 +324,7 @@ BenchmarkDirectAllocation-4            36,260 ops/sec   27,592 ns/op  614,400 B/
 
 ```bash
 # Unit Tests
-go test -v ./device ./v4l2 ./imgsupport
+go test -v ./device ./v4l2
 
 # Integration Tests (v4l2loopback emulation)
 go test -v -tags=integration ./test/... -args -use-device-emulation=auto
@@ -336,7 +336,7 @@ go test -v -tags=integration ./test/... -args -use-device=auto
 go test -v -tags=integration ./test/...
 
 # Coverage Reports
-go test -coverprofile=coverage.out ./device ./v4l2 ./imgsupport
+go test -coverprofile=coverage.out ./device ./v4l2
 go tool cover -html=coverage.out -o coverage.html
 
 # Benchmarks

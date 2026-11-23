@@ -27,7 +27,7 @@ import (
 
 var (
 	camera      *device.Device
-	frames      <-chan []byte
+	frames      <-chan *device.Frame
 	fps         uint32 = 30
 	pixfmt      v4l2.FourCCType
 	width       = 640
@@ -84,30 +84,32 @@ func serveVideoStream(w http.ResponseWriter, req *http.Request) {
 	partHeader := make(textproto.MIMEHeader)
 	partHeader.Add("Content-Type", "image/jpeg")
 
-	var frame []byte
-	for frame = range frames {
-		if len(frame) == 0 {
+	for frame := range frames {
+		if len(frame.Data) == 0 {
 			log.Print("skipping empty frame")
+			frame.Release()
 			continue
 		}
 
 		partWriter, err := mimeWriter.CreatePart(partHeader)
 		if err != nil {
+			frame.Release()
 			log.Printf("failed to create multi-part writer: %s", err)
 			return
 		}
 
 		if faceEnabled {
-			if err := runFaceDetect(partWriter, frame); err != nil {
+			if err := runFaceDetect(partWriter, frame.Data); err != nil {
 				log.Printf("face detection failed: %s", err)
+				frame.Release()
 				continue
 			}
 		} else {
-			if _, err := partWriter.Write(frame); err != nil {
+			if _, err := partWriter.Write(frame.Data); err != nil {
 				log.Printf("failed to write image: %s", err)
 			}
 		}
-
+		frame.Release()
 	}
 }
 
@@ -330,7 +332,7 @@ func main() {
 	}()
 
 	// video stream
-	frames = camera.GetOutput()
+	frames = camera.GetFrames()
 
 	log.Printf("device capture started (buffer size set %d)", camera.BufferCount())
 	log.Printf("starting server on port %s", port)

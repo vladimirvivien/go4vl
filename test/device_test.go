@@ -380,19 +380,24 @@ func TestDevice_Streaming(t *testing.T) {
 
 	for frameCount < 10 {
 		select {
-		case frame := <-dev.GetOutput():
-			if len(frame) == 0 {
+		case frame, ok := <-dev.GetFrames():
+			if !ok {
+				goto done
+			}
+			if len(frame.Data) == 0 {
 				t.Log("Received empty frame")
+				frame.Release()
 				continue
 			}
 			frameCount++
-			t.Logf("Frame %d: %d bytes", frameCount, len(frame))
+			t.Logf("Frame %d: %d bytes", frameCount, len(frame.Data))
 
 			// Validate frame size
 			expectedSize := 640 * 480 * 2 // YUYV format
-			if len(frame) != expectedSize {
-				t.Errorf("Frame size = %d, want %d", len(frame), expectedSize)
+			if len(frame.Data) != expectedSize {
+				t.Errorf("Frame size = %d, want %d", len(frame.Data), expectedSize)
 			}
+			frame.Release()
 
 		case <-timeout:
 			t.Logf("Captured %d frames before timeout", frameCount)
@@ -412,8 +417,9 @@ done:
 
 	// Verify can't capture after stop
 	select {
-	case frame := <-dev.GetOutput():
-		if frame != nil {
+	case frame, ok := <-dev.GetFrames():
+		if ok && frame != nil {
+			frame.Release()
 			t.Error("Received frame after Stop()")
 		}
 	case <-time.After(100 * time.Millisecond):
@@ -445,10 +451,14 @@ func TestDevice_MultipleStartStop(t *testing.T) {
 	capture:
 		for frames < 3 {
 			select {
-			case frame := <-dev.GetOutput():
-				if len(frame) > 0 {
+			case frame, ok := <-dev.GetFrames():
+				if !ok {
+					break capture
+				}
+				if len(frame.Data) > 0 {
 					frames++
 				}
+				frame.Release()
 			case <-timeout:
 				break capture
 			}
@@ -484,8 +494,9 @@ func TestDevice_ContextCancellation(t *testing.T) {
 	done := make(chan bool)
 
 	go func() {
-		for range dev.GetOutput() {
+		for frame := range dev.GetFrames() {
 			frameCount++
+			frame.Release()
 		}
 		done <- true
 	}()
@@ -535,7 +546,8 @@ func TestDevice_ContextCancelReopenNoMmapLeak(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			for range dev.GetOutput() {
+			for frame := range dev.GetFrames() {
+				frame.Release()
 			}
 		}()
 
