@@ -20,7 +20,7 @@ func main() {
 		height   uint
 		timeout  time.Duration
 	)
-	flag.StringVar(&devPath, "d", "/dev/video14", "multi-planar V4L2 capture device path")
+	flag.StringVar(&devPath, "d", "/dev/video10", "multi-planar V4L2 capture device path")
 	flag.IntVar(&frames, "frames", 5, "number of frames to capture (0 to inspect format only)")
 	flag.UintVar(&buffers, "buffers", 4, "number of MMAP buffers")
 	flag.UintVar(&width, "w", 0, "optional frame width")

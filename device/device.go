@@ -216,7 +216,7 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 		}
 		dev.bufType = v4l2.BufTypeVideoCapture
 	case v4l2.BufTypeVideoCaptureMPlane:
-		if !cap.IsVideoCaptureMultiplanarSupported() {
+		if !cap.IsVideoCaptureMultiplanarSupported() && !cap.IsM2MMPlaneSupported() {
 			return nil, fmt.Errorf("device open: %s: does not support multi-planar video capture: %w", path, v4l2.ErrorUnsupportedFeature)
 		}
 		dev.bufType = v4l2.BufTypeVideoCaptureMPlane
@@ -226,7 +226,7 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 		}
 		dev.bufType = v4l2.BufTypeVideoOutput
 	case v4l2.BufTypeVideoOutputMPlane:
-		if !cap.IsVideoOutputMultiplanerSupported() {
+		if !cap.IsVideoOutputMultiplanerSupported() && !cap.IsM2MMPlaneSupported() {
 			return nil, fmt.Errorf("device open: %s: does not support multi-planar video output: %w", path, v4l2.ErrorUnsupportedFeature)
 		}
 		dev.bufType = v4l2.BufTypeVideoOutputMPlane
@@ -234,7 +234,7 @@ func Open(path string, options ...Option) (_ *Device, err error) {
 		switch {
 		case cap.IsVideoCaptureSupported():
 			dev.bufType = v4l2.BufTypeVideoCapture
-		case cap.IsVideoCaptureMultiplanarSupported():
+		case cap.IsVideoCaptureMultiplanarSupported(), cap.IsM2MMPlaneSupported():
 			dev.bufType = v4l2.BufTypeVideoCaptureMPlane
 		case cap.IsVideoOutputSupported():
 			dev.bufType = v4l2.BufTypeVideoOutput
