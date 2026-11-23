@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package test
 
@@ -330,7 +329,10 @@ func TestDevice_Properties(t *testing.T) {
 
 // TestDevice_Streaming tests the streaming lifecycle
 func TestDevice_Streaming(t *testing.T) {
-	dev, err := device.Open(testDevice1,
+	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
+
+	dev, err := device.Open(devPath,
 		device.WithBufferSize(4),
 		device.WithPixFormat(v4l2.PixFormat{
 			Width:       640,
@@ -339,7 +341,7 @@ func TestDevice_Streaming(t *testing.T) {
 		}),
 	)
 	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
+		RequireStreaming(t, "Cannot open test device %s: %v", devPath, err)
 	}
 	defer dev.Close()
 
@@ -365,7 +367,7 @@ func TestDevice_Streaming(t *testing.T) {
 	defer cancel()
 
 	if err := dev.Start(ctx); err != nil {
-		t.Skipf("Start() failed (device may be busy): %v", err)
+		RequireStreaming(t, "Start() failed: %v", err)
 	}
 
 	// Check buffers after start
@@ -429,9 +431,15 @@ done:
 
 // TestDevice_MultipleStartStop tests multiple start/stop cycles
 func TestDevice_MultipleStartStop(t *testing.T) {
-	dev, err := device.Open(testDevice2, device.WithBufferSize(2))
+	devPath := testDevice2
+	if devPath == "" {
+		devPath = RequireV4L2Testing(t)
+	}
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
+
+	dev, err := device.Open(devPath, device.WithBufferSize(2))
 	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
+		RequireStreaming(t, "Cannot open test device %s: %v", devPath, err)
 	}
 	defer dev.Close()
 
@@ -441,7 +449,7 @@ func TestDevice_MultipleStartStop(t *testing.T) {
 		t.Logf("Cycle %d: Starting", i+1)
 
 		if err := dev.Start(ctx); err != nil {
-			t.Skipf("Cycle %d: Start() failed (device may be busy): %v", i+1, err)
+			RequireStreaming(t, "Cycle %d: Start() failed: %v", i+1, err)
 		}
 
 		// Capture a few frames
@@ -477,16 +485,19 @@ func TestDevice_MultipleStartStop(t *testing.T) {
 
 // TestDevice_ContextCancellation tests context cancellation during streaming
 func TestDevice_ContextCancellation(t *testing.T) {
-	dev, err := device.Open(testDevice1)
+	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
+
+	dev, err := device.Open(devPath)
 	if err != nil {
-		t.Skipf("Cannot open test device: %v", err)
+		RequireStreaming(t, "Cannot open test device %s: %v", devPath, err)
 	}
 	defer dev.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if err := dev.Start(ctx); err != nil {
-		t.Skipf("Start() failed (device may be busy): %v", err)
+		RequireStreaming(t, "Start() failed: %v", err)
 	}
 
 	// Capture frames in background
@@ -521,6 +532,7 @@ func TestDevice_ContextCancellation(t *testing.T) {
 // reopen and configure its pixel format repeatedly without EBUSY.
 func TestDevice_ContextCancelReopenNoMmapLeak(t *testing.T) {
 	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
 	for cycle := 0; cycle < 5; cycle++ {
 		dev, err := device.Open(devPath, device.WithBufferSize(2))

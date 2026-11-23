@@ -1,4 +1,4 @@
-// +build integration
+//go:build integration
 
 package test
 
@@ -23,6 +23,7 @@ var (
 	useDevice          = flag.String("use-device", "", "Real V4L2 device: 'auto' to discover or device path (e.g. /dev/video0)")
 	useDeviceEmulation = flag.String("use-device-emulation", "", "Loopback device: 'auto' to discover or comma-separated paths (e.g. /dev/video42,/dev/video43)")
 	keepRunning        = flag.Bool("keep-running", false, "Keep v4l2loopback loaded after tests")
+	requireStreaming   = flag.Bool("require-streaming", false, "Fail instead of skipping when streaming tests cannot run")
 	verbose            = flag.Bool("verbose", false, "Enable verbose logging")
 
 	// Track whether we loaded v4l2loopback (so we can unload on teardown)
@@ -215,6 +216,17 @@ func TestMain(m *testing.M) {
 					log.Printf("Failed to setup v4l2loopback: %v", err)
 					log.Println("Install v4l2loopback-dkms or load the module manually")
 				}
+			}
+		} else {
+			var devices []string
+			for _, raw := range strings.Split(*useDeviceEmulation, ",") {
+				if p := strings.TrimSpace(raw); p != "" {
+					devices = append(devices, p)
+				}
+			}
+			if len(devices) > 0 {
+				setDevices(devices)
+				log.Printf("Using specified loopback devices: %v", testDevices)
 			}
 		}
 		defer teardownLoopback()

@@ -1,13 +1,17 @@
-// +build integration
+//go:build integration
 
 package test
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vladimirvivien/go4vl/device"
+	"github.com/vladimirvivien/go4vl/v4l2"
+	sys "golang.org/x/sys/unix"
 )
 
 // TestLogger is an interface that both *testing.T and *testing.B satisfy
@@ -141,4 +145,132 @@ func ValidateYUYVFrame(t TestLogger, frame []byte, width, height uint32) {
 	if invalidSamples > samplesChecked/2 {
 		t.Log("Warning: Many Y values outside typical range")
 	}
+}
+
+// RequireStreaming fails the test if -require-streaming is set, otherwise skips.
+func RequireStreaming(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if *requireStreaming {
+		t.Fatalf(format, args...)
+	}
+	t.Skipf(format, args...)
+}
+
+// IsLoopbackDevice reports whether path is a v4l2loopback device supporting
+// both capture and output on the same node.
+func IsLoopbackDevice(path string) bool {
+	fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK|sys.O_CLOEXEC, 0)
+	if err != nil {
+		return false
+	}
+	cap, err := v4l2.GetCapability(fd)
+	_ = v4l2.CloseDevice(fd)
+	if err != nil {
+		return false
+	}
+	drv := strings.ToLower(cap.Driver)
+	return strings.Contains(drv, "loopback") && cap.IsVideoOutputSupported()
+}
+
+// StartLoopbackProducerIfNeeded starts an in-process Go frame producer when
+// devPath is a v4l2loopback device, feeding synthetic YUYV frames via
+// Device.WriteFrame until the test finishes. On real hardware devices this is a
+// no-op.
+func StartLoopbackProducerIfNeeded(t *testing.T, devPath string, width, height uint32, pixFmt v4l2.FourCCType) {
+	t.Helper()
+	if !IsLoopbackDevice(devPath) {
+		return
+	}
+
+	outDev, err := device.Open(
+		devPath,
+		device.WithVideoOutputEnabled(),
+		device.WithBufferSize(4),
+		device.WithPixFormat(v4l2.PixFormat{
+			Width:       width,
+			Height:      height,
+			PixelFormat: pixFmt,
+			Field:       v4l2.FieldNone,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("loopback producer: open %s: %v", devPath, err)
+	}
+
+	actualFmt, err := outDev.GetPixFormat()
+	if err != nil {
+		_ = outDev.Close()
+		t.Fatalf("loopback producer: GetPixFormat(%s): %v", devPath, err)
+	}
+
+	frameSize := int(actualFmt.SizeImage)
+	if frameSize == 0 {
+		frameSize = int(width * height * 2)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := outDev.Start(ctx); err != nil {
+		cancel()
+		_ = outDev.Close()
+		t.Fatalf("loopback producer: Start(%s): %v", devPath, err)
+	}
+
+	frame := make([]byte, frameSize)
+	for i := 0; i+1 < len(frame); i += 2 {
+		frame[i] = 0x80   // Y (mid-gray, within valid range 10..245)
+		frame[i+1] = 0x80 // U/V neutral chroma
+	}
+
+	firstSent := make(chan error, 1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() {
+			_ = outDev.Stop()
+			_ = outDev.Close()
+		}()
+
+		ticker := time.NewTicker(33 * time.Millisecond)
+		defer ticker.Stop()
+
+		var seq byte
+		sentFirst := false
+		for {
+			frame[0] = 0x40 + (seq % 120)
+			seq++
+			if err := outDev.WriteFrame(ctx, frame); err != nil {
+				if !sentFirst {
+					firstSent <- err
+				}
+				return
+			}
+			if !sentFirst {
+				sentFirst = true
+				firstSent <- nil
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+
+	select {
+	case err := <-firstSent:
+		if err != nil {
+			cancel()
+			<-done
+			t.Fatalf("loopback producer: initial WriteFrame(%s): %v", devPath, err)
+		}
+	case <-time.After(3 * time.Second):
+		cancel()
+		<-done
+		t.Fatalf("loopback producer: timed out writing initial frame to %s", devPath)
+	}
+
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
 }

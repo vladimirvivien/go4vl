@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/vladimirvivien/go4vl/device"
 	"github.com/vladimirvivien/go4vl/v4l2"
 	sys "golang.org/x/sys/unix"
 )
@@ -51,7 +52,7 @@ func TestV4L2_CoreUnifiedAndSelection(t *testing.T) {
 		t.Logf("Selection CROP_BOUNDS: %+v", sel.Rect)
 	})
 
-	t.Run("CreateBuffers", func(t *testing.T) {
+	t.Run("CreatePrepareRemoveBuffers", func(t *testing.T) {
 		cur, err := v4l2.GetPixFormatByType(fd, v4l2.BufTypeVideoCapture)
 		if err != nil {
 			t.Skipf("GetPixFormatByType unsupported: %v", err)
@@ -62,6 +63,17 @@ func TestV4L2_CoreUnifiedAndSelection(t *testing.T) {
 		}
 		defer v4l2.RequestBuffersForType(fd, v4l2.BufTypeVideoCapture, v4l2.IOTypeMMAP, 0)
 		t.Logf("CreateBuffers allocated count=%d index=%d caps=0x%x", res.Count, res.Index, res.Capabilities)
+
+		if _, err := v4l2.PrepareBuffer(fd, v4l2.Buffer{
+			Type:   v4l2.BufTypeVideoCapture,
+			Memory: v4l2.IOTypeMMAP,
+			Index:  res.Index,
+		}); err != nil {
+			t.Logf("VIDIOC_PREPARE_BUF returned (driver-optional): %v", err)
+		}
+		if err := v4l2.RemoveBuffers(fd, v4l2.BufTypeVideoCapture, res.Index, res.Count); err != nil {
+			t.Logf("VIDIOC_REMOVE_BUFS returned (requires Linux 6.10+): %v", err)
+		}
 	})
 }
 
@@ -139,4 +151,46 @@ func TestV4L2_MultiPlanarHardware(t *testing.T) {
 	}
 	t.Logf("%s: queried buffer 0 plane 0 length=%d offset=0x%x",
 		mplaneDev, buf.Planes[0].Length, buf.Planes[0].Info.MemOffset)
+}
+
+func TestIntegration_DeviceMPlane(t *testing.T) {
+	var mplaneDev string
+	for i := 0; i < 32; i++ {
+		path := fmt.Sprintf("/dev/video%d", i)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+		fd, err := v4l2.OpenDevice(path, sys.O_RDWR|sys.O_NONBLOCK, 0)
+		if err != nil {
+			continue
+		}
+		cap, err := v4l2.GetCapability(fd)
+		_ = v4l2.CloseDevice(fd)
+		if err != nil {
+			continue
+		}
+		if cap.IsVideoCaptureMultiplanarSupported() || cap.IsM2MMPlaneSupported() {
+			mplaneDev = path
+			break
+		}
+	}
+	if mplaneDev == "" {
+		t.Skip("No multi-planar V4L2 device available")
+	}
+
+	dev, err := device.Open(mplaneDev, device.WithBufferType(v4l2.BufTypeVideoCaptureMPlane), device.WithBufferSize(2))
+	if err != nil {
+		t.Fatalf("device.Open(%s, MPLANE): %v", mplaneDev, err)
+	}
+	defer dev.Close()
+
+	pixFmt, err := dev.GetPixFormatMPlane()
+	if err != nil {
+		t.Fatalf("GetPixFormatMPlane(%s): %v", mplaneDev, err)
+	}
+	if pixFmt.NumPlanes == 0 {
+		t.Fatalf("GetPixFormatMPlane(%s): expected NumPlanes > 0", mplaneDev)
+	}
+	t.Logf("%s: device MPLANE format %dx%d fourcc=0x%08x planes=%d",
+		mplaneDev, pixFmt.Width, pixFmt.Height, pixFmt.PixelFormat, pixFmt.NumPlanes)
 }

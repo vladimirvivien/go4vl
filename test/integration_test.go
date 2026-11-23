@@ -1,4 +1,4 @@
-// +build integration
+//go:build integration
 
 package test
 
@@ -126,6 +126,7 @@ func TestIntegration_DeviceProperties(t *testing.T) {
 
 func TestIntegration_BasicStreaming(t *testing.T) {
 	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
 	dev := OpenDeviceOrSkip(t, devPath,
 		device.WithBufferSize(4),
@@ -141,7 +142,7 @@ func TestIntegration_BasicStreaming(t *testing.T) {
 	defer cancel()
 
 	if err := dev.Start(ctx); err != nil {
-		t.Skipf("Failed to start streaming (device may be busy): %v", err)
+		RequireStreaming(t, "Failed to start streaming: %v", err)
 	}
 	defer dev.Stop()
 
@@ -189,6 +190,7 @@ done:
 
 func TestIntegration_StopStart(t *testing.T) {
 	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
 	dev := OpenDeviceOrSkip(t, devPath, device.WithBufferSize(2))
 
@@ -199,7 +201,7 @@ func TestIntegration_StopStart(t *testing.T) {
 		t.Logf("Cycle %d: Starting", i+1)
 
 		if err := dev.Start(ctx); err != nil {
-			t.Skipf("Cycle %d: Failed to start (device may be busy): %v", i+1, err)
+			RequireStreaming(t, "Cycle %d: Failed to start: %v", i+1, err)
 		}
 
 		// Capture a few frames
@@ -238,6 +240,7 @@ func TestIntegration_StopStart(t *testing.T) {
 
 func TestIntegration_ContextCancellation(t *testing.T) {
 	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
 	dev := OpenDeviceOrSkip(t, devPath)
 
@@ -245,7 +248,7 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if err := dev.Start(ctx); err != nil {
-		t.Skipf("Failed to start (device may be busy): %v", err)
+		RequireStreaming(t, "Failed to start: %v", err)
 	}
 
 	// Capture frames in goroutine

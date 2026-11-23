@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package test
 
@@ -14,10 +13,8 @@ import (
 )
 
 func TestIntegration_DeviceFramesIter(t *testing.T) {
-	devPath := testDevice1
-	if _, err := os.Stat(devPath); err != nil {
-		t.Skipf("Test device %s not available: %v", devPath, err)
-	}
+	devPath := RequireV4L2Testing(t)
+	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
 	dev, err := device.Open(devPath, device.WithBufferSize(4))
 	if err != nil {
@@ -26,14 +23,14 @@ func TestIntegration_DeviceFramesIter(t *testing.T) {
 	defer dev.Close()
 
 	if !dev.Capability().IsVideoCaptureSupported() {
-		t.Skipf("Device %s does not support single-planar video capture", devPath)
+		RequireStreaming(t, "Device %s does not support single-planar video capture", devPath)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := dev.Start(ctx); err != nil {
-		t.Fatalf("Start: %v", err)
+		RequireStreaming(t, "Start(%s): %v", devPath, err)
 	}
 	defer dev.Stop()
 
@@ -66,9 +63,12 @@ func TestIntegration_DeviceFramesIter(t *testing.T) {
 }
 
 func TestIntegration_VideoOutputWriteFrame(t *testing.T) {
-	devPath := testDevice1
+	devPath := testDevice2
+	if devPath == "" {
+		devPath = RequireV4L2Testing(t)
+	}
 	if _, err := os.Stat(devPath); err != nil {
-		t.Skipf("Test device %s not available: %v", devPath, err)
+		RequireStreaming(t, "Test device %s not available: %v", devPath, err)
 	}
 
 	// Only run if device supports video output (e.g., v4l2loopback).
