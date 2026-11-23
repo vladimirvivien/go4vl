@@ -11,6 +11,7 @@
 #define GO4VL_COMPAT_H
 
 #include <linux/videodev2.h>
+#include <linux/v4l2-subdev.h>
 
 /* ---- Control flags (control.go) ---- */
 
@@ -278,6 +279,86 @@ struct v4l2_remove_buffers {
 	__u32 reserved[13];
 };
 #define VIDIOC_REMOVE_BUFS _IOWR('V', 104, struct v4l2_remove_buffers)
+#endif
+
+/* ---- Metadata formats (format_meta.go) ---- */
+
+#ifndef V4L2_META_FMT_VSP1_HGO
+#define V4L2_META_FMT_VSP1_HGO v4l2_fourcc('V', 'S', 'P', 'H')
+#endif
+#ifndef V4L2_META_FMT_VSP1_HGT
+#define V4L2_META_FMT_VSP1_HGT v4l2_fourcc('V', 'S', 'P', 'T')
+#endif
+#ifndef V4L2_META_FMT_UVC
+#define V4L2_META_FMT_UVC v4l2_fourcc('U', 'V', 'C', 'H')
+#endif
+#ifndef V4L2_META_FMT_D4XX
+#define V4L2_META_FMT_D4XX v4l2_fourcc('D', '4', 'X', 'X')
+#endif
+#ifndef V4L2_META_FMT_VIVID
+#define V4L2_META_FMT_VIVID v4l2_fourcc('V', 'I', 'V', 'D')
+#endif
+#ifndef V4L2_META_FMT_RK_ISP1_PARAMS
+#define V4L2_META_FMT_RK_ISP1_PARAMS v4l2_fourcc('R', 'K', '1', 'P')
+#endif
+#ifndef V4L2_META_FMT_RK_ISP1_STAT_3A
+#define V4L2_META_FMT_RK_ISP1_STAT_3A v4l2_fourcc('R', 'K', '1', 'S')
+#endif
+#ifndef V4L2_META_FMT_BCM2835_ISP_STATS
+#define V4L2_META_FMT_BCM2835_ISP_STATS v4l2_fourcc('B', 'S', 'T', 'A')
+#endif
+#ifndef V4L2_META_FMT_RPI_BE_CFG
+#define V4L2_META_FMT_RPI_BE_CFG v4l2_fourcc('R', 'P', 'B', 'C')
+#endif
+#ifndef V4L2_META_FMT_RPI_FE_CFG
+#define V4L2_META_FMT_RPI_FE_CFG v4l2_fourcc('R', 'P', 'F', 'C')
+#endif
+#ifndef V4L2_META_FMT_RPI_FE_STATS
+#define V4L2_META_FMT_RPI_FE_STATS v4l2_fourcc('R', 'P', 'F', 'S')
+#endif
+
+/* ---- Sub-device capabilities & routing (subdev.go) ---- */
+
+#ifndef V4L2_SUBDEV_CAP_RO_SUBDEV
+#define V4L2_SUBDEV_CAP_RO_SUBDEV 0x00000001
+#endif
+#ifndef V4L2_SUBDEV_CAP_STREAMS
+#define V4L2_SUBDEV_CAP_STREAMS 0x00000002
+#endif
+#ifndef V4L2_SUBDEV_ROUTE_FL_ACTIVE
+#define V4L2_SUBDEV_ROUTE_FL_ACTIVE (1U << 0)
+#endif
+#ifndef VIDIOC_SUBDEV_G_ROUTING
+struct v4l2_subdev_route {
+	__u32 sink_pad;
+	__u32 sink_stream;
+	__u32 source_pad;
+	__u32 source_stream;
+	__u32 flags;
+	__u32 reserved[5];
+};
+struct v4l2_subdev_routing {
+	__u32 which;
+	__u32 len_routes;
+	__u64 routes;
+	__u32 num_routes;
+	__u32 reserved[11];
+};
+#define VIDIOC_SUBDEV_G_ROUTING _IOWR('V', 38, struct v4l2_subdev_routing)
+#define VIDIOC_SUBDEV_S_ROUTING _IOWR('V', 39, struct v4l2_subdev_routing)
+#endif
+#ifndef V4L2_SUBDEV_CLIENT_CAP_STREAMS
+#define V4L2_SUBDEV_CLIENT_CAP_STREAMS (1ULL << 0)
+#endif
+#ifndef V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH
+#define V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH (1ULL << 1)
+#endif
+#ifndef VIDIOC_SUBDEV_G_CLIENT_CAP
+struct v4l2_subdev_client_capability {
+	__u64 capabilities;
+};
+#define VIDIOC_SUBDEV_G_CLIENT_CAP _IOR('V', 101, struct v4l2_subdev_client_capability)
+#define VIDIOC_SUBDEV_S_CLIENT_CAP _IOWR('V', 102, struct v4l2_subdev_client_capability)
 #endif
 
 #endif /* GO4VL_COMPAT_H */

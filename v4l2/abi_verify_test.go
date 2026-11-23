@@ -39,7 +39,12 @@ func TestABIStructSizes(t *testing.T) {
 		"cV4L2SubdevFrameInterval":     unsafe.Sizeof(cV4L2SubdevFrameInterval{}),
 		"cV4L2SubdevFrameIntervalEnum": unsafe.Sizeof(cV4L2SubdevFrameIntervalEnum{}),
 		"cV4L2SubdevSelection":         unsafe.Sizeof(cV4L2SubdevSelection{}),
-		"cV4L2Capability":        unsafe.Sizeof(cV4L2Capability{}),
+		"cV4L2SubdevCapability":        unsafe.Sizeof(cV4L2SubdevCapability{}),
+		"cV4L2SubdevClientCapability":  unsafe.Sizeof(cV4L2SubdevClientCapability{}),
+		"cV4L2SubdevRoute":             unsafe.Sizeof(cV4L2SubdevRoute{}),
+		"cV4L2SubdevRouting":           unsafe.Sizeof(cV4L2SubdevRouting{}),
+		"cV4L2EDID":                    unsafe.Sizeof(cV4L2EDID{}),
+		"cV4L2Capability":              unsafe.Sizeof(cV4L2Capability{}),
 		"cV4L2Audio":             unsafe.Sizeof(cV4L2Audio{}),
 		"cV4L2AudioOut":          unsafe.Sizeof(cV4L2AudioOut{}),
 		"cV4L2BTTimings":         unsafe.Sizeof(cV4L2BTTimings{}),
@@ -132,6 +137,9 @@ func TestABIStructOffsets(t *testing.T) {
 		"cMediaEntityDesc.Dev":            unsafe.Offsetof(cMediaEntityDesc{}.Dev),
 		"cV4L2SubdevFormat.Format":        unsafe.Offsetof(cV4L2SubdevFormat{}.Format),
 		"cV4L2SubdevSelection.R":          unsafe.Offsetof(cV4L2SubdevSelection{}.R),
+		"cV4L2MetaFormat.Buffersize":      unsafe.Offsetof(cV4L2MetaFormat{}.Buffersize),
+		"cV4L2EDID.Edid":                  unsafe.Offsetof(cV4L2EDID{}.Edid),
+		"cV4L2SubdevRouting.Routes":       unsafe.Offsetof(cV4L2SubdevRouting{}.Routes),
 	}
 
 	for _, tc := range cStructOffsetChecks(goOffsets) {

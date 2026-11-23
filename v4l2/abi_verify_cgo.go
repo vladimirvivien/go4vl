@@ -84,6 +84,15 @@ static size_t offsetof_v4l2_subdev_format_format(void) {
 static size_t offsetof_v4l2_subdev_selection_r(void) {
 	return offsetof(struct v4l2_subdev_selection, r);
 }
+static size_t offsetof_v4l2_meta_format_buffersize(void) {
+	return offsetof(struct v4l2_meta_format, buffersize);
+}
+static size_t offsetof_v4l2_edid_edid(void) {
+	return offsetof(struct v4l2_edid, edid);
+}
+static size_t offsetof_v4l2_subdev_routing_routes(void) {
+	return offsetof(struct v4l2_subdev_routing, routes);
+}
 */
 import "C"
 
@@ -123,6 +132,11 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"cV4L2SubdevFrameInterval":     uintptr(C.sizeof_struct_v4l2_subdev_frame_interval),
 		"cV4L2SubdevFrameIntervalEnum": uintptr(C.sizeof_struct_v4l2_subdev_frame_interval_enum),
 		"cV4L2SubdevSelection":         uintptr(C.sizeof_struct_v4l2_subdev_selection),
+		"cV4L2SubdevCapability":        uintptr(C.sizeof_struct_v4l2_subdev_capability),
+		"cV4L2SubdevClientCapability":  uintptr(C.sizeof_struct_v4l2_subdev_client_capability),
+		"cV4L2SubdevRoute":             uintptr(C.sizeof_struct_v4l2_subdev_route),
+		"cV4L2SubdevRouting":           uintptr(C.sizeof_struct_v4l2_subdev_routing),
+		"cV4L2EDID":                    uintptr(C.sizeof_struct_v4l2_edid),
 		"cV4L2Capability":      uintptr(C.sizeof_struct_v4l2_capability),
 		"cV4L2Audio":           uintptr(C.sizeof_struct_v4l2_audio),
 		"cV4L2AudioOut":        uintptr(C.sizeof_struct_v4l2_audioout),
@@ -215,6 +229,9 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 		"cMediaEntityDesc.Dev":             uintptr(C.offsetof_media_entity_desc_dev()),
 		"cV4L2SubdevFormat.Format":         uintptr(C.offsetof_v4l2_subdev_format_format()),
 		"cV4L2SubdevSelection.R":           uintptr(C.offsetof_v4l2_subdev_selection_r()),
+		"cV4L2MetaFormat.Buffersize":       uintptr(C.offsetof_v4l2_meta_format_buffersize()),
+		"cV4L2EDID.Edid":                   uintptr(C.offsetof_v4l2_edid_edid()),
+		"cV4L2SubdevRouting.Routes":        uintptr(C.offsetof_v4l2_subdev_routing_routes()),
 	}
 	out := make([]abiPair, 0, len(goOffsets))
 	for name, got := range goOffsets {
@@ -244,6 +261,15 @@ func cIoctlChecks() []abiPair {
 		{"cVIDIOC_SUBDEV_S_FMT", cVIDIOC_SUBDEV_S_FMT, uintptr(C.VIDIOC_SUBDEV_S_FMT)},
 		{"cVIDIOC_SUBDEV_S_FRAME_INTERVAL", cVIDIOC_SUBDEV_S_FRAME_INTERVAL, uintptr(C.VIDIOC_SUBDEV_S_FRAME_INTERVAL)},
 		{"cVIDIOC_SUBDEV_S_SELECTION", cVIDIOC_SUBDEV_S_SELECTION, uintptr(C.VIDIOC_SUBDEV_S_SELECTION)},
+		{"cVIDIOC_SUBDEV_QUERYCAP", cVIDIOC_SUBDEV_QUERYCAP, uintptr(C.VIDIOC_SUBDEV_QUERYCAP)},
+		{"cVIDIOC_SUBDEV_G_CLIENT_CAP", cVIDIOC_SUBDEV_G_CLIENT_CAP, uintptr(C.VIDIOC_SUBDEV_G_CLIENT_CAP)},
+		{"cVIDIOC_SUBDEV_S_CLIENT_CAP", cVIDIOC_SUBDEV_S_CLIENT_CAP, uintptr(C.VIDIOC_SUBDEV_S_CLIENT_CAP)},
+		{"cVIDIOC_SUBDEV_G_ROUTING", cVIDIOC_SUBDEV_G_ROUTING, uintptr(C.VIDIOC_SUBDEV_G_ROUTING)},
+		{"cVIDIOC_SUBDEV_S_ROUTING", cVIDIOC_SUBDEV_S_ROUTING, uintptr(C.VIDIOC_SUBDEV_S_ROUTING)},
+		{"cVIDIOC_SUBDEV_G_EDID", cVIDIOC_SUBDEV_G_EDID, uintptr(C.VIDIOC_SUBDEV_G_EDID)},
+		{"cVIDIOC_SUBDEV_S_EDID", cVIDIOC_SUBDEV_S_EDID, uintptr(C.VIDIOC_SUBDEV_S_EDID)},
+		{"cVIDIOC_G_EDID", cVIDIOC_G_EDID, uintptr(C.VIDIOC_G_EDID)},
+		{"cVIDIOC_S_EDID", cVIDIOC_S_EDID, uintptr(C.VIDIOC_S_EDID)},
 		{"cVIDIOC_CREATE_BUFS", cVIDIOC_CREATE_BUFS, uintptr(C.VIDIOC_CREATE_BUFS)},
 		{"cVIDIOC_CROPCAP", cVIDIOC_CROPCAP, uintptr(C.VIDIOC_CROPCAP)},
 		{"cVIDIOC_DECODER_CMD", cVIDIOC_DECODER_CMD, uintptr(C.VIDIOC_DECODER_CMD)},

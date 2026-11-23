@@ -243,6 +243,12 @@ type cV4L2SubdevFrameSizeEnum C.struct_v4l2_subdev_frame_size_enum
 type cV4L2SubdevFrameInterval C.struct_v4l2_subdev_frame_interval
 type cV4L2SubdevFrameIntervalEnum C.struct_v4l2_subdev_frame_interval_enum
 type cV4L2SubdevSelection C.struct_v4l2_subdev_selection
+type cV4L2SubdevCapability C.struct_v4l2_subdev_capability
+type cV4L2SubdevClientCapability C.struct_v4l2_subdev_client_capability
+type cV4L2SubdevRoute C.struct_v4l2_subdev_route
+type cV4L2SubdevRouting C.struct_v4l2_subdev_routing
+type cV4L2EDID C.struct_v4l2_edid
+type cV4L2MetaFormat C.struct_v4l2_meta_format
 type cV4L2Capability C.struct_v4l2_capability
 type cV4L2Audio C.struct_v4l2_audio
 type cV4L2AudioOut C.struct_v4l2_audioout
@@ -329,6 +335,7 @@ var ioctlConsts = []string{
 	"VIDIOC_G_CROP",
 	"VIDIOC_G_CTRL",
 	"VIDIOC_G_DV_TIMINGS",
+	"VIDIOC_G_EDID",
 	"VIDIOC_G_EXT_CTRLS",
 	"VIDIOC_G_FMT",
 	"VIDIOC_G_FREQUENCY",
@@ -355,13 +362,20 @@ var ioctlConsts = []string{
 	"VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL",
 	"VIDIOC_SUBDEV_ENUM_FRAME_SIZE",
 	"VIDIOC_SUBDEV_ENUM_MBUS_CODE",
+	"VIDIOC_SUBDEV_G_CLIENT_CAP",
 	"VIDIOC_SUBDEV_G_CROP",
+	"VIDIOC_SUBDEV_G_EDID",
 	"VIDIOC_SUBDEV_G_FMT",
 	"VIDIOC_SUBDEV_G_FRAME_INTERVAL",
+	"VIDIOC_SUBDEV_G_ROUTING",
 	"VIDIOC_SUBDEV_G_SELECTION",
+	"VIDIOC_SUBDEV_QUERYCAP",
+	"VIDIOC_SUBDEV_S_CLIENT_CAP",
 	"VIDIOC_SUBDEV_S_CROP",
+	"VIDIOC_SUBDEV_S_EDID",
 	"VIDIOC_SUBDEV_S_FMT",
 	"VIDIOC_SUBDEV_S_FRAME_INTERVAL",
+	"VIDIOC_SUBDEV_S_ROUTING",
 	"VIDIOC_SUBDEV_S_SELECTION",
 	"VIDIOC_SUBSCRIBE_EVENT",
 	"VIDIOC_S_AUDIO",
@@ -369,6 +383,7 @@ var ioctlConsts = []string{
 	"VIDIOC_S_CROP",
 	"VIDIOC_S_CTRL",
 	"VIDIOC_S_DV_TIMINGS",
+	"VIDIOC_S_EDID",
 	"VIDIOC_S_EXT_CTRLS",
 	"VIDIOC_S_FMT",
 	"VIDIOC_S_FREQUENCY",
@@ -1117,4 +1132,20 @@ var uapiConsts = []string{
 	"V4L2_CTRL_WHICH_CUR_VAL",
 	"V4L2_CTRL_WHICH_DEF_VAL",
 	"V4L2_CTRL_WHICH_REQUEST_VAL",
+	"V4L2_META_FMT_VSP1_HGO",
+	"V4L2_META_FMT_VSP1_HGT",
+	"V4L2_META_FMT_UVC",
+	"V4L2_META_FMT_D4XX",
+	"V4L2_META_FMT_VIVID",
+	"V4L2_META_FMT_RK_ISP1_PARAMS",
+	"V4L2_META_FMT_RK_ISP1_STAT_3A",
+	"V4L2_META_FMT_BCM2835_ISP_STATS",
+	"V4L2_META_FMT_RPI_BE_CFG",
+	"V4L2_META_FMT_RPI_FE_CFG",
+	"V4L2_META_FMT_RPI_FE_STATS",
+	"V4L2_SUBDEV_CAP_RO_SUBDEV",
+	"V4L2_SUBDEV_CAP_STREAMS",
+	"V4L2_SUBDEV_ROUTE_FL_ACTIVE",
+	"V4L2_SUBDEV_CLIENT_CAP_STREAMS",
+	"V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH",
 }

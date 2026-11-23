@@ -733,4 +733,20 @@ const (
 	cV4L2_CTRL_WHICH_CUR_VAL                          = 0x0
 	cV4L2_CTRL_WHICH_DEF_VAL                          = 0xf000000
 	cV4L2_CTRL_WHICH_REQUEST_VAL                      = 0xf010000
+	cV4L2_META_FMT_VSP1_HGO                           = 0x48505356
+	cV4L2_META_FMT_VSP1_HGT                           = 0x54505356
+	cV4L2_META_FMT_UVC                                = 0x48435655
+	cV4L2_META_FMT_D4XX                               = 0x58583444
+	cV4L2_META_FMT_VIVID                              = 0x44564956
+	cV4L2_META_FMT_RK_ISP1_PARAMS                     = 0x50314b52
+	cV4L2_META_FMT_RK_ISP1_STAT_3A                    = 0x53314b52
+	cV4L2_META_FMT_BCM2835_ISP_STATS                  = 0x41545342
+	cV4L2_META_FMT_RPI_BE_CFG                         = 0x43425052
+	cV4L2_META_FMT_RPI_FE_CFG                         = 0x43465052
+	cV4L2_META_FMT_RPI_FE_STATS                       = 0x53465052
+	cV4L2_SUBDEV_CAP_RO_SUBDEV                        = 0x1
+	cV4L2_SUBDEV_CAP_STREAMS                          = 0x2
+	cV4L2_SUBDEV_ROUTE_FL_ACTIVE                      = 0x1
+	cV4L2_SUBDEV_CLIENT_CAP_STREAMS                   = 0x1
+	cV4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH       = 0x2
 )

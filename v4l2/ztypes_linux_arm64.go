@@ -36,6 +36,7 @@ const (
 	cVIDIOC_G_CROP                     uintptr = 0xc014563b
 	cVIDIOC_G_CTRL                     uintptr = 0xc008561b
 	cVIDIOC_G_DV_TIMINGS               uintptr = 0xc0845658
+	cVIDIOC_G_EDID                     uintptr = 0xc0285628
 	cVIDIOC_G_EXT_CTRLS                uintptr = 0xc0205647
 	cVIDIOC_G_FMT                      uintptr = 0xc0d05604
 	cVIDIOC_G_FREQUENCY                uintptr = 0xc02c5638
@@ -62,13 +63,20 @@ const (
 	cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL uintptr = 0xc040564b
 	cVIDIOC_SUBDEV_ENUM_FRAME_SIZE     uintptr = 0xc040564a
 	cVIDIOC_SUBDEV_ENUM_MBUS_CODE      uintptr = 0xc0305602
+	cVIDIOC_SUBDEV_G_CLIENT_CAP        uintptr = 0x80085665
 	cVIDIOC_SUBDEV_G_CROP              uintptr = 0xc038563b
+	cVIDIOC_SUBDEV_G_EDID              uintptr = 0xc0285628
 	cVIDIOC_SUBDEV_G_FMT               uintptr = 0xc0585604
 	cVIDIOC_SUBDEV_G_FRAME_INTERVAL    uintptr = 0xc0305615
+	cVIDIOC_SUBDEV_G_ROUTING           uintptr = 0xc0405626
 	cVIDIOC_SUBDEV_G_SELECTION         uintptr = 0xc040563d
+	cVIDIOC_SUBDEV_QUERYCAP            uintptr = 0x80405600
+	cVIDIOC_SUBDEV_S_CLIENT_CAP        uintptr = 0xc0085666
 	cVIDIOC_SUBDEV_S_CROP              uintptr = 0xc038563c
+	cVIDIOC_SUBDEV_S_EDID              uintptr = 0xc0285629
 	cVIDIOC_SUBDEV_S_FMT               uintptr = 0xc0585605
 	cVIDIOC_SUBDEV_S_FRAME_INTERVAL    uintptr = 0xc0305616
+	cVIDIOC_SUBDEV_S_ROUTING           uintptr = 0xc0405627
 	cVIDIOC_SUBDEV_S_SELECTION         uintptr = 0xc040563e
 	cVIDIOC_SUBSCRIBE_EVENT            uintptr = 0x4020565a
 	cVIDIOC_S_AUDIO                    uintptr = 0x40345622
@@ -76,6 +84,7 @@ const (
 	cVIDIOC_S_CROP                     uintptr = 0x4014563c
 	cVIDIOC_S_CTRL                     uintptr = 0xc008561c
 	cVIDIOC_S_DV_TIMINGS               uintptr = 0xc0845657
+	cVIDIOC_S_EDID                     uintptr = 0xc0285629
 	cVIDIOC_S_EXT_CTRLS                uintptr = 0xc0205648
 	cVIDIOC_S_FMT                      uintptr = 0xc0d05605
 	cVIDIOC_S_FREQUENCY                uintptr = 0x402c5639
@@ -282,6 +291,43 @@ type cV4L2SubdevSelection struct {
 	R        cV4L2Rect
 	Stream   uint32
 	Reserved [7]uint32
+}
+type cV4L2SubdevCapability struct {
+	Version      uint32
+	Capabilities uint32
+	Reserved     [14]uint32
+}
+type cV4L2SubdevClientCapability struct {
+	Capabilities uint64
+}
+type cV4L2SubdevRoute struct {
+	Sink_pad      uint32
+	Sink_stream   uint32
+	Source_pad    uint32
+	Source_stream uint32
+	Flags         uint32
+	Reserved      [5]uint32
+}
+type cV4L2SubdevRouting struct {
+	Which      uint32
+	Len_routes uint32
+	Routes     uint64
+	Num_routes uint32
+	Reserved   [11]uint32
+}
+type cV4L2EDID struct {
+	Pad      uint32
+	Block    uint32
+	Blocks   uint32
+	Reserved [5]uint32
+	Edid     *uint8
+}
+type cV4L2MetaFormat struct {
+	Dataformat   uint32
+	Buffersize   uint32
+	Width        uint32
+	Height       uint32
+	Bytesperline uint32
 }
 type cV4L2Capability struct {
 	Driver       [16]uint8
