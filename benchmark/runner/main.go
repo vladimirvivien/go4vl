@@ -29,6 +29,7 @@ type BenchmarkScenario struct {
 
 type BenchmarkConfig struct {
 	DevicePath  string
+	API         string // "iter" (Frames(ctx)) or "frames" (GetFrames())
 	Width       uint32
 	Height      uint32
 	PixelFormat uint32
@@ -81,6 +82,7 @@ func main() {
 	testPattern := flag.String("test-pattern", "testsrc", "FFmpeg test pattern: testsrc, smptebars, color=<color>")
 
 	// Benchmark parameters
+	apiMode := flag.String("api", "iter", "Capture API to benchmark: iter (Frames(ctx)) or frames (GetFrames())")
 	duration := flag.String("duration", "10s", "Capture duration per benchmark")
 	outputDir := flag.String("output", "", "Output directory (default: results_<timestamp>)")
 	scenario := flag.String("scenario", "", "Run specific scenario by name (empty = run all)")
@@ -109,36 +111,33 @@ func main() {
 		return
 	}
 
-	// Determine device path: use real device if specified, otherwise setup loopback
-	var devicePath string
-	var loopbackDev *loopback.Device
-
-	if *device != "" {
-		// User specified a real device
-		devicePath = *device
-		log.Printf("Using real device: %s", devicePath)
-	} else {
-		// Default: setup loopback device
-		if !loopback.IsAvailable() {
-			log.Fatal("Loopback mode requires ffmpeg and v4l2loopback-dkms to be installed.\nInstall with: sudo apt install ffmpeg v4l2loopback-dkms")
-		}
-
-		log.Printf("Setting up loopback device /dev/video%d...", *loopbackNum)
-		var err error
-		loopbackDev, err = loopback.Setup(*loopbackNum, int(*width), int(*height), int(*fps), *testPattern)
-		if err != nil {
-			log.Fatalf("Failed to setup loopback device: %v", err)
-		}
-		defer loopbackDev.Close()
-
-		devicePath = loopbackDev.DevicePath
-		log.Printf("Loopback device ready at %s", devicePath)
+	if *apiMode != "iter" && *apiMode != "frames" {
+		log.Fatalf("Invalid -api value %q: must be \"iter\" or \"frames\"", *apiMode)
 	}
 
 	// Single benchmark mode
 	if *single {
+		var devicePath string
+		if *device != "" {
+			devicePath = *device
+			log.Printf("Using real device: %s", devicePath)
+		} else {
+			if !loopback.IsAvailable() {
+				log.Fatal("Loopback mode requires ffmpeg and v4l2loopback-dkms to be installed.\nInstall with: sudo apt install ffmpeg v4l2loopback-dkms")
+			}
+			log.Printf("Setting up loopback device /dev/video%d (%dx%d@%dfps %s)...", *loopbackNum, *width, *height, *fps, *format)
+			loopbackDev, err := loopback.SetupWithFormat(*loopbackNum, int(*width), int(*height), int(*fps), *testPattern, *format)
+			if err != nil {
+				log.Fatalf("Failed to setup loopback device: %v", err)
+			}
+			defer loopbackDev.Close()
+			devicePath = loopbackDev.DevicePath
+			log.Printf("Loopback device ready at %s", devicePath)
+		}
+
 		config := BenchmarkConfig{
 			DevicePath: devicePath,
+			API:        *apiMode,
 			Width:      uint32(*width),
 			Height:     uint32(*height),
 			FPS:        uint32(*fps),
@@ -167,7 +166,7 @@ func main() {
 	}
 
 	// Multi-scenario benchmark mode
-	runMultiScenario(devicePath, *duration, *outputDir, *scenario)
+	runMultiScenario(*device, *loopbackNum, *testPattern, *apiMode, *duration, *outputDir, *scenario)
 }
 
 func runSingleBenchmark(config BenchmarkConfig) {
@@ -219,7 +218,11 @@ func runSingleBenchmark(config BenchmarkConfig) {
 	printResults(config, results)
 }
 
-func runMultiScenario(devicePath, duration, outputDir, scenarioName string) {
+func runMultiScenario(realDevice string, loopbackNum int, testPattern, apiMode, duration, outputDir, scenarioName string) {
+	if realDevice == "" && !loopback.IsAvailable() {
+		log.Fatal("Loopback mode requires ffmpeg and v4l2loopback-dkms to be installed.\nInstall with: sudo apt install ffmpeg v4l2loopback-dkms")
+	}
+
 	// Create output directory
 	if outputDir == "" {
 		outputDir = fmt.Sprintf("results_%s", time.Now().Format("20060102_150405"))
@@ -231,7 +234,12 @@ func runMultiScenario(devicePath, duration, outputDir, scenarioName string) {
 	fmt.Println("========================================")
 	fmt.Println("go4vl Frame Capture Benchmark Suite")
 	fmt.Println("========================================")
-	fmt.Printf("Device:   %s\n", devicePath)
+	if realDevice != "" {
+		fmt.Printf("Device:   %s\n", realDevice)
+	} else {
+		fmt.Printf("Device:   /dev/video%d (loopback, reconfigured per scenario)\n", loopbackNum)
+	}
+	fmt.Printf("API:      %s\n", apiMode)
 	fmt.Printf("Duration: %s\n", duration)
 	fmt.Printf("Output:   %s\n", outputDir)
 	fmt.Println()
@@ -280,8 +288,22 @@ func runMultiScenario(devicePath, duration, outputDir, scenarioName string) {
 			continue
 		}
 
+		devicePath := realDevice
+		var lbDev *loopback.Device
+		if devicePath == "" {
+			var err error
+			lbDev, err = loopback.SetupWithFormat(loopbackNum, s.Width, s.Height, s.FPS, testPattern, s.Format)
+			if err != nil {
+				log.Printf("Warning: Failed to setup loopback for %s: %v", s.Name, err)
+				results[s.Name] = "FAILED"
+				continue
+			}
+			devicePath = lbDev.DevicePath
+		}
+
 		config := BenchmarkConfig{
 			DevicePath:  devicePath,
+			API:         apiMode,
 			Width:       uint32(s.Width),
 			Height:      uint32(s.Height),
 			FPS:         uint32(s.FPS),
@@ -326,6 +348,9 @@ func runMultiScenario(devicePath, duration, outputDir, scenarioName string) {
 
 		// Run benchmark
 		benchResults := runDeviceBenchmark(config)
+		if lbDev != nil {
+			_ = lbDev.Close()
+		}
 
 		// Stop profiling
 		if cpuFile != nil {
@@ -450,18 +475,18 @@ func runDeviceBenchmark(config BenchmarkConfig) BenchmarkResults {
 	lastFrameTime := time.Now()
 	startTime := time.Now()
 
-	for frame := range dev.GetFrames() {
+	recordFrame := func(n int) {
 		now := time.Now()
 		frameTime := now.Sub(lastFrameTime)
 
-		if len(frame.Data) == 0 {
+		if n == 0 {
 			results.FramesDropped++
 			if config.Verbose {
 				log.Printf("Frame %d: DROPPED", results.FramesCaptured+results.FramesDropped)
 			}
 		} else {
 			results.FramesCaptured++
-			results.TotalBytes += uint64(len(frame.Data))
+			results.TotalBytes += uint64(n)
 			frameTimes = append(frameTimes, frameTime)
 
 			if config.Verbose && results.FramesCaptured%100 == 0 {
@@ -469,9 +494,25 @@ func runDeviceBenchmark(config BenchmarkConfig) BenchmarkResults {
 					float64(results.FramesCaptured)/time.Since(startTime).Seconds())
 			}
 		}
-		frame.Release()
-
 		lastFrameTime = now
+	}
+
+	if config.API == "frames" {
+		for frame := range dev.GetFrames() {
+			recordFrame(len(frame.Data))
+			frame.Release()
+		}
+	} else {
+		for frame, err := range dev.Frames(ctx) {
+			if err != nil {
+				if ctx.Err() != nil {
+					break
+				}
+				log.Printf("Frames error: %v", err)
+				break
+			}
+			recordFrame(len(frame.Data))
+		}
 	}
 
 	results.Duration = time.Since(startTime)
@@ -522,6 +563,7 @@ func printResults(config BenchmarkConfig, r BenchmarkResults) {
 
 	fmt.Println("\nConfiguration:")
 	fmt.Printf("  Device:        %s\n", config.DevicePath)
+	fmt.Printf("  Capture API:   %s\n", config.API)
 	fmt.Printf("  Resolution:    %dx%d\n", config.Width, config.Height)
 	fmt.Printf("  Target FPS:    %d\n", config.FPS)
 	fmt.Printf("  Duration:      %v\n", config.Duration)
@@ -545,25 +587,25 @@ func printResults(config BenchmarkConfig, r BenchmarkResults) {
 	}
 
 	fmt.Println("\nMemory Statistics:")
-	fmt.Printf("  Total Allocated:   %.2f MB\n", float64(r.MemAllocBytes)/(1024*1024))
+	fmt.Printf("  Total Allocated:    %.2f MB\n", float64(r.MemAllocBytes)/(1024*1024))
 	if r.FramesCaptured > 0 {
-		fmt.Printf("  Allocs per Frame:  %.2f MB\n", float64(r.MemAllocBytes)/float64(r.FramesCaptured)/(1024*1024))
+		fmt.Printf("  Alloc Bytes/Frame:  %.2f KB\n", float64(r.MemAllocBytes)/float64(r.FramesCaptured)/1024)
 	}
-	fmt.Printf("  Total Allocations: %d\n", r.MemAllocObjects)
+	fmt.Printf("  Total Allocations:  %d\n", r.MemAllocObjects)
 	if r.FramesCaptured > 0 {
-		fmt.Printf("  Allocs per Frame:  %.0f\n", float64(r.MemAllocObjects)/float64(r.FramesCaptured))
+		fmt.Printf("  Alloc Objects/Frame: %.1f\n", float64(r.MemAllocObjects)/float64(r.FramesCaptured))
 	}
-	fmt.Printf("  GC Runs:           %d\n", r.NumGC)
-	fmt.Printf("  GC Pause Total:    %v\n", r.GCPauseTotal)
+	fmt.Printf("  GC Runs:            %d\n", r.NumGC)
+	fmt.Printf("  GC Pause Total:     %v\n", r.GCPauseTotal)
 	if r.NumGC > 0 {
-		fmt.Printf("  Avg GC Pause:      %v\n", r.GCPauseTotal/time.Duration(r.NumGC))
+		fmt.Printf("  Avg GC Pause:       %v\n", r.GCPauseTotal/time.Duration(r.NumGC))
 	}
 
 	fmt.Println("\nPerformance Metrics:")
 	if r.AvgFPS > 0 && r.FramesCaptured > 0 {
-		cpuTimePerFrame := r.Duration / time.Duration(r.FramesCaptured)
-		fmt.Printf("  CPU Time/Frame:    %v\n", cpuTimePerFrame)
-		fmt.Printf("  Throughput:        %.2f MB/s\n",
+		wallTimePerFrame := r.Duration / time.Duration(r.FramesCaptured)
+		fmt.Printf("  Wall Time/Frame:    %v\n", wallTimePerFrame)
+		fmt.Printf("  Throughput:         %.2f MB/s\n",
 			float64(r.TotalBytes)/(1024*1024)/r.Duration.Seconds())
 	}
 

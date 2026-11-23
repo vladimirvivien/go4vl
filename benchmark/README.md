@@ -58,6 +58,7 @@ sudo go run main.go -single [flags]
 
 **Flags:**
 - `-single` - Run single benchmark (vs multi-scenario)
+- `-api` - Capture API: `iter` (zero-copy `Frames(ctx)`, default) or `frames` (pooled `GetFrames()`)
 - `-duration` - Capture duration (default: 10s)
 - `-width` - Frame width (default: 640)
 - `-height` - Frame height (default: 480)
@@ -381,7 +382,3 @@ sudo go run main.go -single -width 640 -height 480 -output 480p
 sudo go run main.go -single -width 1280 -height 720 -output 720p
 sudo go run main.go -single -width 1920 -height 1080 -output 1080p
 ```
-
-## Next Steps
-
-See `/docs/performance-optimization-plan.md` for the complete optimization roadmap and implementation strategy.

@@ -15,8 +15,14 @@ type Device struct {
 	FFmpegCmd  *exec.Cmd
 }
 
-// Setup creates a v4l2loopback device and starts ffmpeg feeding it
+// Setup creates a v4l2loopback device and starts ffmpeg feeding YUYV frames to it.
 func Setup(deviceNum int, width, height, fps int, testPattern string) (*Device, error) {
+	return SetupWithFormat(deviceNum, width, height, fps, testPattern, "YUYV")
+}
+
+// SetupWithFormat creates a v4l2loopback device and starts ffmpeg feeding frames
+// in the requested format ("YUYV" or "MJPEG").
+func SetupWithFormat(deviceNum int, width, height, fps int, testPattern, format string) (*Device, error) {
 	dev := &Device{
 		DevicePath: fmt.Sprintf("/dev/video%d", deviceNum),
 		DeviceNum:  deviceNum,
@@ -47,7 +53,7 @@ func Setup(deviceNum int, width, height, fps int, testPattern string) (*Device, 
 	}
 
 	// Start ffmpeg
-	if err := dev.startFFmpeg(width, height, fps, testPattern); err != nil {
+	if err := dev.startFFmpeg(width, height, fps, testPattern, format); err != nil {
 		unloadModule()
 		return nil, fmt.Errorf("failed to start ffmpeg: %w", err)
 	}
@@ -112,7 +118,7 @@ func unloadModule() error {
 }
 
 // startFFmpeg starts ffmpeg to feed the loopback device
-func (d *Device) startFFmpeg(width, height, fps int, testPattern string) error {
+func (d *Device) startFFmpeg(width, height, fps int, testPattern, format string) error {
 	// Parse test pattern (e.g., "testsrc", "smptebars", "color=red")
 	var source string
 	if strings.HasPrefix(testPattern, "color=") {
@@ -128,9 +134,11 @@ func (d *Device) startFFmpeg(width, height, fps int, testPattern string) error {
 		"-re",
 		"-f", "lavfi",
 		"-i", source,
-		"-pix_fmt", "yuyv422",
-		"-f", "v4l2",
-		d.DevicePath,
+	}
+	if strings.EqualFold(format, "MJPEG") {
+		args = append(args, "-c:v", "mjpeg", "-f", "v4l2", d.DevicePath)
+	} else {
+		args = append(args, "-pix_fmt", "yuyv422", "-f", "v4l2", d.DevicePath)
 	}
 
 	d.FFmpegCmd = exec.Command("ffmpeg", args...)
