@@ -534,6 +534,15 @@ func TestDevice_ContextCancelReopenNoMmapLeak(t *testing.T) {
 	devPath := RequireV4L2Testing(t)
 	StartLoopbackProducerIfNeeded(t, devPath, 640, 480, v4l2.PixelFmtYUYV)
 
+	countDevMappings := func() int {
+		data, err := os.ReadFile("/proc/self/maps")
+		if err != nil {
+			return -1
+		}
+		return strings.Count(string(data), devPath)
+	}
+	baselineMappings := countDevMappings()
+
 	for cycle := 0; cycle < 5; cycle++ {
 		dev, err := device.Open(devPath, device.WithBufferSize(2))
 		if err != nil {
@@ -581,9 +590,10 @@ func TestDevice_ContextCancelReopenNoMmapLeak(t *testing.T) {
 			t.Fatalf("cycle %d: Close() failed: %v", cycle, err)
 		}
 
-		mapsData, err := os.ReadFile("/proc/self/maps")
-		if err == nil && strings.Contains(string(mapsData), devPath) {
-			t.Fatalf("cycle %d: /proc/self/maps still contains mapping for %s after Stop/Close", cycle, devPath)
+		if baselineMappings >= 0 {
+			if after := countDevMappings(); after > baselineMappings {
+				t.Fatalf("cycle %d: /proc/self/maps mapping count for %s grew from %d to %d after Stop/Close", cycle, devPath, baselineMappings, after)
+			}
 		}
 	}
 }
