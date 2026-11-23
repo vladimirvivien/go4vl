@@ -195,3 +195,30 @@ func BenchmarkFramePool_VaryingSizes(b *testing.B) {
 		pool.Put(buf)
 	}
 }
+
+// BenchmarkFramePool_GetPtr benchmarks the internal zero-allocation getPtr/putPtr
+// fast path used by capture_frames.go.
+func BenchmarkFramePool_GetPtr(b *testing.B) {
+	pool := NewFramePool(1024 * 1024)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ptr, _ := pool.getPtr(614400)
+		pool.putPtr(ptr)
+	}
+}
+
+// BenchmarkFramePool_GetPtrParallel benchmarks concurrent access to getPtr/putPtr.
+func BenchmarkFramePool_GetPtrParallel(b *testing.B) {
+	pool := NewFramePool(1024 * 1024)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ptr, _ := pool.getPtr(614400)
+			pool.putPtr(ptr)
+		}
+	})
+}
