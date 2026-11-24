@@ -34,7 +34,7 @@ Working directly with V4L2 in Go requires complex ioctl marshaling and manual me
 
 * **Zero-copy `iter.Seq2` streaming** - Range directly over memory-mapped kernel buffers with `dev.Frames(ctx)` (0 per-frame copies, automatic `VIDIOC_QBUF` re-queueing)
 * **Idiomatic Go API** - Standard Go iterators, channels, and typed options instead of raw C structs
-* **No runtime CGO** - Builds with `CGO_ENABLED=0` on Linux (`amd64` and `arm64`) without kernel headers or a C toolchain
+* **No runtime CGO** - Builds with `CGO_ENABLED=0` on Linux (`amd64`, `arm64`, `arm`, and `riscv64`) without kernel headers or a C toolchain
 * **Capture, output, and M2M pipelines** - Supports video capture, video output, multi-planar (`MPLANE`) formats, DMA-BUF export/import, and `epoll`/`poll` multiplexing
 
 ## Features
@@ -81,7 +81,7 @@ sudo usermod -a -G video $USER
 
 ## Building
 
-`go4vl` builds with `CGO_ENABLED=0` on Linux (`amd64` and `arm64`) with no C compiler or kernel headers required:
+`go4vl` builds with `CGO_ENABLED=0` on Linux (`amd64`, `arm64`, `arm`, and `riscv64`) with no C compiler or kernel headers required:
 
 ```bash
 # Build all packages and examples

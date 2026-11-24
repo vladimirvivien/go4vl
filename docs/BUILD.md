@@ -1,11 +1,11 @@
 # Building `go4vl`
 
-`go4vl` uses generated Linux UAPI definitions (`v4l2/zconsts_linux.go`, `v4l2/ztypes_linux_amd64.go`, `v4l2/ztypes_linux_arm64.go`) and `golang.org/x/sys/unix` syscalls. Normal builds and cross-compiles require **no C compiler, no CGO, and no Linux kernel headers**.
+`go4vl` uses generated Linux UAPI definitions (`v4l2/zconsts_linux.go`, `v4l2/ztypes_linux_{amd64,arm64,arm,riscv64}.go`) and `golang.org/x/sys/unix` syscalls. Normal builds and cross-compiles require **no C compiler, no CGO, and no Linux kernel headers**.
 
 ## Prerequisites
 
 - **Go 1.26+**
-- **Linux target** (`GOOS=linux`, `GOARCH=amd64` or `GOARCH=arm64`)
+- **Linux target** (`GOOS=linux`, `GOARCH=amd64`, `arm64`, `arm`, or `riscv64`)
 - *(Optional)* A C compiler (`gcc` or `clang`) and `linux-libc-dev` are only needed when regenerating UAPI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` ABI parity tests.
 
 ## Native Build
@@ -27,6 +27,12 @@ Because runtime CGO is not used, standard Go cross-compilation works from Linux,
 ```bash
 # 64-bit ARM (e.g., Raspberry Pi 4/5 64-bit OS)
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o iter_capture ./examples/iter_capture
+
+# 32-bit ARM (e.g., Raspberry Pi Zero/3 32-bit OS)
+CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o iter_capture ./examples/iter_capture
+
+# 64-bit RISC-V Linux
+CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 go build -o iter_capture ./examples/iter_capture
 
 # 64-bit x86 Linux
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o iter_capture ./examples/iter_capture

@@ -187,11 +187,26 @@ type Buffer struct {
 	RequestFD int32
 }
 
-func decodeBufferInfo(memory uint32, m [8]byte) BufferInfo {
+func getUintptr(m []byte) uintptr {
+	if len(m) >= 8 {
+		return uintptr(binary.NativeEndian.Uint64(m))
+	}
+	return uintptr(binary.NativeEndian.Uint32(m))
+}
+
+func putUintptr(m []byte, v uintptr) {
+	if len(m) >= 8 {
+		binary.NativeEndian.PutUint64(m, uint64(v))
+		return
+	}
+	binary.NativeEndian.PutUint32(m, uint32(v))
+}
+
+func decodeBufferInfo(memory uint32, m []byte) BufferInfo {
 	var info BufferInfo
 	switch memory {
 	case IOTypeUserPtr:
-		info.UserPtr = uintptr(binary.NativeEndian.Uint64(m[:]))
+		info.UserPtr = getUintptr(m)
 	case IOTypeDMABuf:
 		info.FD = int32(binary.NativeEndian.Uint32(m[:4]))
 	default:
@@ -200,11 +215,11 @@ func decodeBufferInfo(memory uint32, m [8]byte) BufferInfo {
 	return info
 }
 
-func decodePlaneInfo(memory uint32, m [8]byte) PlaneInfo {
+func decodePlaneInfo(memory uint32, m []byte) PlaneInfo {
 	var info PlaneInfo
 	switch memory {
 	case IOTypeUserPtr:
-		info.UserPtr = uintptr(binary.NativeEndian.Uint64(m[:]))
+		info.UserPtr = getUintptr(m)
 	case IOTypeDMABuf:
 		info.FD = int32(binary.NativeEndian.Uint32(m[:4]))
 	default:
@@ -213,17 +228,15 @@ func decodePlaneInfo(memory uint32, m [8]byte) PlaneInfo {
 	return info
 }
 
-func encodePlaneInfo(memory uint32, info PlaneInfo) [8]byte {
-	var m [8]byte
+func encodePlaneInfo(dst []byte, memory uint32, info PlaneInfo) {
 	switch memory {
 	case IOTypeUserPtr:
-		binary.NativeEndian.PutUint64(m[:], uint64(info.UserPtr))
+		putUintptr(dst, info.UserPtr)
 	case IOTypeDMABuf:
-		binary.NativeEndian.PutUint32(m[:4], uint32(info.FD))
+		binary.NativeEndian.PutUint32(dst[:4], uint32(info.FD))
 	default:
-		binary.NativeEndian.PutUint32(m[:4], info.MemOffset)
+		binary.NativeEndian.PutUint32(dst[:4], info.MemOffset)
 	}
-	return m
 }
 
 // makeBuffer makes a Buffer value from cV4L2Buffer
@@ -238,7 +251,7 @@ func makeBufferWithPlanes(v4l2Buf cV4L2Buffer, cPlanes []cV4L2Plane) Buffer {
 		BytesUsed: v4l2Buf.Bytesused,
 		Flags:     v4l2Buf.Flags,
 		Field:     v4l2Buf.Field,
-		Timestamp: sys.Timeval{Sec: v4l2Buf.Timestamp.Sec, Usec: v4l2Buf.Timestamp.Usec},
+		Timestamp: sys.NsecToTimeval(v4l2Buf.Timestamp.Sec*1e9 + v4l2Buf.Timestamp.Usec*1e3),
 		Timecode:  *(*Timecode)(unsafe.Pointer(&v4l2Buf.Timecode)),
 		Sequence:  v4l2Buf.Sequence,
 		Memory:    v4l2Buf.Memory,
@@ -256,7 +269,7 @@ func makeBufferWithPlanes(v4l2Buf cV4L2Buffer, cPlanes []cV4L2Plane) Buffer {
 			buf.Planes[i] = Plane{
 				BytesUsed:  cPlanes[i].Bytesused,
 				Length:     cPlanes[i].Length,
-				Info:       decodePlaneInfo(v4l2Buf.Memory, cPlanes[i].M),
+				Info:       decodePlaneInfo(v4l2Buf.Memory, cPlanes[i].M[:]),
 				DataOffset: cPlanes[i].Offset,
 			}
 		}
@@ -264,7 +277,7 @@ func makeBufferWithPlanes(v4l2Buf cV4L2Buffer, cPlanes []cV4L2Plane) Buffer {
 			buf.Info.Planes = &buf.Planes[0]
 		}
 	} else {
-		buf.Info = decodeBufferInfo(v4l2Buf.Memory, v4l2Buf.M)
+		buf.Info = decodeBufferInfo(v4l2Buf.Memory, v4l2Buf.M[:])
 	}
 	return buf
 }
@@ -553,7 +566,7 @@ func DequeueBufferMPlane(fd uintptr, ioType IOType, bufType BufType, numPlanes u
 	v4l2Buf.Type = bufType
 	v4l2Buf.Memory = ioType
 	v4l2Buf.Length = numPlanes
-	binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+	putUintptr(v4l2Buf.M[:], uintptr(unsafe.Pointer(&cPlanes[0])))
 
 	if err := send(fd, cVIDIOC_DQBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 		return Buffer{}, fmt.Errorf("buffer dequeue mplane: %w", err)
@@ -649,7 +662,7 @@ func QueryBuffer(fd uintptr, bufType BufType, ioType IOType, index uint32, numPl
 		}()
 
 		v4l2Buf.Length = numPlanes
-		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+		putUintptr(v4l2Buf.M[:], uintptr(unsafe.Pointer(&cPlanes[0])))
 
 		if err := send(fd, cVIDIOC_QUERYBUF, unsafe.Pointer(&v4l2Buf)); err != nil {
 			return Buffer{}, fmt.Errorf("query buffer: %w", err)
@@ -683,7 +696,7 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 		Bytesused: buf.BytesUsed,
 		Flags:     buf.Flags,
 		Field:     buf.Field,
-		Timestamp: cTimeval{Sec: buf.Timestamp.Sec, Usec: buf.Timestamp.Usec},
+		Timestamp: cTimeval{Sec: int64(buf.Timestamp.Sec), Usec: int64(buf.Timestamp.Usec)},
 		Timecode:  *(*cV4L2Timecode)(unsafe.Pointer(&buf.Timecode)),
 		Memory:    buf.Memory,
 		Length:    buf.Length,
@@ -701,9 +714,9 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 			cPlanes[i] = cV4L2Plane{
 				Bytesused: p.BytesUsed,
 				Length:    p.Length,
-				M:         encodePlaneInfo(buf.Memory, p.Info),
 				Offset:    p.DataOffset,
 			}
+			encodePlaneInfo(cPlanes[i].M[:], buf.Memory, p.Info)
 		}
 
 		var pinner runtime.Pinner
@@ -714,7 +727,7 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 		}()
 
 		v4l2Buf.Length = uint32(len(cPlanes))
-		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(uintptr(unsafe.Pointer(&cPlanes[0]))))
+		putUintptr(v4l2Buf.M[:], uintptr(unsafe.Pointer(&cPlanes[0])))
 
 		if err := send(fd, req, unsafe.Pointer(&v4l2Buf)); err != nil {
 			return Buffer{}, fmt.Errorf("%s: %w", op, err)
@@ -724,7 +737,7 @@ func submitBufferIoctl(fd, req uintptr, op string, buf Buffer) (Buffer, error) {
 
 	switch buf.Memory {
 	case IOTypeUserPtr:
-		binary.NativeEndian.PutUint64(v4l2Buf.M[:], uint64(buf.Info.UserPtr))
+		putUintptr(v4l2Buf.M[:], buf.Info.UserPtr)
 	case IOTypeDMABuf:
 		binary.NativeEndian.PutUint32(v4l2Buf.M[:4], uint32(buf.Info.FD))
 	default:

@@ -32,7 +32,7 @@ func MonotonicToWallClock(ts sys.Timeval) time.Time {
 		return time.Unix(int64(ts.Sec), int64(ts.Usec)*1000)
 	}
 	wallNow := time.Now()
-	monoNowNs := monoNow.Sec*int64(time.Second) + monoNow.Nsec
+	monoNowNs := int64(monoNow.Sec)*int64(time.Second) + int64(monoNow.Nsec)
 	tsNs := int64(ts.Sec)*int64(time.Second) + int64(ts.Usec)*int64(time.Microsecond)
 	return wallNow.Add(time.Duration(tsNs - monoNowNs))
 }

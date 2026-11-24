@@ -69,7 +69,7 @@ func TestBufferInfoAndPlaneEncodeDecode(t *testing.T) {
 	cBuf.Memory = IOTypeMMAP
 	cBuf.Length = 614400
 	cBuf.Bytesused = 614400
-	cBuf.M = encodePlaneInfo(IOTypeMMAP, PlaneInfo{MemOffset: 0x10000})
+	encodePlaneInfo(cBuf.M[:], IOTypeMMAP, PlaneInfo{MemOffset: 0x10000})
 	b := makeBuffer(cBuf)
 	if b.Info.Offset != 0x10000 || b.Info.UserPtr != 0 || b.Info.FD != 0 {
 		t.Fatalf("MMAP BufferInfo mismatch: %+v", b.Info)
@@ -77,7 +77,7 @@ func TestBufferInfoAndPlaneEncodeDecode(t *testing.T) {
 
 	// Single-planar DMABUF
 	cBuf.Memory = IOTypeDMABuf
-	cBuf.M = encodePlaneInfo(IOTypeDMABuf, PlaneInfo{FD: 42})
+	encodePlaneInfo(cBuf.M[:], IOTypeDMABuf, PlaneInfo{FD: 42})
 	b = makeBuffer(cBuf)
 	if b.Info.FD != 42 || b.Info.Offset != 0 {
 		t.Fatalf("DMABUF BufferInfo mismatch: %+v", b.Info)
@@ -85,9 +85,9 @@ func TestBufferInfoAndPlaneEncodeDecode(t *testing.T) {
 
 	// Single-planar USERPTR
 	cBuf.Memory = IOTypeUserPtr
-	cBuf.M = encodePlaneInfo(IOTypeUserPtr, PlaneInfo{UserPtr: 0xdeadbeef0000})
+	encodePlaneInfo(cBuf.M[:], IOTypeUserPtr, PlaneInfo{UserPtr: 0xdeadbeef})
 	b = makeBuffer(cBuf)
-	if b.Info.UserPtr != 0xdeadbeef0000 {
+	if b.Info.UserPtr != 0xdeadbeef {
 		t.Fatalf("USERPTR BufferInfo mismatch: %+v", b.Info)
 	}
 
@@ -99,16 +99,16 @@ func TestBufferInfoAndPlaneEncodeDecode(t *testing.T) {
 		{
 			Bytesused: 1920 * 1080,
 			Length:    1920 * 1080,
-			M:         encodePlaneInfo(IOTypeMMAP, PlaneInfo{MemOffset: 0x0}),
 			Offset:    0,
 		},
 		{
 			Bytesused: 1920 * 540,
 			Length:    1920 * 540,
-			M:         encodePlaneInfo(IOTypeMMAP, PlaneInfo{MemOffset: 0x200000}),
 			Offset:    64,
 		},
 	}
+	encodePlaneInfo(cPlanes[0].M[:], IOTypeMMAP, PlaneInfo{MemOffset: 0x0})
+	encodePlaneInfo(cPlanes[1].M[:], IOTypeMMAP, PlaneInfo{MemOffset: 0x200000})
 	mb := makeBufferWithPlanes(cBuf, cPlanes)
 	if len(mb.Planes) != 2 {
 		t.Fatalf("len(Planes) = %d, want 2", len(mb.Planes))
