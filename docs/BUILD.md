@@ -1,34 +1,36 @@
-# Building `go4vl`
+# Building & Cross-Compiling
 
-`go4vl` uses generated Linux UAPI definitions (`v4l2/zconsts_linux.go`, `v4l2/ztypes_linux_{amd64,arm64,arm,riscv64}.go`) and `golang.org/x/sys/unix` syscalls. Normal builds and cross-compiles require **no C compiler, no CGO, and no Linux kernel headers**.
+Because `go4vl` checks in architecture-specific Linux UAPI structure definitions (`v4l2/ztypes_linux_{amd64,arm64,arm,riscv64}.go`) and constants (`v4l2/zconsts_linux.go`) and invokes kernel ioctls through `golang.org/x/sys/unix`, standard builds require **no C compiler, no CGO, and no Linux kernel headers**.
 
 ## Prerequisites
 
-- **Go 1.26+**
-- **Linux target** (`GOOS=linux`, `GOARCH=amd64`, `arm64`, `arm`, or `riscv64`)
-- *(Optional)* A C compiler (`gcc` or `clang`) and `linux-libc-dev` are only needed when regenerating UAPI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` ABI parity tests.
+* **Go 1.26 or later**
+* **Target OS:** `GOOS=linux` with `GOARCH` set to `amd64`, `arm64`, `arm`, or `riscv64`
+* **Optional ABI regeneration dependencies:** `gcc` or `clang` plus `linux-libc-dev` are needed only when regenerating UAPI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` parity checks on Linux headers.
 
-## Native Build
+## Native Linux builds
+
+Run a full native build with CGO disabled to verify every package and example compiles cleanly:
 
 ```bash
 CGO_ENABLED=0 go build ./...
 ```
 
-Build a specific example:
+To compile a single binary directly from one of the examples:
 
 ```bash
 CGO_ENABLED=0 go build -o iter_capture ./examples/iter_capture
 ```
 
-## Cross-Compilation
+## Cross-compiling for other Linux architectures
 
-Because runtime CGO is not used, standard Go cross-compilation works from Linux, macOS, or Windows hosts:
+Standard Go cross-compilation works from Linux, macOS, or Windows development workstations. Set `CGO_ENABLED=0 GOOS=linux` alongside your target `GOARCH`:
 
 ```bash
-# 64-bit ARM (e.g., Raspberry Pi 4/5 64-bit OS)
+# 64-bit ARM (Raspberry Pi 4/5 64-bit OS, Jetson, server ARM64)
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o iter_capture ./examples/iter_capture
 
-# 32-bit ARM (e.g., Raspberry Pi Zero/3 32-bit OS)
+# 32-bit ARM (Raspberry Pi Zero/3 32-bit OS, ARMv7 boards)
 CGO_ENABLED=0 GOOS=linux GOARCH=arm go build -o iter_capture ./examples/iter_capture
 
 # 64-bit RISC-V Linux
@@ -38,9 +40,11 @@ CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 go build -o iter_capture ./examples/iter
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o iter_capture ./examples/iter_capture
 ```
 
-## Docker Build
+On 32-bit `linux/arm`, `go4vl`'s checked-in UAPI generator handles 32-bit struct padding, pointer sizes in `v4l2_buffer.m`, and `timeval` widths cleanly—no special build flags or host C sysroot are needed.
 
-Multi-stage static builds work with the official Go image and `scratch`:
+## Multi-stage container builds
+
+Static `CGO_ENABLED=0` binaries deploy into minimal `scratch` or distroless containers. Remember to pass the required `/dev/video*` or `/dev/media*` device node into the container at runtime (`docker run --device /dev/video0`):
 
 ```dockerfile
 FROM golang:1.26 AS build
@@ -53,25 +57,35 @@ COPY --from=build /out/app /app
 ENTRYPOINT ["/app"]
 ```
 
-## Testing & Verification
+For a concrete example tailored to web video streaming, see `examples/simplecam/Dockerfile` in the repository.
+
+## Running tests & verification
+
+Unit tests mock the low-level `ioctl` seam and run on any Linux host without video hardware:
 
 ```bash
-# Unit tests and vet (no CGO required)
-CGO_ENABLED=0 go test -v ./v4l2 ./device
 CGO_ENABLED=0 go vet ./v4l2 ./device
+CGO_ENABLED=0 go test -v ./v4l2 ./device
+```
 
-# Integration tests against real hardware or v4l2loopback
+To run the integration test suite against real V4L2 hardware or a loaded `v4l2loopback` device, include the `integration` build tag:
+
+```bash
 CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device=/dev/video0
 ```
 
-## Regenerating UAPI Definitions & ABI Parity
+See the [Testing & CI Guide](guides/testing.md) for loopback setup and CI flags.
 
-Contributors adding new kernel structs or ioctls regenerate the checked-in ABI files on a Linux host with kernel headers installed (`sudo apt install build-essential linux-libc-dev`):
+## Regenerating UAPI definitions (contributors)
+
+When adding support for new Linux kernel structs, constants, or ioctls, run code generation on a Linux machine with kernel UAPI headers installed (`sudo apt-get install build-essential linux-libc-dev`):
 
 ```bash
-# Regenerate zconsts_linux.go and ztypes_linux_<arch>.go
+# Regenerate v4l2/zconsts_linux.go and v4l2/ztypes_linux_<arch>.go
 go generate ./v4l2
 
-# Verify Go struct sizes, field offsets, ioctl numbers, and constants against host C headers
+# Verify Go struct sizes, field offsets, ioctl IDs, and constants against host C headers
 CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 ```
+
+Run `CGO_ENABLED=0 go build ./...` across all four supported architectures after regenerating so that 32-bit and 64-bit builds remain aligned.
