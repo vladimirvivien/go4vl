@@ -100,8 +100,19 @@ func TestABIStructSizes(t *testing.T) {
 		"cV4L2RemoveBuffers":     unsafe.Sizeof(cV4L2RemoveBuffers{}),
 		"cV4L2Selection":         unsafe.Sizeof(cV4L2Selection{}),
 		"cV4L2Standard":          unsafe.Sizeof(cV4L2Standard{}),
-		"cV4L2StreamParm":        unsafe.Sizeof(cV4L2StreamParm{}),
-		"cV4L2Tuner":             unsafe.Sizeof(cV4L2Tuner{}),
+		"cV4L2StreamParm":            unsafe.Sizeof(cV4L2StreamParm{}),
+		"cV4L2Tuner":                 unsafe.Sizeof(cV4L2Tuner{}),
+		"cV4L2CtrlHEVCSPS":           unsafe.Sizeof(cV4L2CtrlHEVCSPS{}),
+		"cV4L2CtrlHEVCPPS":           unsafe.Sizeof(cV4L2CtrlHEVCPPS{}),
+		"cV4L2CtrlHEVCSliceParams":   unsafe.Sizeof(cV4L2CtrlHEVCSliceParams{}),
+		"cV4L2CtrlHEVCScalingMatrix": unsafe.Sizeof(cV4L2CtrlHEVCScalingMatrix{}),
+		"cV4L2CtrlHEVCDecodeParams":  unsafe.Sizeof(cV4L2CtrlHEVCDecodeParams{}),
+		"cV4L2CtrlVP9Frame":          unsafe.Sizeof(cV4L2CtrlVP9Frame{}),
+		"cV4L2CtrlVP9CompressedHdr":  unsafe.Sizeof(cV4L2CtrlVP9CompressedHdr{}),
+		"cV4L2CtrlAV1Sequence":       unsafe.Sizeof(cV4L2CtrlAV1Sequence{}),
+		"cV4L2CtrlAV1TileGroupEntry": unsafe.Sizeof(cV4L2CtrlAV1TileGroupEntry{}),
+		"cV4L2CtrlAV1Frame":          unsafe.Sizeof(cV4L2CtrlAV1Frame{}),
+		"cV4L2CtrlAV1FilmGrain":      unsafe.Sizeof(cV4L2CtrlAV1FilmGrain{}),
 	}
 
 	for _, tc := range cStructSizeChecks(goSizes) {

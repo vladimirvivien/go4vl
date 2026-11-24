@@ -752,3 +752,336 @@ type cV4L2Tuner struct {
 	Afc        int32
 	Reserved   [4]uint32
 }
+type cV4L2HEVCPredWeightTable struct {
+	Delta_luma_weight_l0           [16]int8
+	Luma_offset_l0                 [16]int8
+	Delta_chroma_weight_l0         [16][2]int8
+	Chroma_offset_l0               [16][2]int8
+	Delta_luma_weight_l1           [16]int8
+	Luma_offset_l1                 [16]int8
+	Delta_chroma_weight_l1         [16][2]int8
+	Chroma_offset_l1               [16][2]int8
+	Luma_log2_weight_denom         uint8
+	Delta_chroma_log2_weight_denom int8
+}
+type cV4L2HEVCDPBEntry struct {
+	Timestamp         uint64
+	Flags             uint8
+	Field_pic         uint8
+	Reserved          uint16
+	Pic_order_cnt_val int32
+}
+type cV4L2CtrlHEVCSPS struct {
+	Video_parameter_set_id                       uint8
+	Seq_parameter_set_id                         uint8
+	Pic_width_in_luma_samples                    uint16
+	Pic_height_in_luma_samples                   uint16
+	Bit_depth_luma_minus8                        uint8
+	Bit_depth_chroma_minus8                      uint8
+	Log2_max_pic_order_cnt_lsb_minus4            uint8
+	Sps_max_dec_pic_buffering_minus1             uint8
+	Sps_max_num_reorder_pics                     uint8
+	Sps_max_latency_increase_plus1               uint8
+	Log2_min_luma_coding_block_size_minus3       uint8
+	Log2_diff_max_min_luma_coding_block_size     uint8
+	Log2_min_luma_transform_block_size_minus2    uint8
+	Log2_diff_max_min_luma_transform_block_size  uint8
+	Max_transform_hierarchy_depth_inter          uint8
+	Max_transform_hierarchy_depth_intra          uint8
+	Pcm_sample_bit_depth_luma_minus1             uint8
+	Pcm_sample_bit_depth_chroma_minus1           uint8
+	Log2_min_pcm_luma_coding_block_size_minus3   uint8
+	Log2_diff_max_min_pcm_luma_coding_block_size uint8
+	Num_short_term_ref_pic_sets                  uint8
+	Num_long_term_ref_pics_sps                   uint8
+	Chroma_format_idc                            uint8
+	Sps_max_sub_layers_minus1                    uint8
+	Reserved                                     [6]uint8
+	Flags                                        uint64
+}
+type cV4L2CtrlHEVCPPS struct {
+	Pic_parameter_set_id                 uint8
+	Num_extra_slice_header_bits          uint8
+	Num_ref_idx_l0_default_active_minus1 uint8
+	Num_ref_idx_l1_default_active_minus1 uint8
+	Init_qp_minus26                      int8
+	Diff_cu_qp_delta_depth               uint8
+	Pps_cb_qp_offset                     int8
+	Pps_cr_qp_offset                     int8
+	Num_tile_columns_minus1              uint8
+	Num_tile_rows_minus1                 uint8
+	Column_width_minus1                  [20]uint8
+	Row_height_minus1                    [22]uint8
+	Pps_beta_offset_div2                 int8
+	Pps_tc_offset_div2                   int8
+	Log2_parallel_merge_level_minus2     uint8
+	Reserved                             uint8
+	Flags                                uint64
+}
+type cV4L2CtrlHEVCSliceParams struct {
+	Bit_size                      uint32
+	Data_byte_offset              uint32
+	Num_entry_point_offsets       uint32
+	Nal_unit_type                 uint8
+	Nuh_temporal_id_plus1         uint8
+	Slice_type                    uint8
+	Colour_plane_id               uint8
+	Slice_pic_order_cnt           int32
+	Num_ref_idx_l0_active_minus1  uint8
+	Num_ref_idx_l1_active_minus1  uint8
+	Collocated_ref_idx            uint8
+	Five_minus_max_num_merge_cand uint8
+	Slice_qp_delta                int8
+	Slice_cb_qp_offset            int8
+	Slice_cr_qp_offset            int8
+	Slice_act_y_qp_offset         int8
+	Slice_act_cb_qp_offset        int8
+	Slice_act_cr_qp_offset        int8
+	Slice_beta_offset_div2        int8
+	Slice_tc_offset_div2          int8
+	Pic_struct                    uint8
+	Reserved0                     [3]uint8
+	Slice_segment_addr            uint32
+	Ref_idx_l0                    [16]uint8
+	Ref_idx_l1                    [16]uint8
+	Short_term_ref_pic_set_size   uint16
+	Long_term_ref_pic_set_size    uint16
+	Pred_weight_table             cV4L2HEVCPredWeightTable
+	Reserved1                     [2]uint8
+	Flags                         uint64
+}
+type cV4L2CtrlHEVCScalingMatrix struct {
+	List_4x4           [6][16]uint8
+	List_8x8           [6][64]uint8
+	List_16x16         [6][64]uint8
+	List_32x32         [2][64]uint8
+	List_dc_coef_16x16 [6]uint8
+	List_dc_coef_32x32 [2]uint8
+}
+type cV4L2CtrlHEVCDecodeParams struct {
+	Pic_order_cnt_val             int32
+	Short_term_ref_pic_set_size   uint16
+	Long_term_ref_pic_set_size    uint16
+	Num_active_dpb_entries        uint8
+	Num_poc_st_curr_before        uint8
+	Num_poc_st_curr_after         uint8
+	Num_poc_lt_curr               uint8
+	Poc_st_curr_before            [16]uint8
+	Poc_st_curr_after             [16]uint8
+	Poc_lt_curr                   [16]uint8
+	Num_delta_pocs_of_ref_rps_idx uint8
+	Reserved                      [3]uint8
+	Dpb                           [16]cV4L2HEVCDPBEntry
+	Flags                         uint64
+}
+type cV4L2VP9LoopFilter struct {
+	Ref_deltas  [4]int8
+	Mode_deltas [2]int8
+	Level       uint8
+	Sharpness   uint8
+	Flags       uint8
+	Reserved    [7]uint8
+}
+type cV4L2VP9Quantization struct {
+	Base_q_idx    uint8
+	Delta_q_y_dc  int8
+	Delta_q_uv_dc int8
+	Delta_q_uv_ac int8
+	Reserved      [4]uint8
+}
+type cV4L2VP9Segmentation struct {
+	Feature_data    [8][4]int16
+	Feature_enabled [8]uint8
+	Tree_probs      [7]uint8
+	Pred_probs      [3]uint8
+	Flags           uint8
+	Reserved        [5]uint8
+}
+type cV4L2VP9MVProbs struct {
+	Joint      [3]uint8
+	Sign       [2]uint8
+	Classes    [2][10]uint8
+	Class0_bit [2]uint8
+	Bits       [2][10]uint8
+	Class0_fr  [2][2][3]uint8
+	Fr         [2][3]uint8
+	Class0_hp  [2]uint8
+	Hp         [2]uint8
+}
+type cV4L2CtrlVP9Frame struct {
+	Lf                       cV4L2VP9LoopFilter
+	Quant                    cV4L2VP9Quantization
+	Seg                      cV4L2VP9Segmentation
+	Flags                    uint32
+	Compressed_header_size   uint16
+	Uncompressed_header_size uint16
+	Frame_width_minus_1      uint16
+	Frame_height_minus_1     uint16
+	Render_width_minus_1     uint16
+	Render_height_minus_1    uint16
+	Last_frame_ts            uint64
+	Golden_frame_ts          uint64
+	Alt_frame_ts             uint64
+	Ref_frame_sign_bias      uint8
+	Reset_frame_context      uint8
+	Frame_context_idx        uint8
+	Profile                  uint8
+	Bit_depth                uint8
+	Interpolation_filter     uint8
+	Tile_cols_log2           uint8
+	Tile_rows_log2           uint8
+	Reference_mode           uint8
+	Reserved                 [7]uint8
+}
+type cV4L2CtrlVP9CompressedHdr struct {
+	Tx_mode       uint8
+	Tx8           [2][1]uint8
+	Tx16          [2][2]uint8
+	Tx32          [2][3]uint8
+	Coef          [4][2][2][6][6][3]uint8
+	Skip          [3]uint8
+	Inter_mode    [7][3]uint8
+	Interp_filter [4][2]uint8
+	Is_inter      [4]uint8
+	Comp_mode     [5]uint8
+	Single_ref    [5][2]uint8
+	Comp_ref      [5]uint8
+	Y_mode        [4][9]uint8
+	Uv_mode       [10][9]uint8
+	Partition     [16][3]uint8
+	Mv            cV4L2VP9MVProbs
+}
+type cV4L2AV1TileInfo struct {
+	Flags                  uint8
+	Context_update_tile_id uint8
+	Tile_cols              uint8
+	Tile_rows              uint8
+	Mi_col_starts          [65]uint32
+	Mi_row_starts          [65]uint32
+	Width_in_sbs_minus_1   [64]uint32
+	Height_in_sbs_minus_1  [64]uint32
+	Tile_size_bytes        uint8
+	Reserved               [3]uint8
+}
+type cV4L2AV1Quantization struct {
+	Flags        uint8
+	Base_q_idx   uint8
+	Delta_q_y_dc int8
+	Delta_q_u_dc int8
+	Delta_q_u_ac int8
+	Delta_q_v_dc int8
+	Delta_q_v_ac int8
+	Qm_y         uint8
+	Qm_u         uint8
+	Qm_v         uint8
+	Delta_q_res  uint8
+}
+type cV4L2AV1Segmentation struct {
+	Flags              uint8
+	Last_active_seg_id uint8
+	Feature_enabled    [8]uint8
+	Feature_data       [8][8]int16
+}
+type cV4L2AV1LoopFilter struct {
+	Flags        uint8
+	Level        [4]uint8
+	Sharpness    uint8
+	Ref_deltas   [8]int8
+	Mode_deltas  [2]int8
+	Delta_lf_res uint8
+}
+type cV4L2AV1CDEF struct {
+	Damping_minus_3 uint8
+	Bits            uint8
+	Y_pri_strength  [8]uint8
+	Y_sec_strength  [8]uint8
+	Uv_pri_strength [8]uint8
+	Uv_sec_strength [8]uint8
+}
+type cV4L2AV1LoopRestoration struct {
+	Flags                  uint8
+	Lr_unit_shift          uint8
+	Lr_uv_shift            uint8
+	Reserved               uint8
+	Frame_restoration_type [3]uint32
+	Loop_restoration_size  [3]uint32
+}
+type cV4L2AV1GlobalMotion struct {
+	Flags    [8]uint8
+	Type     [8]uint32
+	Params   [8][6]int32
+	Invalid  uint8
+	Reserved [3]uint8
+}
+type cV4L2CtrlAV1Sequence struct {
+	Flags                    uint32
+	Seq_profile              uint8
+	Order_hint_bits          uint8
+	Bit_depth                uint8
+	Reserved                 uint8
+	Max_frame_width_minus_1  uint16
+	Max_frame_height_minus_1 uint16
+}
+type cV4L2CtrlAV1TileGroupEntry struct {
+	Offset uint32
+	Size   uint32
+	Row    uint32
+	Col    uint32
+}
+type cV4L2CtrlAV1Frame struct {
+	Tile_info             cV4L2AV1TileInfo
+	Quantization          cV4L2AV1Quantization
+	Superres_denom        uint8
+	Segmentation          cV4L2AV1Segmentation
+	Loop_filter           cV4L2AV1LoopFilter
+	Cdef                  cV4L2AV1CDEF
+	Skip_mode_frame       [2]uint8
+	Primary_ref_frame     uint8
+	Loop_restoration      cV4L2AV1LoopRestoration
+	Global_motion         cV4L2AV1GlobalMotion
+	Flags                 uint32
+	Frame_type            uint32
+	Order_hint            uint32
+	Upscaled_width        uint32
+	Interpolation_filter  uint32
+	Tx_mode               uint32
+	Frame_width_minus_1   uint32
+	Frame_height_minus_1  uint32
+	Render_width_minus_1  uint16
+	Render_height_minus_1 uint16
+	Current_frame_id      uint32
+	Buffer_removal_time   [32]uint32
+	Reserved              [4]uint8
+	Order_hints           [8]uint32
+	Reference_frame_ts    [8]uint64
+	Ref_frame_idx         [7]int8
+	Refresh_frame_flags   uint8
+}
+type cV4L2CtrlAV1FilmGrain struct {
+	Flags                     uint8
+	Cr_mult                   uint8
+	Grain_seed                uint16
+	Film_grain_params_ref_idx uint8
+	Num_y_points              uint8
+	Point_y_value             [16]uint8
+	Point_y_scaling           [16]uint8
+	Num_cb_points             uint8
+	Point_cb_value            [16]uint8
+	Point_cb_scaling          [16]uint8
+	Num_cr_points             uint8
+	Point_cr_value            [16]uint8
+	Point_cr_scaling          [16]uint8
+	Grain_scaling_minus_8     uint8
+	Ar_coeff_lag              uint8
+	Ar_coeffs_y_plus_128      [25]uint8
+	Ar_coeffs_cb_plus_128     [25]uint8
+	Ar_coeffs_cr_plus_128     [25]uint8
+	Ar_coeff_shift_minus_6    uint8
+	Grain_scale_shift         uint8
+	Cb_mult                   uint8
+	Cb_luma_mult              uint8
+	Cr_luma_mult              uint8
+	Cb_offset                 uint16
+	Cr_offset                 uint16
+	Reserved                  [4]uint8
+}

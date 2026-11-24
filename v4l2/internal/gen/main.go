@@ -301,6 +301,30 @@ type cV4L2Selection C.struct_v4l2_selection
 type cV4L2Standard C.struct_v4l2_standard
 type cV4L2StreamParm C.struct_v4l2_streamparm
 type cV4L2Tuner C.struct_v4l2_tuner
+type cV4L2HEVCPredWeightTable C.struct_v4l2_hevc_pred_weight_table
+type cV4L2HEVCDPBEntry C.struct_v4l2_hevc_dpb_entry
+type cV4L2CtrlHEVCSPS C.struct_v4l2_ctrl_hevc_sps
+type cV4L2CtrlHEVCPPS C.struct_v4l2_ctrl_hevc_pps
+type cV4L2CtrlHEVCSliceParams C.struct_v4l2_ctrl_hevc_slice_params
+type cV4L2CtrlHEVCScalingMatrix C.struct_v4l2_ctrl_hevc_scaling_matrix
+type cV4L2CtrlHEVCDecodeParams C.struct_v4l2_ctrl_hevc_decode_params
+type cV4L2VP9LoopFilter C.struct_v4l2_vp9_loop_filter
+type cV4L2VP9Quantization C.struct_v4l2_vp9_quantization
+type cV4L2VP9Segmentation C.struct_v4l2_vp9_segmentation
+type cV4L2VP9MVProbs C.struct_v4l2_vp9_mv_probs
+type cV4L2CtrlVP9Frame C.struct_v4l2_ctrl_vp9_frame
+type cV4L2CtrlVP9CompressedHdr C.struct_v4l2_ctrl_vp9_compressed_hdr
+type cV4L2AV1TileInfo C.struct_v4l2_av1_tile_info
+type cV4L2AV1Quantization C.struct_v4l2_av1_quantization
+type cV4L2AV1Segmentation C.struct_v4l2_av1_segmentation
+type cV4L2AV1LoopFilter C.struct_v4l2_av1_loop_filter
+type cV4L2AV1CDEF C.struct_v4l2_av1_cdef
+type cV4L2AV1LoopRestoration C.struct_v4l2_av1_loop_restoration
+type cV4L2AV1GlobalMotion C.struct_v4l2_av1_global_motion
+type cV4L2CtrlAV1Sequence C.struct_v4l2_ctrl_av1_sequence
+type cV4L2CtrlAV1TileGroupEntry C.struct_v4l2_ctrl_av1_tile_group_entry
+type cV4L2CtrlAV1Frame C.struct_v4l2_ctrl_av1_frame
+type cV4L2CtrlAV1FilmGrain C.struct_v4l2_ctrl_av1_film_grain
 `
 
 var ioctlConsts = []string{
@@ -1148,4 +1172,17 @@ var uapiConsts = []string{
 	"V4L2_SUBDEV_ROUTE_FL_ACTIVE",
 	"V4L2_SUBDEV_CLIENT_CAP_STREAMS",
 	"V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH",
+	"V4L2_CID_STATELESS_HEVC_SPS",
+	"V4L2_CID_STATELESS_HEVC_PPS",
+	"V4L2_CID_STATELESS_HEVC_SLICE_PARAMS",
+	"V4L2_CID_STATELESS_HEVC_SCALING_MATRIX",
+	"V4L2_CID_STATELESS_HEVC_DECODE_PARAMS",
+	"V4L2_CID_STATELESS_HEVC_DECODE_MODE",
+	"V4L2_CID_STATELESS_HEVC_START_CODE",
+	"V4L2_CID_STATELESS_HEVC_ENTRY_POINT_OFFSETS",
+	"V4L2_CID_STATELESS_VP9_COMPRESSED_HDR",
+	"V4L2_CID_STATELESS_AV1_SEQUENCE",
+	"V4L2_CID_STATELESS_AV1_TILE_GROUP_ENTRY",
+	"V4L2_CID_STATELESS_AV1_FRAME",
+	"V4L2_CID_STATELESS_AV1_FILM_GRAIN",
 }

@@ -193,8 +193,19 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"cV4L2RemoveBuffers":   uintptr(C.sizeof_struct_v4l2_remove_buffers),
 		"cV4L2Selection":       uintptr(C.sizeof_struct_v4l2_selection),
 		"cV4L2Standard":        uintptr(C.sizeof_struct_v4l2_standard),
-		"cV4L2StreamParm":      uintptr(C.sizeof_struct_v4l2_streamparm),
-		"cV4L2Tuner":           uintptr(C.sizeof_struct_v4l2_tuner),
+		"cV4L2StreamParm":            uintptr(C.sizeof_struct_v4l2_streamparm),
+		"cV4L2Tuner":                 uintptr(C.sizeof_struct_v4l2_tuner),
+		"cV4L2CtrlHEVCSPS":           uintptr(C.sizeof_struct_v4l2_ctrl_hevc_sps),
+		"cV4L2CtrlHEVCPPS":           uintptr(C.sizeof_struct_v4l2_ctrl_hevc_pps),
+		"cV4L2CtrlHEVCSliceParams":   uintptr(C.sizeof_struct_v4l2_ctrl_hevc_slice_params),
+		"cV4L2CtrlHEVCScalingMatrix": uintptr(C.sizeof_struct_v4l2_ctrl_hevc_scaling_matrix),
+		"cV4L2CtrlHEVCDecodeParams":  uintptr(C.sizeof_struct_v4l2_ctrl_hevc_decode_params),
+		"cV4L2CtrlVP9Frame":          uintptr(C.sizeof_struct_v4l2_ctrl_vp9_frame),
+		"cV4L2CtrlVP9CompressedHdr":  uintptr(C.sizeof_struct_v4l2_ctrl_vp9_compressed_hdr),
+		"cV4L2CtrlAV1Sequence":       uintptr(C.sizeof_struct_v4l2_ctrl_av1_sequence),
+		"cV4L2CtrlAV1TileGroupEntry": uintptr(C.sizeof_struct_v4l2_ctrl_av1_tile_group_entry),
+		"cV4L2CtrlAV1Frame":          uintptr(C.sizeof_struct_v4l2_ctrl_av1_frame),
+		"cV4L2CtrlAV1FilmGrain":      uintptr(C.sizeof_struct_v4l2_ctrl_av1_film_grain),
 	}
 	out := make([]abiPair, 0, len(goSizes))
 	for name, got := range goSizes {
