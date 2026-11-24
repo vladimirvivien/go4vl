@@ -53,20 +53,20 @@ func main() {
 	}
 	defer req.Close()
 
-	// Build a minimal 1920x1080 stateless HEVC SPS/PPS/DecodeParams control batch
-	// bound to the allocated MediaRequest and validate it via VIDIOC_TRY_EXT_CTRLS.
+	// Build a minimal 1920x1080 stateless HEVC SPS/PPS/DecodeParams control batch,
+	// validate it via VIDIOC_TRY_EXT_CTRLS, then bind it to the MediaRequest via
+	// VIDIOC_S_EXT_CTRLS.
 	ctrls := v4l2.NewExtControls()
-	ctrls.SetRequestFD(req.Fd())
 
 	sps := &v4l2.ControlHEVCSPS{
-		Pic_width_in_luma_samples:               1920,
-		Pic_height_in_luma_samples:              1080,
-		Chroma_format_idc:                       1, // 4:2:0
-		Log2_min_luma_coding_block_size_minus3:  0,
-		Log2_diff_max_min_luma_coding_block_size: 3,
-		Log2_min_luma_transform_block_size_minus2: 0,
+		Pic_width_in_luma_samples:                   1920,
+		Pic_height_in_luma_samples:                  1080,
+		Chroma_format_idc:                           1, // 4:2:0
+		Log2_min_luma_coding_block_size_minus3:      0,
+		Log2_diff_max_min_luma_coding_block_size:    3,
+		Log2_min_luma_transform_block_size_minus2:   0,
 		Log2_diff_max_min_luma_transform_block_size: 3,
-		Sps_max_dec_pic_buffering_minus1:        1,
+		Sps_max_dec_pic_buffering_minus1:            1,
 	}
 	pps := &v4l2.ControlHEVCPPS{
 		Init_qp_minus26: 0,
@@ -88,7 +88,13 @@ func main() {
 	if err := v4l2.TryExtControls(vfd, ctrls); err != nil {
 		log.Fatalf("TryExtControls(HEVC): %v", err)
 	}
-	fmt.Printf("Validated stateless HEVC SPS/PPS/DecodeParams with request FD %d\n", req.Fd())
+	fmt.Println("Validated stateless HEVC SPS/PPS/DecodeParams via VIDIOC_TRY_EXT_CTRLS")
+
+	ctrls.SetRequestFD(req.Fd())
+	if err := v4l2.SetExtControls(vfd, ctrls); err != nil {
+		log.Fatalf("SetExtControls(HEVC, reqFD=%d): %v", req.Fd(), err)
+	}
+	fmt.Printf("Bound stateless HEVC controls to MediaRequest FD %d via VIDIOC_S_EXT_CTRLS\n", req.Fd())
 
 	if err := req.Reinit(); err != nil {
 		log.Fatalf("req.Reinit: %v", err)
