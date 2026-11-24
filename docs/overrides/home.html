@@ -1,0 +1,864 @@
+{% extends "main.html" %}
+
+{% block extrahead %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css">
+{% endblock %}
+
+{% block tabs %}
+{{ super() }}
+
+<style>
+  .md-main {
+    flex-grow: 0;
+  }
+  .md-main__inner {
+    display: flex;
+    height: 100%;
+    margin-top: 0;
+  }
+  .md-content__inner {
+    max-width: 66rem;
+    margin: 0 auto;
+    padding: 0.5rem 1rem 2rem;
+  }
+
+  /* =====================================================
+     LIGHT HERO BAND (default light scheme matching logo colors)
+     ===================================================== */
+  .tx-container {
+    padding: 2.75rem 0 3rem;
+    background: linear-gradient(180deg, #E6FAF7 0%, #F4FDFC 52%, #FFFFFF 100%);
+    border-bottom: 1px solid #CCFBF1;
+  }
+  [data-md-color-scheme="slate"] .tx-container {
+    background: linear-gradient(180deg, #061819 0%, #0B2627 55%, #113537 100%);
+    border-bottom: 1px solid rgba(94, 234, 212, 0.16);
+  }
+  .tx-container > .md-grid {
+    max-width: 78rem;
+  }
+  .tx-hero {
+    margin: 0 .8rem;
+    color: #0F172A;
+  }
+  [data-md-color-scheme="slate"] .tx-hero {
+    color: #F8FAFC;
+  }
+  .tx-hero__split {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 2.25rem;
+    align-items: center;
+  }
+  .tx-hero__left,
+  .tx-hero__right {
+    min-width: 0;
+  }
+  .tx-hero__logo-wrap {
+    margin-bottom: 1.25rem;
+  }
+  .tx-hero__logo {
+    display: block;
+    max-height: 112px;
+    width: auto;
+  }
+  .tx-hero__logo--dark {
+    display: none;
+  }
+  [data-md-color-scheme="slate"] .tx-hero__logo--light {
+    display: none;
+  }
+  [data-md-color-scheme="slate"] .tx-hero__logo--dark {
+    display: block;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+  }
+
+  .tx-hero .tx-hero__headline {
+    font-size: 2.25rem;
+    font-weight: 900;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.85rem 0;
+    color: #0F172A;
+    overflow-wrap: break-word;
+  }
+  [data-md-color-scheme="slate"] .tx-hero .tx-hero__headline {
+    color: #FFFFFF;
+  }
+  .tx-hero .tx-hero__accent {
+    color: #8E0D10;
+  }
+  [data-md-color-scheme="slate"] .tx-hero .tx-hero__accent {
+    color: #5EEAD4;
+  }
+  .tx-hero .tx-hero__subhead {
+    font-size: 1.08rem;
+    font-weight: 400;
+    line-height: 1.6;
+    margin: 0 0 1.35rem 0;
+    color: #334155;
+  }
+  [data-md-color-scheme="slate"] .tx-hero .tx-hero__subhead {
+    color: rgba(240, 253, 250, 0.84);
+  }
+
+  /* Install bar */
+  .hero-install-box {
+    display: inline-flex;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1.5px solid #5EEAD4;
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    max-width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 14px rgba(0, 137, 123, 0.12);
+  }
+  [data-md-color-scheme="slate"] .hero-install-box {
+    background: rgba(8, 27, 28, 0.92);
+    border-color: rgba(94, 234, 212, 0.35);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  }
+  .hero-install-prompt {
+    color: #8E0D10;
+    font-weight: 800;
+    margin-right: 0.5rem;
+    user-select: none;
+    font-family: var(--md-code-font-family, monospace);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+  [data-md-color-scheme="slate"] .hero-install-prompt {
+    color: #5EEAD4;
+  }
+  .md-typeset .hero-install-box code,
+  .hero-install-cmd {
+    color: #0F172A !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-family: var(--md-code-font-family, monospace);
+    font-size: clamp(0.62rem, 0.42rem + 0.48vw, 0.80rem);
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  [data-md-color-scheme="slate"] .hero-install-cmd {
+    color: #E2E8F0 !important;
+  }
+  .hero-install-cmd .cmd-bin { color: #00695C; font-weight: 700; }
+  .hero-install-cmd .cmd-pkg { color: #8E0D10; font-weight: 600; }
+  [data-md-color-scheme="slate"] .hero-install-cmd .cmd-bin { color: #5EEAD4; }
+  [data-md-color-scheme="slate"] .hero-install-cmd .cmd-pkg { color: #FCA5A5; }
+
+  .hero-copy-btn {
+    background: transparent;
+    border: none;
+    color: #475569;
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    margin-left: 0.45rem;
+    display: flex;
+    align-items: center;
+    border-radius: 0.25rem;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .hero-copy-btn:hover {
+    color: #00695C;
+    background: rgba(0, 182, 165, 0.12);
+  }
+  [data-md-color-scheme="slate"] .hero-copy-btn {
+    color: rgba(255, 255, 255, 0.65);
+  }
+  [data-md-color-scheme="slate"] .hero-copy-btn:hover {
+    color: #5EEAD4;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .hero-copy-btn svg {
+    width: 1rem;
+    height: 1rem;
+    fill: currentColor;
+  }
+
+  .tx-hero__ctas {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 1.35rem;
+  }
+  .tx-hero .md-button {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+    padding: 0.55rem 1.25rem;
+    border-radius: 0.375rem;
+    color: #00695C;
+    border-color: #00897B;
+    background: transparent;
+  }
+  .tx-hero .md-button:hover,
+  .tx-hero .md-button:focus {
+    background-color: #00897B;
+    color: #FFFFFF;
+    border-color: #00897B;
+  }
+  [data-md-color-scheme="slate"] .tx-hero .md-button {
+    color: #5EEAD4;
+    border-color: rgba(94, 234, 212, 0.65);
+  }
+  [data-md-color-scheme="slate"] .tx-hero .md-button:hover {
+    background-color: #00897B;
+    color: #FFFFFF;
+    border-color: #00897B;
+  }
+  .tx-hero .md-button--primary {
+    background-color: #8E0D10;
+    color: #FFFFFF;
+    border-color: #8E0D10;
+  }
+  .tx-hero .md-button--primary:hover,
+  .tx-hero .md-button--primary:focus {
+    background-color: #B0171B;
+    color: #FFFFFF;
+    border-color: #B0171B;
+  }
+  [data-md-color-scheme="slate"] .tx-hero .md-button--primary {
+    background-color: #C82328;
+    border-color: #C82328;
+    color: #FFFFFF;
+  }
+
+  @media (max-width: 55em) {
+    .tx-hero__split {
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+    }
+    .tx-hero__left {
+      text-align: center;
+    }
+    .tx-hero__logo {
+      margin: 0 auto;
+      max-height: 92px;
+    }
+    .tx-hero .tx-hero__headline {
+      font-size: 1.8rem;
+    }
+    .tx-hero__ctas {
+      justify-content: center;
+    }
+  }
+
+  /* =====================================================
+     HERO RIGHT COLUMN — Interactive Go Terminal Carousel
+     ===================================================== */
+  .hero-terminal {
+    background: #07191A;
+    border: 1.5px solid #00897B;
+    border-radius: 0.55rem;
+    overflow: hidden;
+    box-shadow: 0 16px 38px rgba(4, 26, 26, 0.22), 0 0 0 1px rgba(0, 182, 165, 0.18);
+    width: 100%;
+    text-align: left;
+    container-type: inline-size;
+    container-name: hero-terminal;
+  }
+  .hero-terminal input[type="radio"] {
+    display: none;
+  }
+  .hero-terminal__bar {
+    display: flex;
+    align-items: center;
+    background: #0D2527;
+    border-bottom: 1px solid rgba(94, 234, 212, 0.22);
+    height: 2.65rem;
+    padding: 0 0.85rem;
+    user-select: none;
+    gap: 0.75rem;
+  }
+  .hero-terminal__dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .hero-terminal__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .hero-terminal__dot--red { background: #E04F54; }
+  .hero-terminal__dot--yellow { background: #FBBF24; }
+  .hero-terminal__dot--green { background: #00B6A5; }
+
+  .hero-tab-nav {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 0.2rem;
+    align-items: center;
+  }
+  .hero-tab-nav::-webkit-scrollbar { display: none; }
+  .hero-tab-nav label {
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: clamp(0.62rem, 0.42rem + 0.7cqw, 0.76rem);
+    color: rgba(240, 253, 250, 0.65);
+    border-radius: 0.3rem;
+    transition: color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .hero-tab-nav label:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  #hero-tab-capture:checked ~ .hero-terminal__bar .hero-tab-nav label[for="hero-tab-capture"],
+  #hero-tab-mplane:checked ~ .hero-terminal__bar .hero-tab-nav label[for="hero-tab-mplane"],
+  #hero-tab-media:checked ~ .hero-terminal__bar .hero-tab-nav label[for="hero-tab-media"],
+  #hero-tab-hevc:checked ~ .hero-terminal__bar .hero-tab-nav label[for="hero-tab-hevc"] {
+    color: #5EEAD4;
+    background: rgba(0, 182, 165, 0.22);
+  }
+
+  .hero-terminal__copy {
+    background: transparent;
+    border: none;
+    color: rgba(240, 253, 250, 0.65);
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+    display: flex;
+    align-items: center;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+  }
+  .hero-terminal__copy:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .hero-terminal__copy svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    fill: currentColor;
+  }
+
+  .hero-tab-pane { display: none; }
+  #hero-tab-capture:checked ~ .hero-tab-pane[data-tab="capture"],
+  #hero-tab-mplane:checked ~ .hero-tab-pane[data-tab="mplane"],
+  #hero-tab-media:checked ~ .hero-tab-pane[data-tab="media"],
+  #hero-tab-hevc:checked ~ .hero-tab-pane[data-tab="hevc"] {
+    display: block;
+  }
+
+  .hero-terminal__code pre {
+    margin: 0;
+    padding: 1rem 1.2rem;
+    background: #07191A;
+    color: #ECFEFF;
+    font-size: clamp(0.68rem, 0.38rem + 1.15cqw, 0.86rem);
+    line-height: 1.54;
+    height: 19.5rem;
+    box-sizing: border-box;
+    overflow: auto;
+    font-family: var(--md-code-font-family, monospace);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  .md-typeset .hero-terminal__code pre code,
+  .hero-terminal__code pre code {
+    background: transparent !important;
+    color: #ECFEFF !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+    font-family: inherit !important;
+    line-height: inherit !important;
+  }
+  .hero-terminal .hljs-keyword { color: #F87171 !important; }
+  .hero-terminal .hljs-type,
+  .hero-terminal .hljs-built_in { color: #5EEAD4 !important; }
+  .hero-terminal .hljs-title { color: #FBBF24 !important; }
+  .hero-terminal .hljs-string { color: #99F6E4 !important; }
+  .hero-terminal .hljs-comment { color: #64748B !important; font-style: italic; }
+  .hero-terminal .hljs-number { color: #FCA5A5 !important; }
+
+  .hero-carousel__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 1rem 0.55rem;
+    background: #091E20;
+    border-top: 1px solid rgba(94, 234, 212, 0.12);
+    font-family: var(--md-code-font-family, monospace);
+    font-size: 0.72rem;
+    color: rgba(240, 253, 250, 0.65);
+  }
+  .hero-carousel__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .hero-carousel__btn {
+    background: transparent;
+    border: none;
+    color: rgba(240, 253, 250, 0.55);
+    cursor: pointer;
+    padding: 0.15rem 0.25rem;
+    display: flex;
+    align-items: center;
+    border-radius: 0.25rem;
+  }
+  .hero-carousel__btn:hover { color: #5EEAD4; }
+  .hero-carousel__btn svg { width: 1rem; height: 1rem; fill: currentColor; }
+  .hero-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .hero-dot.active {
+    background: #00B6A5;
+    transform: scale(1.25);
+  }
+
+  /* =====================================================
+     BODY SECTIONS — Centered dividers + two-column splits
+     ===================================================== */
+  .section-divider {
+    text-align: center;
+    margin: 3.75rem 0 1.5rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--md-typeset-table-color);
+  }
+  .md-typeset h2.section-divider__title {
+    font-size: 2.25em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 0.5rem 0;
+    color: var(--md-typeset-color);
+  }
+  .section-divider__title em {
+    color: var(--md-primary-fg-color);
+    font-style: normal;
+  }
+  .section-divider__title strong {
+    color: var(--md-accent-fg-color);
+    font-weight: 800;
+  }
+  .section-divider__sub {
+    color: var(--md-default-fg-color--light);
+    font-size: 1.02rem;
+    max-width: 44rem;
+    margin: 0 auto;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .md-typeset h2.section-heading {
+    font-size: 1.75em;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin-top: 2.75rem;
+    margin-bottom: 1rem;
+  }
+  .section-heading svg {
+    width: 1.05em;
+    height: 1.05em;
+    fill: currentColor;
+    flex-shrink: 0;
+    color: var(--md-accent-fg-color);
+  }
+
+  .feature-section {
+    margin: 1rem 0 2.75rem;
+  }
+  .feature-section__split {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+  .feature-section__text,
+  .feature-section__visual {
+    min-width: 0;
+  }
+  .feature-section__text p {
+    font-size: 0.98rem;
+    line-height: 1.65;
+    margin: 0 0 0.85rem 0;
+  }
+  .feature-section__cta {
+    display: inline-block;
+    margin-top: 0.35rem;
+    color: var(--md-accent-fg-color);
+    font-weight: 700;
+    font-size: 0.94rem;
+    text-decoration: none;
+  }
+  .feature-section__cta:hover {
+    text-decoration: underline;
+  }
+  .feature-section__cta::after {
+    content: " \2192";
+  }
+  .feature-section__visual pre {
+    margin: 0;
+  }
+  @media (max-width: 60em) {
+    .feature-section__split {
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+  }
+
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+  .arch-card {
+    padding: 1rem 1.1rem;
+    border-radius: 0.45rem;
+    border: 1px solid var(--md-typeset-table-color);
+    border-top: 3px solid var(--md-primary-fg-color);
+    background: var(--md-default-bg-color--light);
+  }
+  .arch-card code {
+    font-weight: 700;
+    color: var(--md-accent-fg-color);
+  }
+</style>
+
+<section class="tx-container">
+  <div class="md-grid md-typeset">
+    <div class="tx-hero">
+      <div class="tx-hero__split">
+        <div class="tx-hero__left">
+          <div class="tx-hero__logo-wrap">
+            <img src="{{ 'assets/images/go4vl-logo-light.png' | url }}" alt="go4vl - Video Linux" class="tx-hero__logo tx-hero__logo--light">
+            <img src="{{ 'assets/images/go4vl-logo-dark.png' | url }}" alt="go4vl - Video Linux" class="tx-hero__logo tx-hero__logo--dark">
+          </div>
+          <h1 class="tx-hero__headline">Idiomatic Go for <span class="tx-hero__accent">Video for Linux 2</span></h1>
+          <p class="tx-hero__subhead">
+            Capture frames, control hardware cameras, inspect Media Controller pipelines, and drive V4L2 codecs directly from Go with <code>CGO_ENABLED=0</code>, zero-copy <code>iter.Seq2</code> streaming, and first-class multi-arch Linux support.
+          </p>
+
+          <div class="hero-install-box">
+            <span class="hero-install-prompt">$</span>
+            <code class="hero-install-cmd"><span class="cmd-bin">go get</span> <span class="cmd-pkg">github.com/vladimirvivien/go4vl/v4l2</span></code>
+            <button class="hero-copy-btn" onclick="copyText('go get github.com/vladimirvivien/go4vl/v4l2', this)" aria-label="Copy go get command" title="Copy command">
+              <svg viewBox="0 0 24 24"><path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+            </button>
+          </div>
+
+          <div class="tx-hero__ctas">
+            <a href="{{ 'getting-started/' | url }}" class="md-button md-button--primary">Get Started</a>
+            <a href="https://pkg.go.dev/github.com/vladimirvivien/go4vl" class="md-button">API Reference</a>
+            <a href="https://github.com/vladimirvivien/go4vl" class="md-button">GitHub</a>
+          </div>
+        </div>
+
+        <div class="tx-hero__right">
+          <div class="hero-terminal">
+            <input type="radio" id="hero-tab-capture" name="hero-tab" checked>
+            <input type="radio" id="hero-tab-mplane" name="hero-tab">
+            <input type="radio" id="hero-tab-media" name="hero-tab">
+            <input type="radio" id="hero-tab-hevc" name="hero-tab">
+
+            <div class="hero-terminal__bar">
+              <div class="hero-terminal__dots">
+                <span class="hero-terminal__dot hero-terminal__dot--red"></span>
+                <span class="hero-terminal__dot hero-terminal__dot--yellow"></span>
+                <span class="hero-terminal__dot hero-terminal__dot--green"></span>
+              </div>
+              <div class="hero-tab-nav">
+                <label for="hero-tab-capture">Zero-Copy</label>
+                <label for="hero-tab-mplane">Multi-Planar</label>
+                <label for="hero-tab-media">Media &amp; Subdev</label>
+                <label for="hero-tab-hevc">Stateless HEVC</label>
+              </div>
+              <button class="hero-terminal__copy" onclick="copyActiveSnippet(this)" aria-label="Copy active Go snippet" title="Copy code">
+                <svg viewBox="0 0 24 24"><path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+              </button>
+            </div>
+
+            <div class="hero-tab-pane" data-tab="capture">
+              <div class="hero-terminal__code">
+                <pre data-filename="iter_capture.go"><code class="language-go">// Zero-copy MMAP capture via Go iter.Seq2
+dev, err := device.Open("/dev/video0",
+    device.WithBufferSize(4),
+    device.WithPixFormat(v4l2.PixFormat{
+        Width: 1280, Height: 720,
+        PixelFormat: v4l2.PixelFmtMJPEG,
+    }),
+)
+defer dev.Close()
+dev.Start(ctx)
+defer dev.Stop()
+
+for frame, err := range dev.Frames(ctx) {
+    process(frame.Data) // slices MMAP memory directly
+} // automatically re-queued via VIDIOC_QBUF</code></pre>
+              </div>
+            </div>
+
+            <div class="hero-tab-pane" data-tab="mplane">
+              <div class="hero-terminal__code">
+                <pre data-filename="mplane_device.go"><code class="language-go">// Discontiguous multi-planar (MPLANE) capture
+dev, err := device.Open("/dev/video10",
+    device.WithBufferType(v4l2.BufTypeVideoCaptureMPlane),
+    device.WithBufferSize(4),
+    device.WithPixFormatMPlane(v4l2.PixFormatMPlane{
+        Width: 1920, Height: 1080,
+    }),
+)
+defer dev.Close()
+dev.Start(ctx)
+
+for frame, err := range dev.Frames(ctx) {
+    yPlane, uvPlane := frame.Planes[0], frame.Planes[1]
+    handleYUV(yPlane, uvPlane)
+}</code></pre>
+              </div>
+            </div>
+
+            <div class="hero-tab-pane" data-tab="media">
+              <div class="hero-terminal__code">
+                <pre data-filename="media_subdev.go"><code class="language-go">// Inspect /dev/media* topology and /dev/v4l-subdev* pads
+mfd, _ := v4l2.OpenDevice("/dev/media0", sys.O_RDWR, 0)
+defer v4l2.CloseDevice(mfd)
+
+topo, _ := v4l2.GetMediaTopology(mfd)
+fmt.Printf("Entities: %d, Links: %d\n",
+    len(topo.Entities), len(topo.Links))
+
+sfd, _ := v4l2.OpenDevice("/dev/v4l-subdev0", sys.O_RDWR, 0)
+defer v4l2.CloseDevice(sfd)
+fmtPad, _ := v4l2.GetSubdevFormat(sfd, 0, v4l2.SubdevFormatActive)
+routes, _ := v4l2.GetSubdevRouting(sfd, v4l2.SubdevFormatActive)</code></pre>
+              </div>
+            </div>
+
+            <div class="hero-tab-pane" data-tab="hevc">
+              <div class="hero-terminal__code">
+                <pre data-filename="stateless_hevc.go"><code class="language-go">// Bind stateless HEVC controls to a MediaRequest FD
+req, _ := v4l2.AllocMediaRequest(mfd)
+defer req.Close()
+
+ctrls := v4l2.NewExtControls()
+ctrls.AddHEVCSPS(&amp;v4l2.ControlHEVCSPS{
+    Pic_width_in_luma_samples:  1920,
+    Pic_height_in_luma_samples: 1080,
+})
+v4l2.TryExtControls(vfd, ctrls)
+
+ctrls.SetRequestFD(req.Fd())
+v4l2.SetExtControls(vfd, ctrls)
+req.Queue() // commit atomic decode job to hardware</code></pre>
+              </div>
+            </div>
+
+            <div class="hero-carousel__nav">
+              <span id="hero-terminal-filename">iter_capture.go</span>
+              <div class="hero-carousel__controls">
+                <button type="button" class="hero-carousel__btn" onclick="prevTab()" aria-label="Previous snippet">
+                  <svg viewBox="0 0 24 24"><path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/></svg>
+                </button>
+                <div id="hero-carousel-dots" style="display:flex; gap:0.4rem;"></div>
+                <button type="button" class="hero-carousel__btn" onclick="nextTab()" aria-label="Next snippet">
+                  <svg viewBox="0 0 24 24"><path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="section-divider" style="border-top:none; margin-top:1.5rem; padding-top:0.5rem;">
+  <h2 class="section-divider__title">Two Tiers. <em>Zero CGO.</em> <strong>Full V4L2 Control.</strong></h2>
+  <p class="section-divider__sub">Start with the ergonomic <code>device</code> package for everyday capture and output, or drop straight to <code>v4l2</code> when you need direct ioctl control.</p>
+</div>
+
+<h2 class="section-heading">
+  <svg viewBox="0 0 24 24"><path d="M12,2L2,7L12,12L22,7L12,2M2,17L12,22L22,17V12L12,17L2,12V17M2,12L12,17L22,12V9L12,14L2,9V12Z"/></svg>
+  Layered Architecture
+</h2>
+<section class="feature-section">
+  <div class="feature-section__split">
+    <div class="feature-section__text">
+      <p><code>go4vl</code> separates everyday application ergonomics from low-level kernel ABI details. High-level callers open a <code>*device.Device</code>, negotiate pixel formats with functional options, and stream frames through Go iterators or pooled channels.</p>
+      <p>Beneath that layer, <code>v4l2</code> talks directly to <code>/dev/video*</code>, <code>/dev/media*</code>, and <code>/dev/v4l-subdev*</code> through <code>golang.org/x/sys/unix</code> and architecture-specific UAPI bindings generated from Linux kernel headers.</p>
+      <a href="{{ 'getting-started/' | url }}" class="feature-section__cta">Explore the architecture</a>
+    </div>
+    <div class="feature-section__visual">
+      <div class="diagram-frame">
+        <img src="{{ 'assets/images/arch-two-tier.png' | url }}" alt="go4vl Two-Tier Architecture diagram">
+      </div>
+    </div>
+  </div>
+</section>
+
+<h2 class="section-heading">
+  <svg viewBox="0 0 24 24"><path d="M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"/></svg>
+  Zero-Copy Streaming &amp; Pooled Channels
+</h2>
+<section class="feature-section">
+  <div class="feature-section__split">
+    <div class="feature-section__visual">
+      <div class="diagram-frame">
+        <img src="{{ 'assets/images/mmap-zero-copy-flow.png' | url }}" alt="MMAP Ring Buffer and Frame Delivery Paths diagram">
+      </div>
+    </div>
+    <div class="feature-section__text">
+      <p>Range directly over memory-mapped kernel buffers using <code>Device.Frames(ctx)</code> (<code>iter.Seq2[*device.Frame, error]</code>). Each iteration waits with <code>v4l2.Poll</code>, yields a slice backed directly by the kernel MMAP ring with zero copies, and automatically re-queues the buffer via <code>VIDIOC_QBUF</code>—even on <code>break</code> or early return.</p>
+      <p>When your pipeline fans frames across goroutines or multiplexes Go channels with <code>select</code>, use <code>Device.GetFrames()</code> backed by <code>FramePool</code> and call <code>frame.Release()</code> to recycle memory.</p>
+      <a href="{{ 'guides/streaming/' | url }}" class="feature-section__cta">Read the streaming &amp; I/O guide</a>
+    </div>
+  </div>
+</section>
+
+<h2 class="section-heading">
+  <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,12H7V10H17V12M17,16H7V14H17V16M17,8H7V6H17V8Z"/></svg>
+  Multi-Planar Formats, Output &amp; DMA-BUF
+</h2>
+<section class="feature-section">
+  <div class="feature-section__split">
+    <div class="feature-section__text">
+      <p>SoC image signal processors and hardware codecs store luma and chroma channels in separate, non-contiguous memory planes. <code>go4vl</code> handles both single-planar formats and multi-planar <code>MPLANE</code> streams uniformly via <code>WithPixFormatMPlane</code>, per-plane slices in <code>frame.Planes</code>, and <code>WriteFramePlanes</code>.</p>
+      <p>You can also drive video output devices with <code>WriteFrame</code>, share zero-copy DMA-BUF file descriptors with <code>ExportBuffer</code> and <code>ExportBufferPlane</code>, capture ISP metadata via <code>MetaFormat</code>, and negotiate HDMI EDID blocks.</p>
+      <a href="{{ 'guides/formats/' | url }}" class="feature-section__cta">Explore formats &amp; MPLANE</a>
+    </div>
+    <div class="feature-section__visual">
+      <div class="diagram-frame">
+        <img src="{{ 'assets/images/mplane-memory-layout.png' | url }}" alt="Single-Planar vs Multi-Planar MPLANE Memory Layout diagram">
+      </div>
+    </div>
+  </div>
+</section>
+
+<h2 class="section-heading">
+  <svg viewBox="0 0 24 24"><path d="M14,6L10.25,11L13.1,14.8L11.5,16C9.81,13.75 7,10 7,10L1,18H23L14,6Z"/></svg>
+  Media Controller, Sub-devices &amp; Hardware Codecs
+</h2>
+<section class="feature-section">
+  <div class="feature-section__split">
+    <div class="feature-section__visual">
+      <div class="diagram-frame">
+        <img src="{{ 'assets/images/media-subdev-pipeline.png' | url }}" alt="Linux Media Controller and Sub-device Pipeline Topology diagram">
+      </div>
+    </div>
+    <div class="feature-section__text">
+      <p>Embedded cameras expose complex pipelines spanning <code>/dev/media*</code>, <code>/dev/v4l-subdev*</code>, and multiple video nodes. Query full graph topologies with <code>GetMediaTopology</code>, enable media links, negotiate sub-device pad formats and routing tables, and drive hardware codecs through <code>M2MSession</code>, <code>v4l2.Poller</code>, and <code>MediaRequest</code> FDs for H.264, HEVC, VP8, VP9, AV1, MPEG2, and FWHT.</p>
+      <p><a href="{{ 'guides/media-subdev/' | url }}" class="feature-section__cta">Media Controller &amp; Sub-devices</a> &nbsp;&middot;&nbsp; <a href="{{ 'guides/codecs-m2m/' | url }}" class="feature-section__cta">Codecs &amp; M2M pipelines</a></p>
+    </div>
+  </div>
+</section>
+
+<h2 class="section-heading">
+  <svg viewBox="0 0 24 24"><path d="M17,17H7V7H17M21,11V9H19V7C19,5.89 18.1,5 17,5H15V3H13V5H11V3H9V5H7C5.89,5 5,5.89 5,7V9H3V11H5V13H3V15H5V17A2,2 0 0,0 7,19H9V21H11V19H13V21H15V19H17A2,2 0 0,0 19,17V15H21V13H19V11M15,15H9V9H15V15Z"/></svg>
+  Cross-Compile Anywhere Without CGO
+</h2>
+<p>Checked-in UAPI definitions (<code>zconsts_linux.go</code> and per-architecture <code>ztypes_linux_*.go</code>) eliminate C toolchains and kernel header dependencies at build time. Cross-compile static Linux binaries directly from Linux, macOS, or Windows.</p>
+
+<div class="arch-grid">
+  <div class="arch-card">
+    <code>linux/amd64</code>
+    <p style="margin:0.45rem 0 0; font-size:0.88rem;">Workstations, servers, and x86_64 capture appliances.</p>
+  </div>
+  <div class="arch-card">
+    <code>linux/arm64</code>
+    <p style="margin:0.45rem 0 0; font-size:0.88rem;">Raspberry Pi 4/5 (64-bit), Jetson, and edge compute nodes.</p>
+  </div>
+  <div class="arch-card">
+    <code>linux/arm</code>
+    <p style="margin:0.45rem 0 0; font-size:0.88rem;">32-bit Raspberry Pi OS and embedded ARMv7 boards.</p>
+  </div>
+  <div class="arch-card">
+    <code>linux/riscv64</code>
+    <p style="margin:0.45rem 0 0; font-size:0.88rem;">64-bit RISC-V Linux single-board systems.</p>
+  </div>
+</div>
+
+<div style="margin-top:1.25rem;">
+<pre><code class="language-bash"># Cross-compile static Linux binaries with CGO_ENABLED=0
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./examples/iter_capture
+CGO_ENABLED=0 GOOS=linux GOARCH=arm go build ./examples/iter_capture
+CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 go build ./examples/iter_capture</code></pre>
+<p style="margin-top:0.5rem;"><a href="{{ 'BUILD/' | url }}" class="feature-section__cta">See full build &amp; Docker instructions</a></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/go.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/languages/bash.min.js"></script>
+<script>
+  document.querySelectorAll('.hero-terminal pre code, .feature-section pre code, .md-content pre code').forEach(el => {
+    if (typeof hljs !== 'undefined') hljs.highlightElement(el);
+  });
+
+  const tabOrder = ['capture', 'mplane', 'media', 'hevc'];
+  let activeTabIdx = 0;
+
+  function selectTab(idx) {
+    activeTabIdx = (idx + tabOrder.length) % tabOrder.length;
+    const name = tabOrder[activeTabIdx];
+    const radio = document.getElementById('hero-tab-' + name);
+    if (radio) radio.checked = true;
+    const pane = document.querySelector(`.hero-tab-pane[data-tab="${name}"] pre`);
+    const fnameEl = document.getElementById('hero-terminal-filename');
+    if (pane && fnameEl) fnameEl.textContent = pane.dataset.filename || '';
+    const dots = document.getElementById('hero-carousel-dots');
+    if (dots) {
+      dots.innerHTML = tabOrder.map((t, i) =>
+        `<button type="button" class="hero-dot ${i === activeTabIdx ? 'active' : ''}" onclick="selectTab(${i})" aria-label="Snippet ${i + 1}"></button>`
+      ).join('');
+    }
+  }
+  function nextTab() { selectTab(activeTabIdx + 1); }
+  function prevTab() { selectTab(activeTabIdx - 1); }
+
+  tabOrder.forEach((t, i) => {
+    const r = document.getElementById('hero-tab-' + t);
+    if (r) r.addEventListener('change', () => selectTab(i));
+  });
+
+  function copyText(text, btn) {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => showCopied(btn));
+  }
+  function copyActiveSnippet(btn) {
+    const name = tabOrder[activeTabIdx];
+    const code = document.querySelector(`.hero-tab-pane[data-tab="${name}"] code`);
+    if (code && navigator.clipboard) {
+      navigator.clipboard.writeText(code.innerText || code.textContent).then(() => showCopied(btn));
+    }
+  }
+  function showCopied(btn) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span style="font-size:0.72rem;font-weight:700;color:#00B6A5;">Copied</span>';
+    setTimeout(() => { btn.innerHTML = orig; }, 1800);
+  }
+  selectTab(0);
+</script>
+
+{% endblock %}
