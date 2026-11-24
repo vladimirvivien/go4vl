@@ -44,7 +44,7 @@ Working directly with V4L2 in Go requires complex ioctl marshaling and manual me
 * High-level and low-level multi-planar (`MPLANE`) capture/output (`WithPixFormatMPlane`, `Frame.Planes`), Metadata Format API (`GetMetaFormat`/`SetMetaFormat`/`TryMetaFormat`), Selection API, DMA-BUF, buffer lifecycle (`PrepareBuffer`, `RemoveBuffers`), and dual-queue M2M sessions (`v4l2.M2MSession`)
 * Media Controller v2 graph topology (`MEDIA_IOC_G_TOPOLOGY`, `MEDIA_IOC_SETUP_LINK`), Media Request API (`MEDIA_IOC_REQUEST_ALLOC`), HDMI EDID (`GetEDID`/`SetEDID`), and V4L2 Sub-device pad/routing SDK (`VIDIOC_SUBDEV_*`)
 * `v4l2.Poll` and `v4l2.Poller` (`epoll`) multiplexing `POLLIN | POLLOUT | POLLPRI`
-* Device enumeration, format negotiation, and user/extended/codec controls
+* Device enumeration, format negotiation, and user/extended/stateless codec controls (`H.264`, `HEVC`, `VP8`, `VP9`, `AV1`, `MPEG2`, `FWHT`)
 
 ## Prerequisites
 
