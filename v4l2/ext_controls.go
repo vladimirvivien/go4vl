@@ -44,6 +44,8 @@ type ExtControl struct {
 }
 
 // NewExtControl creates a new extended control with the specified ID for reading.
+// The value is read as an int32; to read a 64-bit control (V4L2_CTRL_TYPE_INTEGER64),
+// use NewExtControlWithValue64(id, 0) instead.
 func NewExtControl(id CtrlID) *ExtControl {
 	return &ExtControl{
 		ID: id,
@@ -294,8 +296,15 @@ func updateFromIoctl(ec *ExtControls, v4l2Ctrls *cV4L2ExtControls) {
 	for i, ctrl := range ec.controls {
 		cCtrl := &ctrlSlice[i]
 
-		// Only update value if it was a read operation (Value was nil)
-		if ctrl.Value == nil {
+		switch ctrl.Value.(type) {
+		case int64:
+			// A 64-bit control: value64 shares the union with value, so its 8 bytes
+			// start at Value. The driver returns the current value (get) or the
+			// value it applied (set, try).
+			b := (*[8]byte)(unsafe.Pointer(&cCtrl.Value))
+			ctrl.Value = int64(binary.NativeEndian.Uint64(b[:]))
+		case nil:
+			// A read of a control added without a value
 			if cCtrl.Size == 0 {
 				ctrl.Value = cCtrl.Value
 			} else {
@@ -387,6 +396,21 @@ func GetExtControlValue(fd uintptr, ctrlID CtrlID) (CtrlValue, error) {
 	}
 
 	return ctrl.GetValue(), nil
+}
+
+// GetExtControlValue64 retrieves the value of a 64-bit extended control
+// (V4L2_CTRL_TYPE_INTEGER64, such as V4L2_CID_PIXEL_RATE) with the specified id.
+// GetExtControlValue reads a value as an int32, which truncates such a control.
+func GetExtControlValue64(fd uintptr, ctrlID CtrlID) (int64, error) {
+	ctrls := NewExtControls()
+	ctrl := NewExtControlWithValue64(ctrlID, 0)
+	ctrls.Add(ctrl)
+
+	if err := GetExtControls(fd, ctrls); err != nil {
+		return 0, err
+	}
+
+	return ctrl.GetValue64(), nil
 }
 
 // SetExtControlValue saves the value for an extended control with the specified id.
@@ -489,5 +513,10 @@ func makeExtControl(qryCtrl cV4L2QueryExtCtrl) Control {
 		Step:    int32(qryCtrl.Step),
 		Default: int32(qryCtrl.Default_value),
 		Flags:   qryCtrl.Flags,
+
+		Minimum64: qryCtrl.Minimum,
+		Maximum64: qryCtrl.Maximum,
+		Step64:    qryCtrl.Step,
+		Default64: qryCtrl.Default_value,
 	}
 }
