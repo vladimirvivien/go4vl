@@ -1,355 +1,137 @@
-# Testing Guide for go4vl
+# Testing Guide for `go4vl`
 
-This comprehensive guide covers all aspects of testing the go4vl library, including unit tests, integration tests, and CI/CD setup.
+`go4vl` verifies correctness through fast hardware-free unit tests, C ABI parity checks against host Linux headers, race detector runs, and end-to-end integration tests using `v4l2loopback` or physical V4L2 devices.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
-- [Testing Approaches](#testing-approaches)
-- [Unit Tests](#unit-tests)
-- [Integration Tests](#integration-tests)
-- [Test Flags](#test-flags)
-- [Environment Variables](#environment-variables)
-- [CI/CD Setup](#cicd-setup)
+- [Unit Tests & C ABI Verification](#unit-tests--c-abi-verification)
+- [Integration Tests (`v4l2loopback` and Hardware)](#integration-tests-v4l2loopback-and-hardware)
+- [Integration Test Flags](#integration-test-flags)
+- [CI Workflow](#ci-workflow)
 - [Troubleshooting](#troubleshooting)
-- [References](#references)
+- [Performance Benchmarks](#performance-benchmarks)
 
 ## Overview
 
-The go4vl test suite uses real V4L2 devices (no mock implementations) to ensure authentic testing:
-
-- **Unit Tests** - Test packages in isolation without requiring V4L2 devices
-- **Integration Tests** - Test with vivid virtual devices or real hardware
-
-### Key Features
-
-- **Two device modes** - Real hardware (`-use-device=auto`) or v4l2loopback emulation (`-use-device-emulation=auto`)
-- **Automatic setup** - TestMain loads v4l2loopback when needed for emulation
-- **Graceful degradation** - Tests skip appropriately when devices or features aren't available
+* **Unit Tests (`./v4l2`, `./device`):** Run without V4L2 hardware or CGO by mocking the `ioctlSyscall` seam and testing buffer encoding, frame pooling, MPLANE layout helpers, and iterator cleanup.
+* **C ABI Parity (`-tags=cgo_verify`):** Verifies checked-in UAPI struct sizes, field offsets, constant values, and encoded ioctl numbers against host kernel headers.
+* **Integration Tests (`-tags=integration ./test/...`):** Exercise live kernel ioctls and streaming against virtual `v4l2loopback` nodes or attached camera/codec hardware. Streaming integration tests use an in-process `Device.WriteFrame` producer on loopback devices rather than requiring `ffmpeg` or the `vivid` kernel driver.
 
 ## Prerequisites
 
-### 1. Go Installation
+* **Go 1.26 or later**
+* **Video permissions** for physical hardware or pre-loaded loopback nodes:
+  ```bash
+  sudo usermod -a -G video "$USER"
+  # Log out and back in for group changes to apply
+  ```
+* **`v4l2loopback`** (for virtual device integration testing on hosts without physical cameras):
+  ```bash
+  # Ubuntu / Debian
+  sudo apt-get update && sudo apt-get install -y v4l2loopback-dkms
 
-Go 1.25 or later is required.
+  # Raspberry Pi OS
+  sudo apt-get install -y v4l2loopback-dkms v4l2loopback-utils raspberrypi-kernel-headers
+
+  # Or build from source against the running kernel headers
+  git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
+  cd /tmp/v4l2loopback && make && sudo make install && sudo depmod -a
+  ```
+
+## Unit Tests & C ABI Verification
+
+Run unit tests, multi-arch `CGO_ENABLED=0` builds, `go vet`, and race checks locally:
 
 ```bash
-go version
+# Standard hardware-free unit tests + coverage
+CGO_ENABLED=0 go test -v -cover ./v4l2 ./device
+CGO_ENABLED=0 go vet ./v4l2 ./device
+
+# Multi-architecture build check
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
+CGO_ENABLED=0 GOOS=linux GOARCH=arm go build ./...
+CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 go build ./...
+
+# Race detector (requires CGO=1)
+CGO_ENABLED=1 go test -race ./v4l2 ./device
+
+# Linux header ABI parity check (requires gcc and linux-libc-dev)
+CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 ```
 
-### 2. User Permissions
+## Integration Tests (`v4l2loopback` and Hardware)
 
-For integration tests, you need either:
-- Root access to load kernel modules (for vivid setup)
-- Video group membership for existing devices
+### With `v4l2loopback`
 
-```bash
-# Add user to video group
-sudo usermod -a -G video $USER
-# Logout and login for changes to take effect
-```
-
-### 3. Testing Tools (for emulated testing)
-
-v4l2loopback emulation is used in CI and on machines without video hardware. If you have a real camera (e.g., on Raspberry Pi), use `--use-device` instead and skip this section.
+Load two virtual loopback devices (using `exclusive_caps=0` so nodes advertise both `VIDEO_CAPTURE` and `VIDEO_OUTPUT` capabilities) and pass `-require-streaming` so streaming assertions execute strictly:
 
 ```bash
-# Ubuntu/Debian (x86_64)
-sudo apt-get install v4l2loopback-dkms ffmpeg
-
-# Raspberry Pi OS
-sudo apt install v4l2loopback-dkms v4l2loopback-utils raspberrypi-kernel-headers
-
-# From source (any Linux, requires kernel headers for your running kernel)
-git clone https://github.com/umlaeute/v4l2loopback.git
-cd v4l2loopback && make && sudo make install
-sudo depmod -a
-```
-
-- **v4l2loopback** - Kernel module for virtual video devices
-- **ffmpeg** - Feeds test patterns to loopback devices
-
-## Testing Approaches
-
-### 1. v4l2loopback - Virtual Video Device (Recommended for CI)
-
-**v4l2loopback** creates virtual V4L2 devices. Combined with ffmpeg to feed test patterns, it provides realistic testing without hardware.
-
-```bash
-# Load the module
 sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
 
-# Run tests with specific loopback devices
-go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video42,/dev/video43
+# Run with explicit loopback paths and strict streaming verification
+CGO_ENABLED=0 go test -v -tags=integration ./test/... \
+  -args -use-device-emulation=/dev/video42,/dev/video43 -require-streaming
 
-# Or auto-discover existing loopback devices
-go test -v -tags=integration ./test/... -args -use-device-emulation=auto
+# Or auto-discover existing loopback devices (or auto-load via sudo in TestMain)
+CGO_ENABLED=0 go test -v -tags=integration ./test/... \
+  -args -use-device-emulation=auto
 ```
 
-### 2. Real Hardware
-
-If you have a USB webcam or other V4L2 device:
+### With Physical V4L2 Hardware
 
 ```bash
-# Auto-discover real devices
-go test -v -tags=integration ./test/... -args -use-device=auto
+# Auto-discover mounted /dev/video* nodes
+CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device=auto
 
-# Use a specific device
-go test -v -tags=integration ./test/... -args -use-device=/dev/video0
+# Target a specific hardware device
+CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device=/dev/video0
 ```
 
-## Unit Tests
+Set `V4L2_TEST_DEVICE=/dev/video0` if you prefer pinning a device path through the environment.
 
-Unit tests validate the core functionality without requiring V4L2 devices.
+## Integration Test Flags
 
-### Running Unit Tests
+Pass test harness flags after `-args`:
 
-```bash
-# Run all unit tests
-go test -v ./device ./v4l2
+| Flag | Value / Default | Description |
+|---|---|---|
+| `-use-device` | `auto` or `/dev/videoN` | Discover or target physical V4L2 devices |
+| `-use-device-emulation` | `auto` or `/dev/videoN,/dev/videoM` | Use or auto-load `v4l2loopback` devices |
+| `-require-streaming` | `false` | Fail instead of skipping if streaming capture/output cannot run |
+| `-keep-running` | `false` | Keep auto-loaded `v4l2loopback` module loaded after teardown |
+| `-verbose` | `false` | Enable verbose harness logging |
 
-# Run specific package tests
-go test -v ./v4l2
-go test -v ./device
+## CI Workflow
 
-# Run with coverage
-go test -coverprofile=coverage.out ./device ./v4l2
-go tool cover -html=coverage.out -o coverage.html
+The authoritative GitHub Actions configuration lives in [`.github/workflows/test.yml`](./.github/workflows/test.yml) and runs two jobs on Go 1.26:
 
-# Clean test cache
-go clean -testcache
-```
-
-## Integration Tests
-
-Integration tests validate the complete streaming pipeline with real or virtual V4L2 devices. See `test/README.md` for detailed information.
-
-### Running Integration Tests
-
-```bash
-# With v4l2loopback emulation (auto-discover or load)
-go test -v -tags=integration ./test/... -args -use-device-emulation=auto
-
-# With specific loopback devices
-go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video42,/dev/video43
-
-# With real hardware (auto-discover)
-go test -v -tags=integration ./test/... -args -use-device=auto
-
-# With specific real device
-go test -v -tags=integration ./test/... -args -use-device=/dev/video0
-
-# Auto-detect (tries loopback first, then real devices)
-go test -v -tags=integration ./test/...
-
-# Run specific tests
-go test -v -tags=integration ./test/... -run TestDevice
-go test -v -tags=integration ./test/... -run TestV4L2
-```
-
-## Test Flags
-
-| Flag | Value | Description |
-|------|-------|-------------|
-| `-use-device` | `auto` | Auto-discover real V4L2 devices |
-| `-use-device` | `/dev/video0` | Use specific real device |
-| `-use-device-emulation` | `auto` | Auto-discover or load v4l2loopback |
-| `-use-device-emulation` | `/dev/video42,/dev/video43` | Use specific loopback devices |
-| `-keep-running` | | Keep v4l2loopback loaded after tests |
-| `-verbose` | | Enable verbose logging |
-
-All flags are passed after `-args`:
-```bash
-go test -v -tags=integration ./test/... -args -use-device=auto
-```
-
-## Environment Variables
-
-### V4L2_TEST_DEVICE
-
-Force a specific test device (rarely needed):
-
-```bash
-V4L2_TEST_DEVICE=/dev/video0 go test -v -tags=integration ./test/...
-```
-
-## CI/CD Setup
-
-### GitHub Actions Workflow
-
-```yaml
-# .github/workflows/test.yml
-name: Tests
-
-on: [push, pull_request]
-
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.25'
-
-    - name: Run Unit Tests
-      run: go test -v ./device ./v4l2
-
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.25'
-
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential linux-headers-generic ffmpeg
-
-    - name: Setup v4l2loopback
-      run: |
-        sudo apt-get install -y linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
-        sudo modprobe videodev
-        git clone https://github.com/umlaeute/v4l2loopback.git /tmp/v4l2loopback
-        cd /tmp/v4l2loopback && make KERNEL_DIR=/lib/modules/$(uname -r)/build
-        sudo insmod /tmp/v4l2loopback/v4l2loopback.ko devices=2 video_nr=10,11 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
-        sudo chmod 666 /dev/video10 /dev/video11
-
-    - name: Run Integration Tests
-      run: |
-        go test -v -tags=integration ./test/... -args -use-device-emulation=/dev/video10,/dev/video11
-```
+1. **`unit-tests`:** Compiles `CGO_ENABLED=0` across `amd64`, `arm64`, `arm`, and `riscv64` (including integration test compilation and `simplecam`/`webcam` examples), runs `CGO_ENABLED=0 go test -v -cover ./v4l2 ./device`, `go vet`, `-tags=cgo_verify ./v4l2 -run TestABI`, and `CGO_ENABLED=1 go test -race ./v4l2 ./device`.
+2. **`integration-tests`:** Builds and loads `v4l2loopback` from source against the GitHub runner kernel and executes `test/...` with `-use-device-emulation=/dev/video10,/dev/video11 -require-streaming` under both `CGO_ENABLED=0` and `CGO_ENABLED=1 -race`.
 
 ## Troubleshooting
 
-### Tests Skip with "No V4L2 device available"
+* **Loopback device busy or stale state:** Check open file handles with `fuser /dev/video*` or `lsof /dev/video*`, then reload cleanly:
+  ```bash
+  sudo modprobe -r v4l2loopback
+  sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
+  go clean -testcache
+  ```
+* **`v4l2loopback` fails to build or load:** Confirm matching kernel headers exist for `$(uname -r)` (`sudo apt-get install linux-headers-$(uname -r)`).
+* **Tests skip with no V4L2 device available:** Verify `ls -la /dev/video*` shows nodes accessible to your user, or pass `-require-streaming` alongside explicit `-use-device-emulation` paths.
 
-1. **Load v4l2loopback**:
-   ```bash
-   sudo modprobe v4l2loopback devices=2 video_nr=42,43 exclusive_caps=0
-   ```
+## Performance Benchmarks
 
-2. **Install v4l2loopback** (if not found):
-   ```bash
-   sudo apt-get install v4l2loopback-dkms
-   ```
-
-3. **Check devices exist**:
-   ```bash
-   ls -la /dev/video*
-   ```
-
-### Permission Denied
-
-```
-Failed to open /dev/video0: permission denied
-```
-
-**Solution**: Add user to video group:
-```bash
-sudo usermod -a -G video $USER
-# Logout and login again
-```
-
-### Device Busy
-
-```
-Failed to start streaming: device or resource busy
-```
-
-**Solutions**:
-1. Check if another application is using the device:
-   ```bash
-   fuser /dev/video*
-   lsof /dev/video*
-   ```
-2. Ensure tests are not running concurrently on the same device
-3. Reset loopback devices for a clean state:
-   ```bash
-   # Kill any ffmpeg processes holding devices
-   sudo pkill -9 ffmpeg
-
-   # Unload and reload v4l2loopback
-   sudo modprobe -r v4l2loopback
-   sudo modprobe v4l2loopback devices=2 video_nr=42,43 card_label="go4vl_test_1,go4vl_test_2" exclusive_caps=0
-
-   # Clear test cache
-   go clean -testcache
-   ```
-
-### v4l2loopback Not Loading
-
-```
-modprobe: FATAL: Module v4l2loopback not found
-```
-
-**Solution**: Install v4l2loopback:
-```bash
-sudo apt-get install v4l2loopback-dkms
-# If still failing, ensure kernel headers are installed
-sudo apt-get install linux-headers-$(uname -r)
-```
-
-### Test Cache Issues
+Run package-level allocator and streaming micro-benchmarks without hardware, or full capture benchmarks with `benchmark/runner`:
 
 ```bash
-go clean -testcache
-go test -count=1 -v ./device ./v4l2
+# Hot-path micro-benchmarks
+CGO_ENABLED=0 go test -bench=. -benchmem ./v4l2 ./device
+
+# End-to-end streaming benchmark on hardware or loopback
+cd benchmark/runner
+go run . -single -device /dev/video0 -api=iter -duration 10s
 ```
 
-## Performance Testing
-
-### Frame Pool Benchmarks
-
-```bash
-go test -bench=BenchmarkFramePool -benchmem ./device
-go test -bench=Benchmark -benchmem ./device
-```
-
-Expected results (640x480 YUYV frame, ~614KB):
-
-```
-BenchmarkFramePool_Get-4           45,450,000 ops/sec       22 ns/op      26 B/op    1 allocs/op
-BenchmarkDirectAllocation-4            36,260 ops/sec   27,592 ns/op  614,400 B/op    1 allocs/op
-```
-
-## Quick Reference
-
-```bash
-# Unit Tests
-go test -v ./device ./v4l2
-
-# Integration Tests (v4l2loopback emulation)
-go test -v -tags=integration ./test/... -args -use-device-emulation=auto
-
-# Integration Tests (real device)
-go test -v -tags=integration ./test/... -args -use-device=auto
-
-# Integration Tests (auto-detect)
-go test -v -tags=integration ./test/...
-
-# Coverage Reports
-go test -coverprofile=coverage.out ./device ./v4l2
-go tool cover -html=coverage.out -o coverage.html
-
-# Benchmarks
-go test -bench=. -benchmem ./v4l2
-go test -bench=. -benchmem ./device
-
-# Clean Cache
-go clean -testcache
-```
-
-## References
-
-- [v4l2loopback GitHub](https://github.com/umlaeute/v4l2loopback)
-- [V4L2 Testing Tools](https://linuxtv.org/wiki/index.php/V4L2_Test_Suite)
-- [V4L2 API Documentation](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html)
-- [Go Testing Package](https://pkg.go.dev/testing)
+See [benchmark/README.md](./benchmark/README.md) and the [Benchmarks & Tuning Guide](https://vladimirvivien.github.io/go4vl/guides/benchmarks/) for pprof profiling options.

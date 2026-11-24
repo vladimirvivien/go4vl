@@ -1,32 +1,30 @@
-// Package device provides a high-level, idiomatic Go interface for Video4Linux2 (V4L2) devices.
-// It abstracts the complexity of the low-level V4L2 API and provides a simple, channel-based
-// interface for video capture and streaming.
+// Package device provides a high-level, idiomatic Go interface for Video4Linux2
+// (V4L2) capture, output, and stateful codec devices.
 //
 // # Overview
 //
-// The device package is the primary interface for working with V4L2 devices in go4vl.
-// It handles device initialization, configuration, buffer management, and streaming,
-// allowing developers to focus on processing video frames rather than managing low-level details.
+// Package device manages device discovery, functional option configuration,
+// buffer lifecycle, and streaming over MMAP, UserPtr, DMA-BUF, and direct
+// Read/Write I/O. It exposes two capture consumption models:
 //
-// # Key Features
+//   - Device.Frames(ctx): Zero-copy iter.Seq2[*Frame, error] iterator backed by v4l2.Poll
+//     that yields directly into mapped buffers and re-queues buffers automatically.
+//   - Device.GetFrames(): Buffered channel (<-chan *Frame) backed by FramePool for
+//     asynchronous pipelines; callers return buffers via Frame.Release().
 //
-//   - Simple device open/close lifecycle management
-//   - Automatic capability detection and configuration
-//   - Zero-copy frame capture using memory-mapped buffers
-//   - Go channels for frame delivery
-//   - Context-based cancellation support
-//   - Flexible configuration through functional options
+// For video output nodes (such as hardware outputs or v4l2loopback), Device
+// provides WriteFrame and WriteFramePlanes. Stateful hardware encoders and
+// decoders are exposed via OpenEncoder and OpenDecoder.
 //
 // # Basic Usage
 //
-// Opening and using a video device typically follows this pattern:
+// Capture frames using the zero-copy Frames iterator:
 //
-//	// Open the device
 //	dev, err := device.Open("/dev/video0",
 //	    device.WithBufferSize(4),
 //	    device.WithPixFormat(v4l2.PixFormat{
-//	        Width: 1920,
-//	        Height: 1080,
+//	        Width:       1280,
+//	        Height:      720,
 //	        PixelFormat: v4l2.PixelFmtMJPEG,
 //	    }),
 //	)
@@ -35,73 +33,50 @@
 //	}
 //	defer dev.Close()
 //
-//	// Start streaming
-//	ctx := context.Background()
+//	ctx, cancel := context.WithCancel(context.Background())
+//	defer cancel()
 //	if err := dev.Start(ctx); err != nil {
 //	    log.Fatal(err)
 //	}
 //	defer dev.Stop()
 //
-//	// Capture frames
 //	for frame, err := range dev.Frames(ctx) {
 //	    if err != nil {
 //	        log.Fatal(err)
 //	    }
-//	    // Process frame data
 //	    processFrame(frame.Data)
 //	}
 //
+// Retain frame bytes across loop iterations by calling frame.Clone().
+//
 // # Device Discovery
 //
-// Devices are typically found at /dev/video* paths. You can enumerate available devices:
+// Enumerate available /dev/video*, /dev/media*, and /dev/v4l-subdev* nodes:
 //
-//	devices, err := device.GetDevices()
-//	for _, d := range devices {
-//	    fmt.Printf("Found device: %s\n", d.Path)
+//	paths, err := device.GetAllDevicePaths()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, p := range paths {
+//	    fmt.Println(p)
 //	}
 //
 // # Configuration Options
 //
-// The package provides several configuration options through the functional options pattern:
+//   - WithBufferSize: Number of streaming ring buffers (typically 2-4)
+//   - WithPixFormat: Single-planar PixFormat (width, height, FourCC, colorspace)
+//   - WithPixFormatMPlane: Multi-planar PixFormatMPlane configuration
+//   - WithFPS: Target stream frame rate
+//   - WithBufferType: Explicit v4l2.BufType (capture, output, or MPLANE variants)
+//   - WithIOType: Memory mode (IOTypeMMAP, IOTypeUserPtr, IOTypeDMABuf)
+//   - WithIOMethod: Streaming ring vs direct Read/Write (IOMethodStreaming, IOMethodReadWrite)
+//   - WithTimestampMode: Clock conversion mode (TimestampDefault, TimestampAuto, TimestampMonoToAbs)
+//   - WithVideoCaptureEnabled / WithVideoOutputEnabled: Explicit stream direction
 //
-//   - WithBufferSize: Set the number of buffers for streaming (affects latency vs. reliability)
-//   - WithPixFormat: Configure pixel format, resolution, and color space
-//   - WithFPS: Set the desired frame rate
-//   - WithIOType: Select I/O method (currently only memory-mapped I/O is supported)
+// # System Constraints & Thread Safety
 //
-// # Pixel Formats
-//
-// Common pixel formats include:
-//
-//   - PixelFmtMJPEG: Motion JPEG (compressed, widely supported)
-//   - PixelFmtYUYV: YUV 4:2:2 (uncompressed, good quality)
-//   - PixelFmtH264: H.264 video (compressed, efficient)
-//   - PixelFmtRGB24: RGB (uncompressed, direct use)
-//
-// # Error Handling
-//
-// The package returns detailed errors that can be inspected:
-//
-//	if errors.Is(err, v4l2.ErrorUnsupportedFeature) {
-//	    // Handle unsupported feature
-//	}
-//
-// # Performance Considerations
-//
-//   - Use memory-mapped I/O for best performance (default)
-//   - Configure appropriate buffer count (2-4 buffers typical)
-//   - Process frames quickly to avoid drops
-//   - Consider frame format impact (MJPEG vs. raw formats)
-//
-// # Limitations
-//
-//   - Linux only (V4L2 is Linux-specific)
-//   - Requires kernel 5.10 or later
-//   - Currently supports only memory-mapped I/O
-//   - Single-consumer model (one goroutine reading frames)
-//
-// # Thread Safety
-//
-// Device methods are NOT thread-safe and should be called from a single goroutine.
-// The frame channel returned by GetFrames() is safe for concurrent reads.
+//   - Linux only (kernel 5.10 or later); builds with CGO_ENABLED=0 on amd64, arm64, arm, and riscv64.
+//   - Device methods (Open, Start, Stop, Close, control/format accessors) are not
+//     concurrent-safe and should be invoked from a single control goroutine.
+//   - The channel returned by GetFrames() may be consumed concurrently alongside Frame.Release().
 package device

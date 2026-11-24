@@ -40,7 +40,7 @@
 
 ## Building the example code
 
-`go4vl` builds with `CGO_ENABLED=0` on Linux (`amd64` and `arm64`) with no C compiler or kernel headers required. For full details, see [docs/BUILD.md](../docs/BUILD.md).
+`go4vl` builds with `CGO_ENABLED=0` on Linux (`amd64`, `arm64`, `arm`, and `riscv64`) with no C compiler or kernel headers required. For full details, see [docs/BUILD.md](../docs/BUILD.md) and the online [Examples documentation](https://vladimirvivien.github.io/go4vl/examples/).
 
 ### Native build
 

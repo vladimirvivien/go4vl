@@ -1,124 +1,67 @@
-// Package v4l2 provides low-level Go bindings for the Video4Linux2 (V4L2) API.
-// This package wraps the Linux kernel's V4L2 userspace API, providing direct access
-// to video capture and output devices through system calls and ioctls.
+//go:generate go run ./internal/gen
+
+// Package v4l2 provides low-level Go bindings for the Linux Video4Linux2 (V4L2),
+// Media Controller, and V4L2 Sub-device userspace APIs.
 //
 // # Overview
 //
-// The v4l2 package is the foundation layer of go4vl, providing direct mappings to
-// V4L2 kernel structures and constants. It handles the low-level interactions with
-// device drivers through ioctl system calls and memory mapping operations.
+// The v4l2 package wraps Linux kernel UAPI structures, constants, and ioctl
+// calls via golang.org/x/sys/unix and checked-in generated ABI definitions
+// (zconsts_linux.go and ztypes_linux_{amd64,arm64,arm,riscv64}.go). It builds
+// with CGO_ENABLED=0 and requires no C compiler or kernel headers at build time.
 //
-// Most applications should use the higher-level device package instead of this
-// package directly, unless fine-grained control over V4L2 operations is required.
+// Most applications should use the higher-level github.com/vladimirvivien/go4vl/device
+// package unless direct control over ioctl orchestration, Media Controller graphs,
+// sub-device routing, epoll multiplexing, or stateless codec requests is required.
 //
-// # Architecture
+// # Functional Areas
 //
-// The package is organized into functional areas:
-//
-//   - Capabilities: Device capability detection and querying
-//   - Controls: Device controls for brightness, contrast, etc.
-//   - Formats: Pixel formats, frame sizes, and frame intervals
-//   - Streaming: Buffer management and streaming I/O operations
-//   - Errors: V4L2-specific error handling
-//
-// # Core Types
-//
-//   - Capability: Device capabilities and identification
-//   - PixFormat: Pixel format configuration
-//   - Buffer: Frame buffer management
-//   - Control: Device control parameters
-//   - StreamParam: Streaming parameters like FPS
+//   - Capabilities & Device Info: GetCapability (VIDIOC_QUERYCAP), OpenDevice, CloseDevice
+//   - Formats & Multi-Planar: PixFormat, PixFormatMPlane, MetaFormat, FrameSizes, FrameIntervals
+//   - Selection & Crop: GetSelection, SetSelection (VIDIOC_{G,S}_SELECTION), GetCropRect
+//   - Streaming I/O & Lifecycle: MMAP, UserPtr, DMA-BUF (ExportBuffer, ExportBufferPlane), Read/Write, PrepareBuffer, CreateBuffers, RemoveBuffers
+//   - Readiness & Multiplexing: Poll, Poller (Linux epoll with eventfd cancellation)
+//   - Controls & Stateless Codecs: User controls, ExtControls, H.264/HEVC/VP8/VP9/AV1/MPEG2/FWHT compound controls
+//   - Memory-to-Memory & Codecs: M2MSession (dual OUTPUT + CAPTURE queues), EncoderCmd, DecoderCmd
+//   - Media Controller & Sub-devices: GetMediaDeviceInfo, GetMediaTopology, SetupMediaLink, ResolveDevnodePath, AllocMediaRequest, Subdev formats/selections/capabilities/routing
+//   - Display Timings & EDID: GetDVTimings, SetDVTimings, GetEDID, SetEDID, GetSubdevEDID, SetSubdevEDID
+//   - Events & Standards: SubscribeEvent, DequeueEvent, video standards, tuners, modulators, audio/video I/O
 //
 // # System Requirements
 //
-//   - Linux kernel 5.10 or later with V4L2 support
-//   - CGO enabled for C bindings
-//   - Access to /dev/video* devices (typically requires video group membership)
+//   - Linux kernel 5.10 or later with V4L2 / Media Controller drivers
+//   - Supported architectures: linux/amd64, linux/arm64, linux/arm, linux/riscv64 (CGO_ENABLED=0)
+//   - Read/write access to /dev/video*, /dev/media*, or /dev/v4l-subdev* nodes
+//   - Optional (contributors regenerating ABI definitions): gcc and linux-libc-dev for go generate and -tags=cgo_verify
 //
 // # Basic Usage
 //
-// Low-level device interaction example:
+// Open a device, inspect capabilities, and negotiate format directly via file descriptor:
 //
-//	// Open device
-//	fd, err := v4l2.OpenDevice("/dev/video0", syscall.O_RDWR, 0)
+//	fd, err := v4l2.OpenDevice("/dev/video0", unix.O_RDWR|unix.O_NONBLOCK, 0)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	defer v4l2.CloseDevice(fd)
 //
-//	// Query capabilities
 //	cap, err := v4l2.GetCapability(fd)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	fmt.Printf("Device: %s\n", cap.Card)
+//	fmt.Printf("Device: %s (%s)\n", cap.Card, cap.Driver)
 //
-//	// Set format
-//	format := v4l2.PixFormat{
+//	if err := v4l2.SetPixFormat(fd, v4l2.PixFormat{
 //	    Width:       640,
 //	    Height:      480,
 //	    PixelFormat: v4l2.PixelFmtYUYV,
 //	    Field:       v4l2.FieldNone,
-//	}
-//	if err := v4l2.SetPixFormat(fd, format); err != nil {
+//	}); err != nil {
 //	    log.Fatal(err)
 //	}
 //
-// # Memory Management
-//
-// The package supports multiple I/O methods:
-//
-//   - Memory-mapped I/O (MMAP): Zero-copy, most efficient
-//   - User pointer I/O: Application-managed buffers
-//   - Read/Write I/O: Simple but less efficient
-//   - DMA buffer I/O: For buffer sharing between devices
-//
-// Currently, only memory-mapped I/O is fully implemented and tested.
-//
-// # Error Handling
-//
-// V4L2 operations return specific error types that indicate the nature of failures:
-//
-//   - ErrorSystem: System-level errors
-//   - ErrorBadArgument: Invalid parameters
-//   - ErrorUnsupportedFeature: Feature not supported by device
-//   - ErrorNotFound: Resource not found
-//   - ErrorBusy: Device or resource busy
-//   - ErrorTimeout: Operation timed out
-//   - ErrorDeviceRemoved: Device disconnected
-//
-// # CGO Considerations
-//
-// This package uses CGO to interface with the Linux kernel headers.
-// Key considerations:
-//
-//   - Build times are longer due to C compilation
-//   - Cross-compilation requires appropriate C toolchain
-//   - Some Go tools have limited CGO support
-//   - Memory passed to C must be carefully managed
-//
 // # Thread Safety
 //
-// Most V4L2 operations are NOT thread-safe at the kernel level.
-// Applications must synchronize access to the same file descriptor
-// across goroutines. The higher-level device package handles this.
-//
-// # Constants and Flags
-//
-// The package exports numerous constants that map directly to V4L2 kernel definitions:
-//
-//   - Capability flags (Cap*)
-//   - Pixel formats (PixelFmt*)
-//   - Control types (CtrlType*)
-//   - Buffer flags (BufFlag*)
-//   - Field orders (Field*)
-//   - Color spaces (ColorSpace*)
-//
-// # References
-//
-//   - V4L2 API Specification: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html
-//   - Linux Media Subsystem: https://linuxtv.org/
-
-//go:generate go run ./internal/gen
-//   - Kernel Headers: /usr/include/linux/videodev2.h
+// Raw V4L2 file descriptors and ioctl state transitions are not goroutine-safe
+// at the kernel level. Synchronize concurrent calls targeting the same file
+// descriptor or isolate queue driving through Poller on a single control loop.
 package v4l2
