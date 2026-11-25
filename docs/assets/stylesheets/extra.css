@@ -157,6 +157,7 @@
 
 /* Diagram PNG cards inside documentation articles & landing page */
 .md-typeset .diagram-frame {
+  position: relative;
   margin: 1.5rem 0;
   padding: 0.5rem;
   background: #ffffff;
@@ -164,6 +165,12 @@
   border-radius: 0.5rem;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   text-align: center;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.md-typeset .diagram-frame:hover {
+  border-color: var(--go4vl-teal);
+  box-shadow: 0 12px 28px rgba(0, 137, 123, 0.16);
 }
 
 .md-typeset .diagram-frame img,
@@ -179,6 +186,146 @@
 .md-typeset .diagram-frame img {
   margin: 0 auto;
   box-shadow: none;
+}
+
+.md-typeset img.go4vl-zoomable {
+  cursor: zoom-in;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.md-typeset img.go4vl-zoomable:hover {
+  box-shadow: 0 0 0 2px var(--go4vl-teal), 0 12px 28px rgba(0, 137, 123, 0.18);
+}
+
+.md-typeset .diagram-frame img.go4vl-zoomable:hover {
+  box-shadow: none;
+}
+
+.md-typeset img.go4vl-zoomable:focus-visible {
+  outline: 2px solid var(--go4vl-crimson);
+  outline-offset: 3px;
+}
+
+/* Fullscreen diagram lightbox overlay */
+.go4vl-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.go4vl-lightbox.is-open {
+  display: flex;
+}
+
+.go4vl-lightbox__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 20, 21, 0.90);
+  backdrop-filter: blur(4px);
+}
+
+.go4vl-lightbox__dialog {
+  position: relative;
+  z-index: 1;
+  max-width: min(94vw, 1520px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.go4vl-lightbox__stage {
+  background: #ffffff;
+  border: 2px solid rgba(94, 234, 212, 0.45);
+  border-radius: 0.6rem;
+  padding: 0.5rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  overflow: auto;
+  max-height: 82vh;
+}
+
+.go4vl-lightbox__img {
+  display: block;
+  max-width: 90vw;
+  max-height: 78vh;
+  width: auto;
+  height: auto;
+  border-radius: 0.35rem;
+  cursor: zoom-out;
+}
+
+.go4vl-lightbox__close {
+  position: absolute;
+  top: -0.9rem;
+  right: -0.9rem;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: var(--go4vl-crimson);
+  color: #ffffff;
+  font-size: 1.45rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.go4vl-lightbox__close:hover,
+.go4vl-lightbox__close:focus-visible {
+  background: var(--go4vl-crimson-hover);
+  transform: scale(1.06);
+}
+
+.go4vl-lightbox__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  width: 100%;
+  color: #f0fdfa;
+  font-size: 0.86rem;
+  padding: 0 0.25rem;
+}
+
+.go4vl-lightbox__caption {
+  color: rgba(240, 253, 250, 0.92);
+  font-weight: 500;
+}
+
+.go4vl-lightbox__raw {
+  color: #5eead4;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.go4vl-lightbox__raw:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 48em) {
+  .go4vl-lightbox {
+    padding: 0.75rem;
+  }
+  .go4vl-lightbox__close {
+    top: -0.65rem;
+    right: -0.35rem;
+  }
+  .go4vl-lightbox__bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
 }
 
 /* Admonitions & tables */

@@ -72,6 +72,9 @@ markdown_extensions:
 extra_css:
   - assets/stylesheets/extra.css
 
+extra_javascript:
+  - assets/javascripts/lightbox.js
+
 nav:
   - Home: index.md
   - Docs:
