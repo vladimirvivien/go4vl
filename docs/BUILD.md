@@ -1,6 +1,6 @@
 # Building & Cross-Compiling
 
-Because `go4vl` checks in architecture-specific Linux UAPI structure definitions (`v4l2/ztypes_linux_{amd64,arm64,arm,riscv64}.go`) and constants (`v4l2/zconsts_linux.go`) and invokes kernel ioctls through `golang.org/x/sys/unix`, standard builds require **no C compiler, no CGO, and no Linux kernel headers**.
+Because `go4vl` checks in shared Linux UAPI constants (`v4l2/zconsts_linux.go`) and architecture-specific UAPI definitions (`v4l2/ztypes_linux_{amd64,arm64,arm,riscv64}.go`) while invoking kernel ioctls through `golang.org/x/sys/unix`, standard builds require **no C compiler, no CGO, and no Linux kernel headers**.
 
 ## Prerequisites
 
@@ -42,6 +42,36 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o iter_capture ./examples/iter_c
 
 On 32-bit `linux/arm`, `go4vl`'s checked-in UAPI generator handles 32-bit struct padding, pointer sizes in `v4l2_buffer.m`, and `timeval` widths cleanly—no special build flags or host C sysroot are needed.
 
+## Targeting additional Linux architectures
+
+Building for a Linux `GOARCH` outside the four pre-generated targets (such as `386`, `ppc64le`, `s390x`, or `loong64`) requires generating a matching `v4l2/ztypes_linux_<goarch>.go` file from kernel UAPI headers in a fork (referenced via a `go.mod` `replace` directive) or contributing it upstream:
+
+1. **Generate `ztypes_linux_<goarch>.go` from the repository root** with `gcc` or `clang` and target Linux UAPI headers installed (`linux-libc-dev`):
+
+    ```bash
+    # On a Linux host of the target architecture:
+    go run ./v4l2/internal/gen -consts=false -arch=<goarch>
+
+    # Or cross-generating from another Linux host with a target cross-compiler:
+    CC=<target-triple>-gcc go run ./v4l2/internal/gen -consts=false -arch=<goarch>
+    ```
+
+    Passing `-consts=false` skips `v4l2/zconsts_linux.go` and regenerates only `v4l2/ztypes_linux_<goarch>.go`.
+
+2. **Verify C ABI parity on the target architecture** so Go struct sizes, field offsets, and ioctl constants match the target kernel headers:
+
+    ```bash
+    CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
+    ```
+
+3. **Review word-size and endianness assumptions** before shipping on a new target: inspect `v4l2/streaming.go` for 32-bit union packing (`is32Bit` / pointer-sized `m` fields), `v4l2/timing.go` for `timeval`/`timespec` field widths, and any big-endian byte-order assumptions if targeting a big-endian architecture such as `s390x`.
+
+4. **Compile normally with CGO disabled**:
+
+    ```bash
+    CGO_ENABLED=0 GOOS=linux GOARCH=<goarch> go build ./...
+    ```
+
 ## Multi-stage container builds
 
 Static `CGO_ENABLED=0` binaries deploy into minimal `scratch` or distroless containers. Remember to pass the required `/dev/video*` or `/dev/media*` device node into the container at runtime (`docker run --device /dev/video0`):
@@ -64,7 +94,7 @@ For a concrete example tailored to web video streaming, see `examples/simplecam/
 Unit tests mock the low-level `ioctl` seam and run on any Linux host without video hardware:
 
 ```bash
-CGO_ENABLED=0 go vet ./v4l2 ./device
+CGO_ENABLED=0 go vet ./...
 CGO_ENABLED=0 go test -v ./v4l2 ./device
 ```
 
@@ -78,14 +108,17 @@ See the [Testing & CI Guide](guides/testing.md) for loopback setup and CI flags.
 
 ## Regenerating UAPI definitions (contributors)
 
-When adding support for new Linux kernel structs, constants, or ioctls, run code generation on a Linux machine with kernel UAPI headers installed (`sudo apt-get install build-essential linux-libc-dev`):
+When adding support for new Linux kernel structs, constants, or ioctls, add the C symbol entries to `v4l2/internal/gen/defs_consts.go` or `v4l2/internal/gen/defs_types.go`, then regenerate on a Linux machine with kernel UAPI headers installed (`sudo apt-get install build-essential linux-libc-dev`):
 
 ```bash
-# Regenerate v4l2/zconsts_linux.go and v4l2/ztypes_linux_<arch>.go
+# Regenerate v4l2/zconsts_linux.go and host v4l2/ztypes_linux_<arch>.go
 go generate ./v4l2
+
+# Or cross-generate for another target architecture
+CC=aarch64-linux-gnu-gcc go run ./v4l2/internal/gen -consts=false -arch=arm64
 
 # Verify Go struct sizes, field offsets, ioctl IDs, and constants against host C headers
 CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 ```
 
-Run `CGO_ENABLED=0 go build ./...` across all four supported architectures after regenerating so that 32-bit and 64-bit builds remain aligned.
+Run `CGO_ENABLED=0 go build ./...` across `amd64`, `arm64`, `arm`, and `riscv64` after regenerating so that 32-bit and 64-bit builds remain aligned.

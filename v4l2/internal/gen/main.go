@@ -1,5 +1,5 @@
-// Code generator for pure-Go V4L2 constants, ioctl numbers, and kernel struct layouts.
-// Invoked via `go generate ./v4l2` (no Makefile required).
+// Code generator for Linux V4L2 constants, ioctl numbers, and kernel struct layouts.
+// Invoked via `go generate ./v4l2` or from the repository root with `go run ./v4l2/internal/gen`.
 package main
 
 import (
@@ -11,48 +11,55 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
 var (
 	flagArch   = flag.String("arch", "", "Target GOARCH (defaults to `go env GOARCH`)")
+	flagOut    = flag.String("out", "", "Output v4l2 directory (defaults to v4l2/ resolved relative to generator source)")
 	flagConsts = flag.Bool("consts", true, "Generate zconsts_linux.go")
 	flagTypes  = flag.Bool("types", true, "Generate ztypes_linux_<arch>.go")
 )
 
+var (
+	reStop       = regexp.MustCompile(`Stop\s+_Ctype_struct___\d+`)
+	reRaw        = regexp.MustCompile(`Raw\s+_Ctype_struct___\d+`)
+	reDev        = regexp.MustCompile(`Dev\s+_Ctype_struct___\d+`)
+	rePixelclock = regexp.MustCompile(`Pixelclock\s+uint64`)
+)
+
 func main() {
 	flag.Parse()
+	if !*flagConsts && !*flagTypes {
+		return
+	}
 
-	arch := *flagArch
+	hostOut, err := exec.Command("go", "env", "GOARCH").Output()
+	if err != nil {
+		fatalf("go env GOARCH: %v", err)
+	}
+	hostArch := strings.TrimSpace(string(hostOut))
+
+	arch := strings.TrimSpace(*flagArch)
 	if arch == "" {
-		out, err := exec.Command("go", "env", "GOARCH").Output()
-		if err != nil {
-			fatalf("go env GOARCH: %v", err)
-		}
-		arch = strings.TrimSpace(string(out))
+		arch = hostArch
 	}
 
-	cc := os.Getenv("CC")
-	if cc == "" {
-		for _, candidate := range []string{"gcc", "clang"} {
-			if p, err := exec.LookPath(candidate); err == nil {
-				cc = p
-				break
-			}
-		}
-	}
-	if cc == "" {
-		fatalf("no C compiler found (set CC or install gcc/clang)")
+	cc, err := resolveCC(arch, hostArch)
+	if err != nil {
+		fatalf("%v", err)
 	}
 
-	v4l2Dir, err := os.Getwd()
-	if err != nil {
-		fatalf("getwd: %v", err)
+	_, selfFile, _, ok := runtime.Caller(0)
+	if !ok {
+		fatalf("resolve generator directory via runtime.Caller")
 	}
-	genDir := filepath.Join(v4l2Dir, "internal", "gen")
-	compatBytes, err := os.ReadFile(filepath.Join(genDir, "compat.h"))
-	if err != nil {
-		fatalf("read compat.h: %v", err)
+	genDir := filepath.Dir(selfFile)
+
+	outDir := *flagOut
+	if outDir == "" {
+		outDir = filepath.Clean(filepath.Join(genDir, "..", ".."))
 	}
 
 	tmpDir, err := os.MkdirTemp("", "go4vl-gen-*")
@@ -61,27 +68,63 @@ func main() {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "compat.h"), compatBytes, 0o600); err != nil {
-		fatalf("write temp compat.h: %v", err)
-	}
-
 	env := append(os.Environ(), "CC="+cc, "CGO_ENABLED=1", "GOOS=linux", "GOARCH="+arch)
 
 	if *flagConsts {
-		if err := generateConsts(tmpDir, v4l2Dir, env); err != nil {
+		outPath := filepath.Join(outDir, "zconsts_linux.go")
+		if err := generateFile(genDir, tmpDir, "defs_consts.go", outPath, env, formatConsts); err != nil {
 			fatalf("generate consts: %v", err)
 		}
 	}
+
 	if *flagTypes {
-		if err := generateTypes(tmpDir, v4l2Dir, arch, env); err != nil {
-			fatalf("generate types: %v", err)
+		outPath := filepath.Join(outDir, fmt.Sprintf("ztypes_linux_%s.go", arch))
+		if err := generateFile(genDir, tmpDir, "defs_types.go", outPath, env, func(raw []byte) ([]byte, error) {
+			return formatTypes(raw, arch)
+		}); err != nil {
+			fatalf("generate types (%s): %v", arch, err)
 		}
 	}
 }
 
-func runGodefs(tmpDir, fileName string, env []string) ([]byte, error) {
-	cmd := exec.Command("go", "tool", "cgo", "-godefs", fileName)
-	cmd.Dir = tmpDir
+func generateFile(genDir, tmpDir, defFile, outPath string, env []string, formatFn func([]byte) ([]byte, error)) error {
+	objDir := filepath.Join(tmpDir, strings.TrimSuffix(defFile, ".go"))
+	if err := os.MkdirAll(objDir, 0o700); err != nil {
+		return err
+	}
+	raw, err := runGodefs(genDir, objDir, defFile, env)
+	if err != nil {
+		return err
+	}
+	formatted, err := formatFn(raw)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(outPath, formatted, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("generated %s\n", outPath)
+	return nil
+}
+
+func resolveCC(arch, hostArch string) (string, error) {
+	if cc := os.Getenv("CC"); cc != "" {
+		return cc, nil
+	}
+	if arch != hostArch {
+		return "", fmt.Errorf("cross-generating for %s on %s requires CC=<target-triple>-gcc", arch, hostArch)
+	}
+	for _, candidate := range []string{"gcc", "clang"} {
+		if p, err := exec.LookPath(candidate); err == nil {
+			return p, nil
+		}
+	}
+	return "", fmt.Errorf("no C compiler found for %s (set CC or install gcc/clang)", arch)
+}
+
+func runGodefs(genDir, objDir, fileName string, env []string) ([]byte, error) {
+	cmd := exec.Command("go", "tool", "cgo", "-godefs", "-objdir", objDir, fileName)
+	cmd.Dir = genDir
 	cmd.Env = env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -92,107 +135,33 @@ func runGodefs(tmpDir, fileName string, env []string) ([]byte, error) {
 	return stdout.Bytes(), nil
 }
 
-func generateConsts(tmpDir, v4l2Dir string, env []string) error {
-	var src bytes.Buffer
-	src.WriteString(`package v4l2
-
-/*
-#include "compat.h"
-#include <linux/videodev2.h>
-#include <linux/v4l2-controls.h>
-#include <linux/v4l2-common.h>
-#include <linux/media.h>
-#include <linux/v4l2-subdev.h>
-#include <linux/media-bus-format.h>
-*/
-import "C"
-
-const (
-`)
-	for _, name := range uapiConsts {
-		fmt.Fprintf(&src, "\tc%s = C.%s\n", name, name)
-	}
-	src.WriteString(")\n")
-
-	if err := os.WriteFile(filepath.Join(tmpDir, "defs_consts.go"), src.Bytes(), 0o600); err != nil {
-		return err
-	}
-
-	raw, err := runGodefs(tmpDir, "defs_consts.go", env)
-	if err != nil {
-		return err
-	}
-
+func formatConsts(raw []byte) ([]byte, error) {
 	cleaned := rewriteHeader(string(raw), "// Code generated by go generate ./v4l2; DO NOT EDIT.\n")
 	formatted, err := format.Source([]byte(cleaned))
 	if err != nil {
-		return fmt.Errorf("format zconsts_linux.go: %w\n%s", err, cleaned)
+		return nil, fmt.Errorf("format zconsts_linux.go: %w", err)
 	}
-
-	outPath := filepath.Join(v4l2Dir, "zconsts_linux.go")
-	if err := os.WriteFile(outPath, formatted, 0o644); err != nil {
-		return err
-	}
-	fmt.Printf("generated %s (%d constants)\n", outPath, len(uapiConsts))
-	return nil
+	return formatted, nil
 }
 
-func generateTypes(tmpDir, v4l2Dir, arch string, env []string) error {
-	var src bytes.Buffer
-	src.WriteString(`package v4l2
-
-/*
-#include "compat.h"
-#include <linux/videodev2.h>
-#include <linux/v4l2-controls.h>
-#include <linux/v4l2-common.h>
-#include <linux/media.h>
-#include <linux/v4l2-subdev.h>
-#include <linux/media-bus-format.h>
-*/
-import "C"
-
-const (
-`)
-	for _, name := range ioctlConsts {
-		fmt.Fprintf(&src, "\tc%s uintptr = C.%s\n", name, name)
-	}
-	src.WriteString(")\n\n")
-	src.WriteString(typeDefs)
-
-	if err := os.WriteFile(filepath.Join(tmpDir, "defs_types.go"), src.Bytes(), 0o600); err != nil {
-		return err
-	}
-
-	raw, err := runGodefs(tmpDir, "defs_types.go", env)
-	if err != nil {
-		return err
-	}
-
+func formatTypes(raw []byte, arch string) ([]byte, error) {
 	text := string(raw)
-	// Replace anonymous nested structs emitted by cgo -godefs for v4l2_decoder_cmd.stop and v4l2_encoder_cmd.raw,
-	// and replace Pixelclock uint64 in packed struct v4l2_bt_timings so Go matches C's 124-byte packed size and 4-byte alignment.
-	text = regexp.MustCompile(`Stop\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Stop [8]byte")
-	text = regexp.MustCompile(`Raw\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Raw [8]uint32")
-	text = regexp.MustCompile(`Dev\s+_Ctype_struct___\d+`).ReplaceAllString(text, "Dev [2]uint32")
-	text = regexp.MustCompile(`Pixelclock\s+uint64`).ReplaceAllString(text, "Pixelclock [8]byte")
+	// Replace anonymous nested structs emitted by cgo -godefs for v4l2_decoder_cmd.stop,
+	// v4l2_encoder_cmd.raw, and media_entity_desc.dev, and replace packed v4l2_bt_timings.Pixelclock
+	// so Go matches C's 4-byte alignment and 124-byte packed layout.
+	text = reStop.ReplaceAllString(text, "Stop [8]byte")
+	text = reRaw.ReplaceAllString(text, "Raw [8]uint32")
+	text = reDev.ReplaceAllString(text, "Dev [2]uint32")
+	text = rePixelclock.ReplaceAllString(text, "Pixelclock [8]byte")
 	if strings.Contains(text, "_Ctype_") {
-		return fmt.Errorf("unresolved _Ctype_ references in godefs output:\n%s", text)
+		return nil, fmt.Errorf("unresolved _Ctype_ references in godefs output:\n%s", text)
 	}
-
 	header := fmt.Sprintf("// Code generated by go generate ./v4l2; DO NOT EDIT.\n\n//go:build linux && %s\n", arch)
-	cleaned := rewriteHeader(text, header)
-	formatted, err := format.Source([]byte(cleaned))
+	formatted, err := format.Source([]byte(rewriteHeader(text, header)))
 	if err != nil {
-		return fmt.Errorf("format ztypes_linux_%s.go: %w\n%s", arch, err, cleaned)
+		return nil, fmt.Errorf("format ztypes_linux_%s.go: %w", arch, err)
 	}
-
-	outPath := filepath.Join(v4l2Dir, fmt.Sprintf("ztypes_linux_%s.go", arch))
-	if err := os.WriteFile(outPath, formatted, 0o644); err != nil {
-		return err
-	}
-	fmt.Printf("generated %s (%d ioctls)\n", outPath, len(ioctlConsts))
-	return nil
+	return formatted, nil
 }
 
 func rewriteHeader(raw, header string) string {
@@ -213,996 +182,7 @@ func rewriteHeader(raw, header string) string {
 	return strings.Join(out, "\n")
 }
 
-func fatalf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "v4l2/internal/gen: "+format+"\n", args...)
+func fatalf(formatStr string, args ...any) {
+	fmt.Fprintf(os.Stderr, "v4l2/internal/gen: "+formatStr+"\n", args...)
 	os.Exit(1)
-}
-
-const typeDefs = `
-type cTimeval C.struct_timeval
-type cTimespec C.struct_timespec
-type cV4L2Timecode C.struct_v4l2_timecode
-type cV4L2Fract C.struct_v4l2_fract
-type cV4L2Rect C.struct_v4l2_rect
-type cMediaDeviceInfo C.struct_media_device_info
-type cMediaV2Topology C.struct_media_v2_topology
-type cMediaV2Entity C.struct_media_v2_entity
-type cMediaV2Interface C.struct_media_v2_interface
-type cMediaV2IntfDevnode C.struct_media_v2_intf_devnode
-type cMediaV2Pad C.struct_media_v2_pad
-type cMediaV2Link C.struct_media_v2_link
-type cMediaEntityDesc C.struct_media_entity_desc
-type cMediaPadDesc C.struct_media_pad_desc
-type cMediaLinkDesc C.struct_media_link_desc
-type cMediaLinksEnum C.struct_media_links_enum
-type cV4L2MBusFrameFmt C.struct_v4l2_mbus_framefmt
-type cV4L2SubdevFormat C.struct_v4l2_subdev_format
-type cV4L2SubdevCrop C.struct_v4l2_subdev_crop
-type cV4L2SubdevMBusCodeEnum C.struct_v4l2_subdev_mbus_code_enum
-type cV4L2SubdevFrameSizeEnum C.struct_v4l2_subdev_frame_size_enum
-type cV4L2SubdevFrameInterval C.struct_v4l2_subdev_frame_interval
-type cV4L2SubdevFrameIntervalEnum C.struct_v4l2_subdev_frame_interval_enum
-type cV4L2SubdevSelection C.struct_v4l2_subdev_selection
-type cV4L2SubdevCapability C.struct_v4l2_subdev_capability
-type cV4L2SubdevClientCapability C.struct_v4l2_subdev_client_capability
-type cV4L2SubdevRoute C.struct_v4l2_subdev_route
-type cV4L2SubdevRouting C.struct_v4l2_subdev_routing
-type cV4L2EDID C.struct_v4l2_edid
-type cV4L2MetaFormat C.struct_v4l2_meta_format
-type cV4L2Capability C.struct_v4l2_capability
-type cV4L2Audio C.struct_v4l2_audio
-type cV4L2AudioOut C.struct_v4l2_audioout
-type cV4L2BTTimings C.struct_v4l2_bt_timings
-type cV4L2BTTimingsCap C.struct_v4l2_bt_timings_cap
-type cV4L2Buffer C.struct_v4l2_buffer
-type cV4L2CaptureParm C.struct_v4l2_captureparm
-type cV4L2Control C.struct_v4l2_control
-type cV4L2CreateBuffers C.struct_v4l2_create_buffers
-type cV4L2Crop C.struct_v4l2_crop
-type cV4L2CropCap C.struct_v4l2_cropcap
-type cV4L2DecoderCmd C.struct_v4l2_decoder_cmd
-type cV4L2DVTimings C.struct_v4l2_dv_timings
-type cV4L2DVTimingsCap C.struct_v4l2_dv_timings_cap
-type cV4L2EncoderCmd C.struct_v4l2_encoder_cmd
-type cV4L2EnumDVTimings C.struct_v4l2_enum_dv_timings
-type cV4L2EventCtrl C.struct_v4l2_event_ctrl
-type cV4L2EventFrameSync C.struct_v4l2_event_frame_sync
-type cV4L2EventMotionDet C.struct_v4l2_event_motion_det
-type cV4L2EventSrcChange C.struct_v4l2_event_src_change
-type cV4L2EventVsync C.struct_v4l2_event_vsync
-type cV4L2Event C.struct_v4l2_event
-type cV4L2EventSubscription C.struct_v4l2_event_subscription
-type cV4L2ExportBuffer C.struct_v4l2_exportbuffer
-type cV4L2ExtControl C.struct_v4l2_ext_control
-type cV4L2ExtControls C.struct_v4l2_ext_controls
-type cV4L2FmtDesc C.struct_v4l2_fmtdesc
-type cV4L2Format C.struct_v4l2_format
-type cV4L2Frequency C.struct_v4l2_frequency
-type cV4L2FrequencyBand C.struct_v4l2_frequency_band
-type cV4L2FrmSizeDiscrete C.struct_v4l2_frmsize_discrete
-type cV4L2FrmSizeStepwise C.struct_v4l2_frmsize_stepwise
-type cV4L2FrmSizeEnum C.struct_v4l2_frmsizeenum
-type cV4L2FrmIvalStepwise C.struct_v4l2_frmival_stepwise
-type cV4L2FrmIvalEnum C.struct_v4l2_frmivalenum
-type cV4L2Input C.struct_v4l2_input
-type cV4L2Modulator C.struct_v4l2_modulator
-type cV4L2Output C.struct_v4l2_output
-type cV4L2OutputParm C.struct_v4l2_outputparm
-type cV4L2PixFormat C.struct_v4l2_pix_format
-type cV4L2PlanePixFormat C.struct_v4l2_plane_pix_format
-type cV4L2PixFormatMPlane C.struct_v4l2_pix_format_mplane
-type cV4L2Plane C.struct_v4l2_plane
-type cV4L2QueryCtrl C.struct_v4l2_queryctrl
-type cV4L2QueryExtCtrl C.struct_v4l2_query_ext_ctrl
-type cV4L2QueryMenu C.struct_v4l2_querymenu
-type cV4L2RequestBuffers C.struct_v4l2_requestbuffers
-type cV4L2RemoveBuffers C.struct_v4l2_remove_buffers
-type cV4L2Selection C.struct_v4l2_selection
-type cV4L2Standard C.struct_v4l2_standard
-type cV4L2StreamParm C.struct_v4l2_streamparm
-type cV4L2Tuner C.struct_v4l2_tuner
-type cV4L2HEVCPredWeightTable C.struct_v4l2_hevc_pred_weight_table
-type cV4L2HEVCDPBEntry C.struct_v4l2_hevc_dpb_entry
-type cV4L2CtrlHEVCSPS C.struct_v4l2_ctrl_hevc_sps
-type cV4L2CtrlHEVCPPS C.struct_v4l2_ctrl_hevc_pps
-type cV4L2CtrlHEVCSliceParams C.struct_v4l2_ctrl_hevc_slice_params
-type cV4L2CtrlHEVCScalingMatrix C.struct_v4l2_ctrl_hevc_scaling_matrix
-type cV4L2CtrlHEVCDecodeParams C.struct_v4l2_ctrl_hevc_decode_params
-type cV4L2VP9LoopFilter C.struct_v4l2_vp9_loop_filter
-type cV4L2VP9Quantization C.struct_v4l2_vp9_quantization
-type cV4L2VP9Segmentation C.struct_v4l2_vp9_segmentation
-type cV4L2VP9MVProbs C.struct_v4l2_vp9_mv_probs
-type cV4L2CtrlVP9Frame C.struct_v4l2_ctrl_vp9_frame
-type cV4L2CtrlVP9CompressedHdr C.struct_v4l2_ctrl_vp9_compressed_hdr
-type cV4L2AV1TileInfo C.struct_v4l2_av1_tile_info
-type cV4L2AV1Quantization C.struct_v4l2_av1_quantization
-type cV4L2AV1Segmentation C.struct_v4l2_av1_segmentation
-type cV4L2AV1LoopFilter C.struct_v4l2_av1_loop_filter
-type cV4L2AV1CDEF C.struct_v4l2_av1_cdef
-type cV4L2AV1LoopRestoration C.struct_v4l2_av1_loop_restoration
-type cV4L2AV1GlobalMotion C.struct_v4l2_av1_global_motion
-type cV4L2CtrlAV1Sequence C.struct_v4l2_ctrl_av1_sequence
-type cV4L2CtrlAV1TileGroupEntry C.struct_v4l2_ctrl_av1_tile_group_entry
-type cV4L2CtrlAV1Frame C.struct_v4l2_ctrl_av1_frame
-type cV4L2CtrlAV1FilmGrain C.struct_v4l2_ctrl_av1_film_grain
-type cV4L2CtrlH264SPS C.struct_v4l2_ctrl_h264_sps
-type cV4L2CtrlH264PPS C.struct_v4l2_ctrl_h264_pps
-type cV4L2CtrlH264ScalingMatrix C.struct_v4l2_ctrl_h264_scaling_matrix
-type cV4L2H264WeightFactors C.struct_v4l2_h264_weight_factors
-type cV4L2CtrlH264PredWeights C.struct_v4l2_ctrl_h264_pred_weights
-type cV4L2H264Reference C.struct_v4l2_h264_reference
-type cV4L2CtrlH264SliceParams C.struct_v4l2_ctrl_h264_slice_params
-type cV4L2H264DPBEntry C.struct_v4l2_h264_dpb_entry
-type cV4L2CtrlH264DecodeParams C.struct_v4l2_ctrl_h264_decode_params
-type cV4L2CtrlFWHTParams C.struct_v4l2_ctrl_fwht_params
-type cV4L2VP8Segment C.struct_v4l2_vp8_segment
-type cV4L2VP8LoopFilter C.struct_v4l2_vp8_loop_filter
-type cV4L2VP8Quantization C.struct_v4l2_vp8_quantization
-type cV4L2VP8Entropy C.struct_v4l2_vp8_entropy
-type cV4L2VP8EntropyCoderState C.struct_v4l2_vp8_entropy_coder_state
-type cV4L2CtrlVP8Frame C.struct_v4l2_ctrl_vp8_frame
-type cV4L2CtrlMPEG2Sequence C.struct_v4l2_ctrl_mpeg2_sequence
-type cV4L2CtrlMPEG2Picture C.struct_v4l2_ctrl_mpeg2_picture
-type cV4L2CtrlMPEG2Quantisation C.struct_v4l2_ctrl_mpeg2_quantisation
-`
-
-var ioctlConsts = []string{
-	"MEDIA_IOC_DEVICE_INFO",
-	"MEDIA_IOC_ENUM_ENTITIES",
-	"MEDIA_IOC_ENUM_LINKS",
-	"MEDIA_IOC_G_TOPOLOGY",
-	"MEDIA_IOC_REQUEST_ALLOC",
-	"MEDIA_IOC_SETUP_LINK",
-	"MEDIA_REQUEST_IOC_QUEUE",
-	"MEDIA_REQUEST_IOC_REINIT",
-	"VIDIOC_CREATE_BUFS",
-	"VIDIOC_CROPCAP",
-	"VIDIOC_DECODER_CMD",
-	"VIDIOC_DQBUF",
-	"VIDIOC_DQEVENT",
-	"VIDIOC_DV_TIMINGS_CAP",
-	"VIDIOC_ENCODER_CMD",
-	"VIDIOC_ENUMAUDIO",
-	"VIDIOC_ENUMAUDOUT",
-	"VIDIOC_ENUMINPUT",
-	"VIDIOC_ENUMOUTPUT",
-	"VIDIOC_ENUMSTD",
-	"VIDIOC_ENUM_DV_TIMINGS",
-	"VIDIOC_ENUM_FMT",
-	"VIDIOC_ENUM_FRAMEINTERVALS",
-	"VIDIOC_ENUM_FRAMESIZES",
-	"VIDIOC_ENUM_FREQ_BANDS",
-	"VIDIOC_EXPBUF",
-	"VIDIOC_G_AUDIO",
-	"VIDIOC_G_AUDOUT",
-	"VIDIOC_G_CROP",
-	"VIDIOC_G_CTRL",
-	"VIDIOC_G_DV_TIMINGS",
-	"VIDIOC_G_EDID",
-	"VIDIOC_G_EXT_CTRLS",
-	"VIDIOC_G_FMT",
-	"VIDIOC_G_FREQUENCY",
-	"VIDIOC_G_INPUT",
-	"VIDIOC_G_MODULATOR",
-	"VIDIOC_G_OUTPUT",
-	"VIDIOC_G_PARM",
-	"VIDIOC_G_SELECTION",
-	"VIDIOC_G_STD",
-	"VIDIOC_G_TUNER",
-	"VIDIOC_PREPARE_BUF",
-	"VIDIOC_QBUF",
-	"VIDIOC_QUERYBUF",
-	"VIDIOC_QUERYCAP",
-	"VIDIOC_QUERYCTRL",
-	"VIDIOC_QUERYMENU",
-	"VIDIOC_QUERYSTD",
-	"VIDIOC_QUERY_DV_TIMINGS",
-	"VIDIOC_QUERY_EXT_CTRL",
-	"VIDIOC_REMOVE_BUFS",
-	"VIDIOC_REQBUFS",
-	"VIDIOC_STREAMOFF",
-	"VIDIOC_STREAMON",
-	"VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL",
-	"VIDIOC_SUBDEV_ENUM_FRAME_SIZE",
-	"VIDIOC_SUBDEV_ENUM_MBUS_CODE",
-	"VIDIOC_SUBDEV_G_CLIENT_CAP",
-	"VIDIOC_SUBDEV_G_CROP",
-	"VIDIOC_SUBDEV_G_EDID",
-	"VIDIOC_SUBDEV_G_FMT",
-	"VIDIOC_SUBDEV_G_FRAME_INTERVAL",
-	"VIDIOC_SUBDEV_G_ROUTING",
-	"VIDIOC_SUBDEV_G_SELECTION",
-	"VIDIOC_SUBDEV_QUERYCAP",
-	"VIDIOC_SUBDEV_S_CLIENT_CAP",
-	"VIDIOC_SUBDEV_S_CROP",
-	"VIDIOC_SUBDEV_S_EDID",
-	"VIDIOC_SUBDEV_S_FMT",
-	"VIDIOC_SUBDEV_S_FRAME_INTERVAL",
-	"VIDIOC_SUBDEV_S_ROUTING",
-	"VIDIOC_SUBDEV_S_SELECTION",
-	"VIDIOC_SUBSCRIBE_EVENT",
-	"VIDIOC_S_AUDIO",
-	"VIDIOC_S_AUDOUT",
-	"VIDIOC_S_CROP",
-	"VIDIOC_S_CTRL",
-	"VIDIOC_S_DV_TIMINGS",
-	"VIDIOC_S_EDID",
-	"VIDIOC_S_EXT_CTRLS",
-	"VIDIOC_S_FMT",
-	"VIDIOC_S_FREQUENCY",
-	"VIDIOC_S_INPUT",
-	"VIDIOC_S_MODULATOR",
-	"VIDIOC_S_OUTPUT",
-	"VIDIOC_S_PARM",
-	"VIDIOC_S_SELECTION",
-	"VIDIOC_S_STD",
-	"VIDIOC_S_TUNER",
-	"VIDIOC_TRY_DECODER_CMD",
-	"VIDIOC_TRY_ENCODER_CMD",
-	"VIDIOC_TRY_EXT_CTRLS",
-	"VIDIOC_TRY_FMT",
-	"VIDIOC_UNSUBSCRIBE_EVENT",
-}
-
-var uapiConsts = []string{
-	"V4L2_AUDCAP_AVL",
-	"V4L2_AUDCAP_STEREO",
-	"V4L2_AUDMODE_AVL",
-	"V4L2_BAND_MODULATION_AM",
-	"V4L2_BAND_MODULATION_FM",
-	"V4L2_BAND_MODULATION_VSB",
-	"V4L2_BUF_CAP_SUPPORTS_DMABUF",
-	"V4L2_BUF_CAP_SUPPORTS_MMAP",
-	"V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS",
-	"V4L2_BUF_CAP_SUPPORTS_REQUESTS",
-	"V4L2_BUF_CAP_SUPPORTS_USERPTR",
-	"V4L2_BUF_FLAG_BFRAME",
-	"V4L2_BUF_FLAG_DONE",
-	"V4L2_BUF_FLAG_ERROR",
-	"V4L2_BUF_FLAG_IN_REQUEST",
-	"V4L2_BUF_FLAG_KEYFRAME",
-	"V4L2_BUF_FLAG_LAST",
-	"V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF",
-	"V4L2_BUF_FLAG_MAPPED",
-	"V4L2_BUF_FLAG_NO_CACHE_CLEAN",
-	"V4L2_BUF_FLAG_NO_CACHE_INVALIDATE",
-	"V4L2_BUF_FLAG_PFRAME",
-	"V4L2_BUF_FLAG_PREPARED",
-	"V4L2_BUF_FLAG_QUEUED",
-	"V4L2_BUF_FLAG_REQUEST_FD",
-	"V4L2_BUF_FLAG_TIMECODE",
-	"V4L2_BUF_FLAG_TIMESTAMP_COPY",
-	"V4L2_BUF_FLAG_TIMESTAMP_MASK",
-	"V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC",
-	"V4L2_BUF_FLAG_TIMESTAMP_UNKNOWN",
-	"V4L2_BUF_FLAG_TSTAMP_SRC_EOF",
-	"V4L2_BUF_FLAG_TSTAMP_SRC_MASK",
-	"V4L2_BUF_FLAG_TSTAMP_SRC_SOE",
-	"V4L2_BUF_TYPE_META_CAPTURE",
-	"V4L2_BUF_TYPE_META_OUTPUT",
-	"V4L2_BUF_TYPE_VIDEO_CAPTURE",
-	"V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE",
-	"V4L2_BUF_TYPE_VIDEO_OUTPUT",
-	"V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE",
-	"V4L2_BUF_TYPE_VIDEO_OVERLAY",
-	"V4L2_CAP_ASYNCIO",
-	"V4L2_CAP_AUDIO",
-	"V4L2_CAP_DEVICE_CAPS",
-	"V4L2_CAP_EXT_PIX_FORMAT",
-	"V4L2_CAP_HW_FREQ_SEEK",
-	"V4L2_CAP_IO_MC",
-	"V4L2_CAP_META_CAPTURE",
-	"V4L2_CAP_META_OUTPUT",
-	"V4L2_CAP_MODULATOR",
-	"V4L2_CAP_RADIO",
-	"V4L2_CAP_RDS_CAPTURE",
-	"V4L2_CAP_RDS_OUTPUT",
-	"V4L2_CAP_READWRITE",
-	"V4L2_CAP_SDR_CAPTURE",
-	"V4L2_CAP_SDR_OUTPUT",
-	"V4L2_CAP_SLICED_VBI_CAPTURE",
-	"V4L2_CAP_SLICED_VBI_OUTPUT",
-	"V4L2_CAP_STREAMING",
-	"V4L2_CAP_TIMEPERFRAME",
-	"V4L2_CAP_TOUCH",
-	"V4L2_CAP_TUNER",
-	"V4L2_CAP_VBI_CAPTURE",
-	"V4L2_CAP_VBI_OUTPUT",
-	"V4L2_CAP_VIDEO_CAPTURE",
-	"V4L2_CAP_VIDEO_CAPTURE_MPLANE",
-	"V4L2_CAP_VIDEO_M2M",
-	"V4L2_CAP_VIDEO_M2M_MPLANE",
-	"V4L2_CAP_VIDEO_OUTPUT",
-	"V4L2_CAP_VIDEO_OUTPUT_MPLANE",
-	"V4L2_CAP_VIDEO_OUTPUT_OVERLAY",
-	"V4L2_CAP_VIDEO_OVERLAY",
-	"V4L2_CID_3A_LOCK",
-	"V4L2_CID_ALPHA_COMPONENT",
-	"V4L2_CID_ANALOGUE_GAIN",
-	"V4L2_CID_AUTOBRIGHTNESS",
-	"V4L2_CID_AUTOGAIN",
-	"V4L2_CID_AUTO_EXPOSURE_BIAS",
-	"V4L2_CID_AUTO_FOCUS_RANGE",
-	"V4L2_CID_AUTO_FOCUS_START",
-	"V4L2_CID_AUTO_FOCUS_STATUS",
-	"V4L2_CID_AUTO_FOCUS_STOP",
-	"V4L2_CID_AUTO_N_PRESET_WHITE_BALANCE",
-	"V4L2_CID_AUTO_WHITE_BALANCE",
-	"V4L2_CID_BACKLIGHT_COMPENSATION",
-	"V4L2_CID_BG_COLOR",
-	"V4L2_CID_BLUE_BALANCE",
-	"V4L2_CID_BRIGHTNESS",
-	"V4L2_CID_CAMERA_CLASS",
-	"V4L2_CID_CAMERA_ORIENTATION",
-	"V4L2_CID_CAMERA_SENSOR_ROTATION",
-	"V4L2_CID_CHROMA_AGC",
-	"V4L2_CID_CODEC_CLASS",
-	"V4L2_CID_COLORFX",
-	"V4L2_CID_COLORFX_CBCR",
-	"V4L2_CID_COLORFX_RGB",
-	"V4L2_CID_COLOR_KILLER",
-	"V4L2_CID_CONTRAST",
-	"V4L2_CID_DEINTERLACING_MODE",
-	"V4L2_CID_DIGITAL_GAIN",
-	"V4L2_CID_DO_WHITE_BALANCE",
-	"V4L2_CID_EXPOSURE",
-	"V4L2_CID_EXPOSURE_ABSOLUTE",
-	"V4L2_CID_EXPOSURE_AUTO",
-	"V4L2_CID_EXPOSURE_AUTO_PRIORITY",
-	"V4L2_CID_EXPOSURE_METERING",
-	"V4L2_CID_FLASH_CHARGE",
-	"V4L2_CID_FLASH_CLASS",
-	"V4L2_CID_FLASH_FAULT",
-	"V4L2_CID_FLASH_INDICATOR_INTENSITY",
-	"V4L2_CID_FLASH_INTENSITY",
-	"V4L2_CID_FLASH_LED_MODE",
-	"V4L2_CID_FLASH_READY",
-	"V4L2_CID_FLASH_STROBE",
-	"V4L2_CID_FLASH_STROBE_SOURCE",
-	"V4L2_CID_FLASH_STROBE_STATUS",
-	"V4L2_CID_FLASH_STROBE_STOP",
-	"V4L2_CID_FLASH_TIMEOUT",
-	"V4L2_CID_FLASH_TORCH_INTENSITY",
-	"V4L2_CID_FOCUS_ABSOLUTE",
-	"V4L2_CID_FOCUS_AUTO",
-	"V4L2_CID_FOCUS_RELATIVE",
-	"V4L2_CID_GAIN",
-	"V4L2_CID_GAMMA",
-	"V4L2_CID_HBLANK",
-	"V4L2_CID_HFLIP",
-	"V4L2_CID_HUE",
-	"V4L2_CID_HUE_AUTO",
-	"V4L2_CID_IMAGE_PROC_CLASS",
-	"V4L2_CID_IMAGE_SOURCE_CLASS",
-	"V4L2_CID_IMAGE_STABILIZATION",
-	"V4L2_CID_IRIS_ABSOLUTE",
-	"V4L2_CID_IRIS_RELATIVE",
-	"V4L2_CID_ISO_SENSITIVITY",
-	"V4L2_CID_ISO_SENSITIVITY_AUTO",
-	"V4L2_CID_JPEG_CHROMA_SUBSAMPLING",
-	"V4L2_CID_JPEG_CLASS",
-	"V4L2_CID_LINK_FREQ",
-	"V4L2_CID_MIN_BUFFERS_FOR_CAPTURE",
-	"V4L2_CID_MIN_BUFFERS_FOR_OUTPUT",
-	"V4L2_CID_MPEG_STREAM_PES_ID_AUDIO",
-	"V4L2_CID_MPEG_STREAM_PES_ID_VIDEO",
-	"V4L2_CID_MPEG_STREAM_PID_AUDIO",
-	"V4L2_CID_MPEG_STREAM_PID_PCR",
-	"V4L2_CID_MPEG_STREAM_PID_PMT",
-	"V4L2_CID_MPEG_STREAM_PID_VIDEO",
-	"V4L2_CID_MPEG_STREAM_TYPE",
-	"V4L2_CID_MPEG_STREAM_VBI_FMT",
-	"V4L2_CID_MPEG_VIDEO_ASPECT",
-	"V4L2_CID_MPEG_VIDEO_BITRATE",
-	"V4L2_CID_MPEG_VIDEO_BITRATE_MODE",
-	"V4L2_CID_MPEG_VIDEO_BITRATE_PEAK",
-	"V4L2_CID_MPEG_VIDEO_B_FRAMES",
-	"V4L2_CID_MPEG_VIDEO_CYCLIC_INTRA_REFRESH_MB",
-	"V4L2_CID_MPEG_VIDEO_DECODER_MPEG4_DEBLOCK_FILTER",
-	"V4L2_CID_MPEG_VIDEO_DECODER_SLICE_INTERFACE",
-	"V4L2_CID_MPEG_VIDEO_ENCODING",
-	"V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE",
-	"V4L2_CID_MPEG_VIDEO_GOP_CLOSURE",
-	"V4L2_CID_MPEG_VIDEO_GOP_SIZE",
-	"V4L2_CID_MPEG_VIDEO_HEADER_MODE",
-	"V4L2_CID_MPEG_VIDEO_MAX_REF_PIC",
-	"V4L2_CID_MPEG_VIDEO_MB_RC_ENABLE",
-	"V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES",
-	"V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB",
-	"V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE",
-	"V4L2_CID_MPEG_VIDEO_MUTE",
-	"V4L2_CID_MPEG_VIDEO_MUTE_YUV",
-	"V4L2_CID_MPEG_VIDEO_PULLDOWN",
-	"V4L2_CID_MPEG_VIDEO_TEMPORAL_DECIMATION",
-	"V4L2_CID_NOTIFY_GAINS",
-	"V4L2_CID_PAN_ABSOLUTE",
-	"V4L2_CID_PAN_RELATIVE",
-	"V4L2_CID_PAN_RESET",
-	"V4L2_CID_PAN_SPEED",
-	"V4L2_CID_PIXEL_RATE",
-	"V4L2_CID_POWER_LINE_FREQUENCY",
-	"V4L2_CID_POWER_LINE_FREQUENCY_50HZ",
-	"V4L2_CID_POWER_LINE_FREQUENCY_60HZ",
-	"V4L2_CID_POWER_LINE_FREQUENCY_AUTO",
-	"V4L2_CID_POWER_LINE_FREQUENCY_DISABLED",
-	"V4L2_CID_PRIVACY",
-	"V4L2_CID_RED_BALANCE",
-	"V4L2_CID_ROTATE",
-	"V4L2_CID_SATURATION",
-	"V4L2_CID_SCENE_MODE",
-	"V4L2_CID_SHARPNESS",
-	"V4L2_CID_STATELESS_FWHT_PARAMS",
-	"V4L2_CID_STATELESS_H264_DECODE_MODE",
-	"V4L2_CID_STATELESS_H264_DECODE_PARAMS",
-	"V4L2_CID_STATELESS_H264_PPS",
-	"V4L2_CID_STATELESS_H264_PRED_WEIGHTS",
-	"V4L2_CID_STATELESS_H264_SCALING_MATRIX",
-	"V4L2_CID_STATELESS_H264_SLICE_PARAMS",
-	"V4L2_CID_STATELESS_H264_SPS",
-	"V4L2_CID_STATELESS_H264_START_CODE",
-	"V4L2_CID_STATELESS_MPEG2_PICTURE",
-	"V4L2_CID_STATELESS_MPEG2_QUANTISATION",
-	"V4L2_CID_STATELESS_MPEG2_SEQUENCE",
-	"V4L2_CID_STATELESS_VP8_FRAME",
-	"V4L2_CID_TEST_PATTERN",
-	"V4L2_CID_TEST_PATTERN_BLUE",
-	"V4L2_CID_TEST_PATTERN_GREENB",
-	"V4L2_CID_TEST_PATTERN_GREENR",
-	"V4L2_CID_TEST_PATTERN_RED",
-	"V4L2_CID_TILT_ABSOLUTE",
-	"V4L2_CID_TILT_RELATIVE",
-	"V4L2_CID_TILT_RESET",
-	"V4L2_CID_TILT_SPEED",
-	"V4L2_CID_UNIT_CELL_SIZE",
-	"V4L2_CID_VBLANK",
-	"V4L2_CID_VFLIP",
-	"V4L2_CID_WHITE_BALANCE_TEMPERATURE",
-	"V4L2_CID_WIDE_DYNAMIC_RANGE",
-	"V4L2_CID_ZOOM_ABSOLUTE",
-	"V4L2_CID_ZOOM_CONTINUOUS",
-	"V4L2_CID_ZOOM_RELATIVE",
-	"V4L2_COLORFX_ANTIQUE",
-	"V4L2_COLORFX_AQUA",
-	"V4L2_COLORFX_ART_FREEZE",
-	"V4L2_COLORFX_BW",
-	"V4L2_COLORFX_EMBOSS",
-	"V4L2_COLORFX_GRASS_GREEN",
-	"V4L2_COLORFX_NEGATIVE",
-	"V4L2_COLORFX_NONE",
-	"V4L2_COLORFX_SEPIA",
-	"V4L2_COLORFX_SET_CBCR",
-	"V4L2_COLORFX_SET_RGB",
-	"V4L2_COLORFX_SILHOUETTE",
-	"V4L2_COLORFX_SKETCH",
-	"V4L2_COLORFX_SKIN_WHITEN",
-	"V4L2_COLORFX_SKY_BLUE",
-	"V4L2_COLORFX_SOLARIZATION",
-	"V4L2_COLORFX_VIVID",
-	"V4L2_COLORSPACE_470_SYSTEM_BG",
-	"V4L2_COLORSPACE_470_SYSTEM_M",
-	"V4L2_COLORSPACE_BT2020",
-	"V4L2_COLORSPACE_BT878",
-	"V4L2_COLORSPACE_DCI_P3",
-	"V4L2_COLORSPACE_DEFAULT",
-	"V4L2_COLORSPACE_JPEG",
-	"V4L2_COLORSPACE_OPRGB",
-	"V4L2_COLORSPACE_RAW",
-	"V4L2_COLORSPACE_REC709",
-	"V4L2_COLORSPACE_SMPTE170M",
-	"V4L2_COLORSPACE_SMPTE240M",
-	"V4L2_COLORSPACE_SRGB",
-	"V4L2_CTRL_CLASS_CAMERA",
-	"V4L2_CTRL_CLASS_CODEC",
-	"V4L2_CTRL_CLASS_CODEC_STATELESS",
-	"V4L2_CTRL_CLASS_COLORIMETRY",
-	"V4L2_CTRL_CLASS_DETECT",
-	"V4L2_CTRL_CLASS_DV",
-	"V4L2_CTRL_CLASS_FLASH",
-	"V4L2_CTRL_CLASS_FM_RX",
-	"V4L2_CTRL_CLASS_FM_TX",
-	"V4L2_CTRL_CLASS_IMAGE_PROC",
-	"V4L2_CTRL_CLASS_IMAGE_SOURCE",
-	"V4L2_CTRL_CLASS_JPEG",
-	"V4L2_CTRL_CLASS_RF_TUNER",
-	"V4L2_CTRL_CLASS_USER",
-	"V4L2_CTRL_COMPOUND_TYPES",
-	"V4L2_CTRL_FLAG_DISABLED",
-	"V4L2_CTRL_FLAG_DYNAMIC_ARRAY",
-	"V4L2_CTRL_FLAG_EXECUTE_ON_WRITE",
-	"V4L2_CTRL_FLAG_GRABBED",
-	"V4L2_CTRL_FLAG_HAS_PAYLOAD",
-	"V4L2_CTRL_FLAG_INACTIVE",
-	"V4L2_CTRL_FLAG_MODIFY_LAYOUT",
-	"V4L2_CTRL_FLAG_NEXT_COMPOUND",
-	"V4L2_CTRL_FLAG_NEXT_CTRL",
-	"V4L2_CTRL_FLAG_READ_ONLY",
-	"V4L2_CTRL_FLAG_SLIDER",
-	"V4L2_CTRL_FLAG_UPDATE",
-	"V4L2_CTRL_FLAG_VOLATILE",
-	"V4L2_CTRL_FLAG_WRITE_ONLY",
-	"V4L2_CTRL_TYPE_AREA",
-	"V4L2_CTRL_TYPE_BITMASK",
-	"V4L2_CTRL_TYPE_BOOLEAN",
-	"V4L2_CTRL_TYPE_BUTTON",
-	"V4L2_CTRL_TYPE_CTRL_CLASS",
-	"V4L2_CTRL_TYPE_FWHT_PARAMS",
-	"V4L2_CTRL_TYPE_H264_DECODE_PARAMS",
-	"V4L2_CTRL_TYPE_H264_PPS",
-	"V4L2_CTRL_TYPE_H264_SCALING_MATRIX",
-	"V4L2_CTRL_TYPE_H264_SLICE_PARAMS",
-	"V4L2_CTRL_TYPE_H264_SPS",
-	"V4L2_CTRL_TYPE_HDR10_CLL_INFO",
-	"V4L2_CTRL_TYPE_HDR10_MASTERING_DISPLAY",
-	"V4L2_CTRL_TYPE_INTEGER",
-	"V4L2_CTRL_TYPE_INTEGER64",
-	"V4L2_CTRL_TYPE_INTEGER_MENU",
-	"V4L2_CTRL_TYPE_MENU",
-	"V4L2_CTRL_TYPE_MPEG2_PICTURE",
-	"V4L2_CTRL_TYPE_MPEG2_QUANTISATION",
-	"V4L2_CTRL_TYPE_MPEG2_SEQUENCE",
-	"V4L2_CTRL_TYPE_STRING",
-	"V4L2_CTRL_TYPE_U16",
-	"V4L2_CTRL_TYPE_U32",
-	"V4L2_CTRL_TYPE_U8",
-	"V4L2_CTRL_TYPE_VP8_FRAME",
-	"V4L2_CTRL_TYPE_VP9_COMPRESSED_HDR",
-	"V4L2_CTRL_TYPE_VP9_FRAME",
-	"V4L2_DEC_CMD_FLUSH",
-	"V4L2_DEC_CMD_PAUSE",
-	"V4L2_DEC_CMD_PAUSE_TO_BLACK",
-	"V4L2_DEC_CMD_RESUME",
-	"V4L2_DEC_CMD_START",
-	"V4L2_DEC_CMD_START_MUTE_AUDIO",
-	"V4L2_DEC_CMD_STOP",
-	"V4L2_DEC_CMD_STOP_IMMEDIATELY",
-	"V4L2_DEC_CMD_STOP_TO_BLACK",
-	"V4L2_DEC_START_FMT_GOP",
-	"V4L2_DEC_START_FMT_NONE",
-	"V4L2_DV_BT_656_1120",
-	"V4L2_DV_BT_CAP_CUSTOM",
-	"V4L2_DV_BT_CAP_INTERLACED",
-	"V4L2_DV_BT_CAP_PROGRESSIVE",
-	"V4L2_DV_BT_CAP_REDUCED_BLANKING",
-	"V4L2_DV_BT_STD_CEA861",
-	"V4L2_DV_BT_STD_CVT",
-	"V4L2_DV_BT_STD_DMT",
-	"V4L2_DV_BT_STD_GTF",
-	"V4L2_DV_FL_CAN_DETECT_REDUCED_FPS",
-	"V4L2_DV_FL_CAN_REDUCE_FPS",
-	"V4L2_DV_FL_FIRST_FIELD_EXTRA_LINE",
-	"V4L2_DV_FL_HALF_LINE",
-	"V4L2_DV_FL_HAS_CEA861_VIC",
-	"V4L2_DV_FL_HAS_HDMI_VIC",
-	"V4L2_DV_FL_HAS_PICTURE_ASPECT",
-	"V4L2_DV_FL_IS_CE_VIDEO",
-	"V4L2_DV_FL_REDUCED_BLANKING",
-	"V4L2_DV_FL_REDUCED_FPS",
-	"V4L2_DV_HSYNC_POS_POL",
-	"V4L2_DV_INTERLACED",
-	"V4L2_DV_PROGRESSIVE",
-	"V4L2_DV_VSYNC_POS_POL",
-	"V4L2_ENC_CMD_PAUSE",
-	"V4L2_ENC_CMD_RESUME",
-	"V4L2_ENC_CMD_START",
-	"V4L2_ENC_CMD_STOP",
-	"V4L2_ENC_CMD_STOP_AT_GOP_END",
-	"V4L2_EVENT_ALL",
-	"V4L2_EVENT_CTRL",
-	"V4L2_EVENT_CTRL_CH_DIMENSIONS",
-	"V4L2_EVENT_CTRL_CH_FLAGS",
-	"V4L2_EVENT_CTRL_CH_RANGE",
-	"V4L2_EVENT_CTRL_CH_VALUE",
-	"V4L2_EVENT_EOS",
-	"V4L2_EVENT_FRAME_SYNC",
-	"V4L2_EVENT_MD_FL_HAVE_FRAME_SEQ",
-	"V4L2_EVENT_MOTION_DET",
-	"V4L2_EVENT_PRIVATE_START",
-	"V4L2_EVENT_SOURCE_CHANGE",
-	"V4L2_EVENT_SRC_CH_RESOLUTION",
-	"V4L2_EVENT_SUB_FL_ALLOW_FEEDBACK",
-	"V4L2_EVENT_SUB_FL_SEND_INITIAL",
-	"V4L2_EVENT_VSYNC",
-	"V4L2_FIELD_ALTERNATE",
-	"V4L2_FIELD_ANY",
-	"V4L2_FIELD_BOTTOM",
-	"V4L2_FIELD_INTERLACED",
-	"V4L2_FIELD_INTERLACED_BT",
-	"V4L2_FIELD_INTERLACED_TB",
-	"V4L2_FIELD_NONE",
-	"V4L2_FIELD_SEQ_BT",
-	"V4L2_FIELD_SEQ_TB",
-	"V4L2_FIELD_TOP",
-	"V4L2_FMT_FLAG_COMPRESSED",
-	"V4L2_FMT_FLAG_CONTINUOUS_BYTESTREAM",
-	"V4L2_FMT_FLAG_CSC_COLORSPACE",
-	"V4L2_FMT_FLAG_CSC_HSV_ENC",
-	"V4L2_FMT_FLAG_CSC_QUANTIZATION",
-	"V4L2_FMT_FLAG_CSC_XFER_FUNC",
-	"V4L2_FMT_FLAG_CSC_YCBCR_ENC",
-	"V4L2_FMT_FLAG_DYN_RESOLUTION",
-	"V4L2_FMT_FLAG_EMULATED",
-	"V4L2_FMT_FLAG_ENC_CAP_FRAME_INTERVAL",
-	"V4L2_FRMIVAL_TYPE_CONTINUOUS",
-	"V4L2_FRMIVAL_TYPE_DISCRETE",
-	"V4L2_FRMIVAL_TYPE_STEPWISE",
-	"V4L2_FRMSIZE_TYPE_CONTINUOUS",
-	"V4L2_FRMSIZE_TYPE_DISCRETE",
-	"V4L2_FRMSIZE_TYPE_STEPWISE",
-	"V4L2_H264_NUM_DPB_ENTRIES",
-	"V4L2_H264_REF_LIST_LEN",
-	"V4L2_HSV_ENC_180",
-	"V4L2_HSV_ENC_256",
-	"V4L2_IN_ST_NO_COLOR",
-	"V4L2_IN_ST_NO_POWER",
-	"V4L2_IN_ST_NO_SIGNAL",
-	"V4L2_MEMORY_DMABUF",
-	"V4L2_MEMORY_MMAP",
-	"V4L2_MEMORY_OVERLAY",
-	"V4L2_MEMORY_USERPTR",
-	"V4L2_MODE_HIGHQUALITY",
-	"V4L2_MPEG_STREAM_TYPE_MPEG1_SS",
-	"V4L2_MPEG_STREAM_TYPE_MPEG1_VCD",
-	"V4L2_MPEG_STREAM_TYPE_MPEG2_DVD",
-	"V4L2_MPEG_STREAM_TYPE_MPEG2_PS",
-	"V4L2_MPEG_STREAM_TYPE_MPEG2_SVCD",
-	"V4L2_MPEG_STREAM_TYPE_MPEG2_TS",
-	"V4L2_MPEG_VIDEO_ASPECT_16x9",
-	"V4L2_MPEG_VIDEO_ASPECT_1x1",
-	"V4L2_MPEG_VIDEO_ASPECT_221x100",
-	"V4L2_MPEG_VIDEO_ASPECT_4x3",
-	"V4L2_MPEG_VIDEO_BITRATE_MODE_CBR",
-	"V4L2_MPEG_VIDEO_BITRATE_MODE_CQ",
-	"V4L2_MPEG_VIDEO_BITRATE_MODE_VBR",
-	"V4L2_MPEG_VIDEO_ENCODING_MPEG_1",
-	"V4L2_MPEG_VIDEO_ENCODING_MPEG_2",
-	"V4L2_MPEG_VIDEO_ENCODING_MPEG_4_AVC",
-	"V4L2_PIX_FMT_ABGR32",
-	"V4L2_PIX_FMT_ARGB32",
-	"V4L2_PIX_FMT_ARGB444",
-	"V4L2_PIX_FMT_ARGB555",
-	"V4L2_PIX_FMT_AV1_FRAME",
-	"V4L2_PIX_FMT_AYUV32",
-	"V4L2_PIX_FMT_BGR24",
-	"V4L2_PIX_FMT_BGR32",
-	"V4L2_PIX_FMT_BGR666",
-	"V4L2_PIX_FMT_FWHT",
-	"V4L2_PIX_FMT_FWHT_STATELESS",
-	"V4L2_PIX_FMT_GREY",
-	"V4L2_PIX_FMT_H263",
-	"V4L2_PIX_FMT_H264",
-	"V4L2_PIX_FMT_H264_MVC",
-	"V4L2_PIX_FMT_H264_NO_SC",
-	"V4L2_PIX_FMT_H264_SLICE",
-	"V4L2_PIX_FMT_HEVC",
-	"V4L2_PIX_FMT_HEVC_SLICE",
-	"V4L2_PIX_FMT_JPEG",
-	"V4L2_PIX_FMT_MJPEG",
-	"V4L2_PIX_FMT_MPEG",
-	"V4L2_PIX_FMT_MPEG1",
-	"V4L2_PIX_FMT_MPEG2",
-	"V4L2_PIX_FMT_MPEG2_SLICE",
-	"V4L2_PIX_FMT_MPEG4",
-	"V4L2_PIX_FMT_NV12",
-	"V4L2_PIX_FMT_NV12M",
-	"V4L2_PIX_FMT_NV16",
-	"V4L2_PIX_FMT_NV16M",
-	"V4L2_PIX_FMT_NV21",
-	"V4L2_PIX_FMT_NV21M",
-	"V4L2_PIX_FMT_NV24",
-	"V4L2_PIX_FMT_NV42",
-	"V4L2_PIX_FMT_NV61",
-	"V4L2_PIX_FMT_NV61M",
-	"V4L2_PIX_FMT_P010",
-	"V4L2_PIX_FMT_P012",
-	"V4L2_PIX_FMT_RGB24",
-	"V4L2_PIX_FMT_RGB32",
-	"V4L2_PIX_FMT_RGB332",
-	"V4L2_PIX_FMT_RGB555",
-	"V4L2_PIX_FMT_RGB555X",
-	"V4L2_PIX_FMT_RGB565",
-	"V4L2_PIX_FMT_RGB565X",
-	"V4L2_PIX_FMT_SBGGR10",
-	"V4L2_PIX_FMT_SBGGR10ALAW8",
-	"V4L2_PIX_FMT_SBGGR10DPCM8",
-	"V4L2_PIX_FMT_SBGGR10P",
-	"V4L2_PIX_FMT_SBGGR12",
-	"V4L2_PIX_FMT_SBGGR12P",
-	"V4L2_PIX_FMT_SBGGR14",
-	"V4L2_PIX_FMT_SBGGR14P",
-	"V4L2_PIX_FMT_SBGGR16",
-	"V4L2_PIX_FMT_SBGGR8",
-	"V4L2_PIX_FMT_SGBRG10",
-	"V4L2_PIX_FMT_SGBRG10ALAW8",
-	"V4L2_PIX_FMT_SGBRG10DPCM8",
-	"V4L2_PIX_FMT_SGBRG10P",
-	"V4L2_PIX_FMT_SGBRG12",
-	"V4L2_PIX_FMT_SGBRG12P",
-	"V4L2_PIX_FMT_SGBRG14",
-	"V4L2_PIX_FMT_SGBRG14P",
-	"V4L2_PIX_FMT_SGBRG16",
-	"V4L2_PIX_FMT_SGBRG8",
-	"V4L2_PIX_FMT_SGRBG10",
-	"V4L2_PIX_FMT_SGRBG10ALAW8",
-	"V4L2_PIX_FMT_SGRBG10DPCM8",
-	"V4L2_PIX_FMT_SGRBG10P",
-	"V4L2_PIX_FMT_SGRBG12",
-	"V4L2_PIX_FMT_SGRBG12P",
-	"V4L2_PIX_FMT_SGRBG14",
-	"V4L2_PIX_FMT_SGRBG14P",
-	"V4L2_PIX_FMT_SGRBG16",
-	"V4L2_PIX_FMT_SGRBG8",
-	"V4L2_PIX_FMT_SRGGB10",
-	"V4L2_PIX_FMT_SRGGB10ALAW8",
-	"V4L2_PIX_FMT_SRGGB10DPCM8",
-	"V4L2_PIX_FMT_SRGGB10P",
-	"V4L2_PIX_FMT_SRGGB12",
-	"V4L2_PIX_FMT_SRGGB12P",
-	"V4L2_PIX_FMT_SRGGB14",
-	"V4L2_PIX_FMT_SRGGB14P",
-	"V4L2_PIX_FMT_SRGGB16",
-	"V4L2_PIX_FMT_SRGGB8",
-	"V4L2_PIX_FMT_UYVY",
-	"V4L2_PIX_FMT_VC1_ANNEX_G",
-	"V4L2_PIX_FMT_VC1_ANNEX_L",
-	"V4L2_PIX_FMT_VP8",
-	"V4L2_PIX_FMT_VP8_FRAME",
-	"V4L2_PIX_FMT_VP9",
-	"V4L2_PIX_FMT_VP9_FRAME",
-	"V4L2_PIX_FMT_VUYA32",
-	"V4L2_PIX_FMT_VUYX32",
-	"V4L2_PIX_FMT_VYUY",
-	"V4L2_PIX_FMT_XBGR32",
-	"V4L2_PIX_FMT_XRGB32",
-	"V4L2_PIX_FMT_XRGB444",
-	"V4L2_PIX_FMT_XRGB555",
-	"V4L2_PIX_FMT_XVID",
-	"V4L2_PIX_FMT_XYUV32",
-	"V4L2_PIX_FMT_Y10",
-	"V4L2_PIX_FMT_Y10BPACK",
-	"V4L2_PIX_FMT_Y12",
-	"V4L2_PIX_FMT_Y14",
-	"V4L2_PIX_FMT_Y16",
-	"V4L2_PIX_FMT_Y16_BE",
-	"V4L2_PIX_FMT_Y4",
-	"V4L2_PIX_FMT_Y41P",
-	"V4L2_PIX_FMT_Y6",
-	"V4L2_PIX_FMT_YUV32",
-	"V4L2_PIX_FMT_YUV410",
-	"V4L2_PIX_FMT_YUV411P",
-	"V4L2_PIX_FMT_YUV420",
-	"V4L2_PIX_FMT_YUV420M",
-	"V4L2_PIX_FMT_YUV422M",
-	"V4L2_PIX_FMT_YUV422P",
-	"V4L2_PIX_FMT_YUV444",
-	"V4L2_PIX_FMT_YUV444M",
-	"V4L2_PIX_FMT_YUV555",
-	"V4L2_PIX_FMT_YUV565",
-	"V4L2_PIX_FMT_YUYV",
-	"V4L2_PIX_FMT_YVU410",
-	"V4L2_PIX_FMT_YVU420",
-	"V4L2_PIX_FMT_YVU420M",
-	"V4L2_PIX_FMT_YVU422M",
-	"V4L2_PIX_FMT_YVU444M",
-	"V4L2_PIX_FMT_YVYU",
-	"V4L2_PIX_FMT_YYUV",
-	"V4L2_QUANTIZATION_DEFAULT",
-	"V4L2_QUANTIZATION_FULL_RANGE",
-	"V4L2_QUANTIZATION_LIM_RANGE",
-	"V4L2_STD_525_60",
-	"V4L2_STD_625_50",
-	"V4L2_STD_ALL",
-	"V4L2_STD_ATSC",
-	"V4L2_STD_ATSC_16_VSB",
-	"V4L2_STD_ATSC_8_VSB",
-	"V4L2_STD_B",
-	"V4L2_STD_BG",
-	"V4L2_STD_DK",
-	"V4L2_STD_G",
-	"V4L2_STD_GH",
-	"V4L2_STD_H",
-	"V4L2_STD_L",
-	"V4L2_STD_MN",
-	"V4L2_STD_NTSC",
-	"V4L2_STD_NTSC_443",
-	"V4L2_STD_NTSC_M",
-	"V4L2_STD_NTSC_M_JP",
-	"V4L2_STD_NTSC_M_KR",
-	"V4L2_STD_PAL",
-	"V4L2_STD_PAL_60",
-	"V4L2_STD_PAL_B",
-	"V4L2_STD_PAL_B1",
-	"V4L2_STD_PAL_BG",
-	"V4L2_STD_PAL_D",
-	"V4L2_STD_PAL_D1",
-	"V4L2_STD_PAL_DK",
-	"V4L2_STD_PAL_G",
-	"V4L2_STD_PAL_H",
-	"V4L2_STD_PAL_I",
-	"V4L2_STD_PAL_K",
-	"V4L2_STD_PAL_M",
-	"V4L2_STD_PAL_N",
-	"V4L2_STD_PAL_Nc",
-	"V4L2_STD_SECAM",
-	"V4L2_STD_SECAM_B",
-	"V4L2_STD_SECAM_D",
-	"V4L2_STD_SECAM_DK",
-	"V4L2_STD_SECAM_G",
-	"V4L2_STD_SECAM_H",
-	"V4L2_STD_SECAM_K",
-	"V4L2_STD_SECAM_K1",
-	"V4L2_STD_SECAM_L",
-	"V4L2_STD_SECAM_LC",
-	"V4L2_STD_UNKNOWN",
-	"V4L2_TC_FLAG_COLORFRAME",
-	"V4L2_TC_FLAG_DROPFRAME",
-	"V4L2_TC_TYPE_24FPS",
-	"V4L2_TC_TYPE_25FPS",
-	"V4L2_TC_TYPE_30FPS",
-	"V4L2_TC_TYPE_50FPS",
-	"V4L2_TC_TYPE_60FPS",
-	"V4L2_TUNER_ANALOG_TV",
-	"V4L2_TUNER_CAP_1HZ",
-	"V4L2_TUNER_CAP_FREQ_BANDS",
-	"V4L2_TUNER_CAP_HWSEEK_BOUNDED",
-	"V4L2_TUNER_CAP_HWSEEK_PROG_LIM",
-	"V4L2_TUNER_CAP_HWSEEK_WRAP",
-	"V4L2_TUNER_CAP_LANG1",
-	"V4L2_TUNER_CAP_LANG2",
-	"V4L2_TUNER_CAP_LOW",
-	"V4L2_TUNER_CAP_NORM",
-	"V4L2_TUNER_CAP_RDS",
-	"V4L2_TUNER_CAP_RDS_BLOCK_IO",
-	"V4L2_TUNER_CAP_RDS_CONTROLS",
-	"V4L2_TUNER_CAP_SAP",
-	"V4L2_TUNER_CAP_STEREO",
-	"V4L2_TUNER_DIGITAL_TV",
-	"V4L2_TUNER_MODE_LANG1",
-	"V4L2_TUNER_MODE_LANG1_LANG2",
-	"V4L2_TUNER_MODE_LANG2",
-	"V4L2_TUNER_MODE_MONO",
-	"V4L2_TUNER_MODE_SAP",
-	"V4L2_TUNER_MODE_STEREO",
-	"V4L2_TUNER_RADIO",
-	"V4L2_TUNER_RF",
-	"V4L2_TUNER_SDR",
-	"V4L2_TUNER_SUB_LANG1",
-	"V4L2_TUNER_SUB_LANG2",
-	"V4L2_TUNER_SUB_MONO",
-	"V4L2_TUNER_SUB_RDS",
-	"V4L2_TUNER_SUB_SAP",
-	"V4L2_TUNER_SUB_STEREO",
-	"V4L2_VP8_COEFF_PROB_CNT",
-	"V4L2_VP8_MV_PROB_CNT",
-	"V4L2_XFER_FUNC_709",
-	"V4L2_XFER_FUNC_DCI_P3",
-	"V4L2_XFER_FUNC_DEFAULT",
-	"V4L2_XFER_FUNC_NONE",
-	"V4L2_XFER_FUNC_OPRGB",
-	"V4L2_XFER_FUNC_SMPTE2084",
-	"V4L2_XFER_FUNC_SMPTE240M",
-	"V4L2_XFER_FUNC_SRGB",
-	"V4L2_YCBCR_ENC_601",
-	"V4L2_YCBCR_ENC_709",
-	"V4L2_YCBCR_ENC_BT2020",
-	"V4L2_YCBCR_ENC_BT2020_CONST_LUM",
-	"V4L2_YCBCR_ENC_DEFAULT",
-	"V4L2_YCBCR_ENC_SMPTE240M",
-	"V4L2_YCBCR_ENC_SYCC",
-	"V4L2_YCBCR_ENC_XV601",
-	"V4L2_YCBCR_ENC_XV709",
-	"V4L2_SEL_FLAG_GE",
-	"V4L2_SEL_FLAG_KEEP_CONFIG",
-	"V4L2_SEL_FLAG_LE",
-	"V4L2_SEL_TGT_COMPOSE",
-	"V4L2_SEL_TGT_COMPOSE_ACTIVE",
-	"V4L2_SEL_TGT_COMPOSE_BOUNDS",
-	"V4L2_SEL_TGT_COMPOSE_DEFAULT",
-	"V4L2_SEL_TGT_COMPOSE_PADDED",
-	"V4L2_SEL_TGT_CROP",
-	"V4L2_SEL_TGT_CROP_ACTIVE",
-	"V4L2_SEL_TGT_CROP_BOUNDS",
-	"V4L2_SEL_TGT_CROP_DEFAULT",
-	"V4L2_SEL_TGT_NATIVE_SIZE",
-	"VIDEO_MAX_PLANES",
-	"MEDIA_ENT_ID_FLAG_NEXT",
-	"MEDIA_ENT_F_UNKNOWN",
-	"MEDIA_ENT_F_V4L2_SUBDEV_UNKNOWN",
-	"MEDIA_ENT_F_IO_V4L",
-	"MEDIA_ENT_F_CAM_SENSOR",
-	"MEDIA_ENT_F_FLASH",
-	"MEDIA_ENT_F_LENS",
-	"MEDIA_ENT_F_PROC_VIDEO_COMPOSER",
-	"MEDIA_ENT_F_PROC_VIDEO_PIXEL_FORMATTER",
-	"MEDIA_ENT_F_PROC_VIDEO_PIXEL_ENC_CONV",
-	"MEDIA_ENT_F_PROC_VIDEO_LUT",
-	"MEDIA_ENT_F_PROC_VIDEO_SCALER",
-	"MEDIA_ENT_F_PROC_VIDEO_STATISTICS",
-	"MEDIA_ENT_F_PROC_VIDEO_ENCODER",
-	"MEDIA_ENT_F_PROC_VIDEO_DECODER",
-	"MEDIA_ENT_F_PROC_VIDEO_ISP",
-	"MEDIA_ENT_F_VID_MUX",
-	"MEDIA_ENT_F_VID_IF_BRIDGE",
-	"MEDIA_ENT_FL_DEFAULT",
-	"MEDIA_ENT_FL_CONNECTOR",
-	"MEDIA_INTF_T_V4L_VIDEO",
-	"MEDIA_INTF_T_V4L_VBI",
-	"MEDIA_INTF_T_V4L_RADIO",
-	"MEDIA_INTF_T_V4L_SUBDEV",
-	"MEDIA_INTF_T_V4L_SWRADIO",
-	"MEDIA_INTF_T_V4L_TOUCH",
-	"MEDIA_PAD_FL_SINK",
-	"MEDIA_PAD_FL_SOURCE",
-	"MEDIA_PAD_FL_MUST_CONNECT",
-	"MEDIA_LNK_FL_ENABLED",
-	"MEDIA_LNK_FL_IMMUTABLE",
-	"MEDIA_LNK_FL_DYNAMIC",
-	"MEDIA_LNK_FL_LINK_TYPE",
-	"MEDIA_LNK_FL_DATA_LINK",
-	"MEDIA_LNK_FL_INTERFACE_LINK",
-	"MEDIA_LNK_FL_ANCILLARY_LINK",
-	"V4L2_SUBDEV_FORMAT_TRY",
-	"V4L2_SUBDEV_FORMAT_ACTIVE",
-	"MEDIA_BUS_FMT_FIXED",
-	"MEDIA_BUS_FMT_RGB565_2X8_LE",
-	"MEDIA_BUS_FMT_RGB888_1X24",
-	"MEDIA_BUS_FMT_BGR888_1X24",
-	"MEDIA_BUS_FMT_Y8_1X8",
-	"MEDIA_BUS_FMT_Y10_1X10",
-	"MEDIA_BUS_FMT_Y12_1X12",
-	"MEDIA_BUS_FMT_UYVY8_1X16",
-	"MEDIA_BUS_FMT_VYUY8_1X16",
-	"MEDIA_BUS_FMT_YUYV8_1X16",
-	"MEDIA_BUS_FMT_YVYU8_1X16",
-	"MEDIA_BUS_FMT_UYVY8_2X8",
-	"MEDIA_BUS_FMT_YUYV8_2X8",
-	"MEDIA_BUS_FMT_SBGGR8_1X8",
-	"MEDIA_BUS_FMT_SGBRG8_1X8",
-	"MEDIA_BUS_FMT_SGRBG8_1X8",
-	"MEDIA_BUS_FMT_SRGGB8_1X8",
-	"MEDIA_BUS_FMT_SBGGR10_1X10",
-	"MEDIA_BUS_FMT_SGBRG10_1X10",
-	"MEDIA_BUS_FMT_SGRBG10_1X10",
-	"MEDIA_BUS_FMT_SRGGB10_1X10",
-	"MEDIA_BUS_FMT_SBGGR12_1X12",
-	"MEDIA_BUS_FMT_SGBRG12_1X12",
-	"MEDIA_BUS_FMT_SGRBG12_1X12",
-	"MEDIA_BUS_FMT_SRGGB12_1X12",
-	"MEDIA_BUS_FMT_SBGGR16_1X16",
-	"MEDIA_BUS_FMT_SGBRG16_1X16",
-	"MEDIA_BUS_FMT_SGRBG16_1X16",
-	"MEDIA_BUS_FMT_SRGGB16_1X16",
-	"MEDIA_BUS_FMT_JPEG_1X8",
-	"V4L2_CTRL_WHICH_CUR_VAL",
-	"V4L2_CTRL_WHICH_DEF_VAL",
-	"V4L2_CTRL_WHICH_REQUEST_VAL",
-	"V4L2_META_FMT_VSP1_HGO",
-	"V4L2_META_FMT_VSP1_HGT",
-	"V4L2_META_FMT_UVC",
-	"V4L2_META_FMT_D4XX",
-	"V4L2_META_FMT_VIVID",
-	"V4L2_META_FMT_RK_ISP1_PARAMS",
-	"V4L2_META_FMT_RK_ISP1_STAT_3A",
-	"V4L2_META_FMT_BCM2835_ISP_STATS",
-	"V4L2_META_FMT_RPI_BE_CFG",
-	"V4L2_META_FMT_RPI_FE_CFG",
-	"V4L2_META_FMT_RPI_FE_STATS",
-	"V4L2_SUBDEV_CAP_RO_SUBDEV",
-	"V4L2_SUBDEV_CAP_STREAMS",
-	"V4L2_SUBDEV_ROUTE_FL_ACTIVE",
-	"V4L2_SUBDEV_CLIENT_CAP_STREAMS",
-	"V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH",
-	"V4L2_CID_STATELESS_HEVC_SPS",
-	"V4L2_CID_STATELESS_HEVC_PPS",
-	"V4L2_CID_STATELESS_HEVC_SLICE_PARAMS",
-	"V4L2_CID_STATELESS_HEVC_SCALING_MATRIX",
-	"V4L2_CID_STATELESS_HEVC_DECODE_PARAMS",
-	"V4L2_CID_STATELESS_HEVC_DECODE_MODE",
-	"V4L2_CID_STATELESS_HEVC_START_CODE",
-	"V4L2_CID_STATELESS_HEVC_ENTRY_POINT_OFFSETS",
-	"V4L2_CID_STATELESS_VP9_FRAME",
-	"V4L2_CID_STATELESS_VP9_COMPRESSED_HDR",
-	"V4L2_CID_STATELESS_AV1_SEQUENCE",
-	"V4L2_CID_STATELESS_AV1_TILE_GROUP_ENTRY",
-	"V4L2_CID_STATELESS_AV1_FRAME",
-	"V4L2_CID_STATELESS_AV1_FILM_GRAIN",
 }
