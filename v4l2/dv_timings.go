@@ -25,8 +25,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // DVTimingType represents the type of DV timing
@@ -442,21 +440,9 @@ func EnumerateDVTimings(fd uintptr, index uint32, pad uint32) (EnumDVTimings, er
 //	    fmt.Printf("Supported: %dx%d @ %.2f Hz\n", bt.GetWidth(), bt.GetHeight(), bt.GetFrameRate())
 //	}
 func GetAllDVTimings(fd uintptr, pad uint32) ([]EnumDVTimings, error) {
-	var result []EnumDVTimings
-
-	for i := uint32(0); i < 256; i++ {
-		timing, err := EnumerateDVTimings(fd, i, pad)
-		if err != nil {
-			// EINVAL indicates no more timings
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, err
-		}
-		result = append(result, timing)
-	}
-
-	return result, nil
+	return enumIndexed(false, func(i uint32) (EnumDVTimings, error) {
+		return EnumerateDVTimings(fd, i, pad)
+	})
 }
 
 // GetDVTimingsCap gets the DV timing capabilities

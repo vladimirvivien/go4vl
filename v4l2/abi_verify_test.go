@@ -113,6 +113,25 @@ func TestABIStructSizes(t *testing.T) {
 		"cV4L2CtrlAV1TileGroupEntry": unsafe.Sizeof(cV4L2CtrlAV1TileGroupEntry{}),
 		"cV4L2CtrlAV1Frame":          unsafe.Sizeof(cV4L2CtrlAV1Frame{}),
 		"cV4L2CtrlAV1FilmGrain":      unsafe.Sizeof(cV4L2CtrlAV1FilmGrain{}),
+		"cV4L2CtrlH264SPS":           unsafe.Sizeof(cV4L2CtrlH264SPS{}),
+		"cV4L2CtrlH264PPS":           unsafe.Sizeof(cV4L2CtrlH264PPS{}),
+		"cV4L2CtrlH264ScalingMatrix": unsafe.Sizeof(cV4L2CtrlH264ScalingMatrix{}),
+		"cV4L2H264WeightFactors":     unsafe.Sizeof(cV4L2H264WeightFactors{}),
+		"cV4L2CtrlH264PredWeights":   unsafe.Sizeof(cV4L2CtrlH264PredWeights{}),
+		"cV4L2H264Reference":         unsafe.Sizeof(cV4L2H264Reference{}),
+		"cV4L2CtrlH264SliceParams":   unsafe.Sizeof(cV4L2CtrlH264SliceParams{}),
+		"cV4L2H264DPBEntry":          unsafe.Sizeof(cV4L2H264DPBEntry{}),
+		"cV4L2CtrlH264DecodeParams":  unsafe.Sizeof(cV4L2CtrlH264DecodeParams{}),
+		"cV4L2CtrlFWHTParams":        unsafe.Sizeof(cV4L2CtrlFWHTParams{}),
+		"cV4L2VP8Segment":            unsafe.Sizeof(cV4L2VP8Segment{}),
+		"cV4L2VP8LoopFilter":         unsafe.Sizeof(cV4L2VP8LoopFilter{}),
+		"cV4L2VP8Quantization":       unsafe.Sizeof(cV4L2VP8Quantization{}),
+		"cV4L2VP8Entropy":            unsafe.Sizeof(cV4L2VP8Entropy{}),
+		"cV4L2VP8EntropyCoderState": unsafe.Sizeof(cV4L2VP8EntropyCoderState{}),
+		"cV4L2CtrlVP8Frame":          unsafe.Sizeof(cV4L2CtrlVP8Frame{}),
+		"cV4L2CtrlMPEG2Sequence":     unsafe.Sizeof(cV4L2CtrlMPEG2Sequence{}),
+		"cV4L2CtrlMPEG2Picture":      unsafe.Sizeof(cV4L2CtrlMPEG2Picture{}),
+		"cV4L2CtrlMPEG2Quantisation": unsafe.Sizeof(cV4L2CtrlMPEG2Quantisation{}),
 	}
 
 	for _, tc := range cStructSizeChecks(goSizes) {
@@ -151,6 +170,16 @@ func TestABIStructOffsets(t *testing.T) {
 		"cV4L2MetaFormat.Buffersize":      unsafe.Offsetof(cV4L2MetaFormat{}.Buffersize),
 		"cV4L2EDID.Edid":                  unsafe.Offsetof(cV4L2EDID{}.Edid),
 		"cV4L2SubdevRouting.Routes":       unsafe.Offsetof(cV4L2SubdevRouting{}.Routes),
+		"cV4L2CtrlH264SPS.Flags":                       unsafe.Offsetof(cV4L2CtrlH264SPS{}.Flags),
+		"cV4L2H264DPBEntry.Top_field_order_cnt":        unsafe.Offsetof(cV4L2H264DPBEntry{}.Top_field_order_cnt),
+		"cV4L2H264DPBEntry.Flags":                      unsafe.Offsetof(cV4L2H264DPBEntry{}.Flags),
+		"cV4L2CtrlH264DecodeParams.Flags":              unsafe.Offsetof(cV4L2CtrlH264DecodeParams{}.Flags),
+		"cV4L2CtrlFWHTParams.Quantization":             unsafe.Offsetof(cV4L2CtrlFWHTParams{}.Quantization),
+		"cV4L2VP8LoopFilter.Flags":                     unsafe.Offsetof(cV4L2VP8LoopFilter{}.Flags),
+		"cV4L2VP8Entropy.Mv_probs":                     unsafe.Offsetof(cV4L2VP8Entropy{}.Mv_probs),
+		"cV4L2CtrlVP8Frame.Dct_part_sizes":             unsafe.Offsetof(cV4L2CtrlVP8Frame{}.Dct_part_sizes),
+		"cV4L2CtrlVP8Frame.Flags":                      unsafe.Offsetof(cV4L2CtrlVP8Frame{}.Flags),
+		"cV4L2CtrlMPEG2Picture.Picture_coding_type":    unsafe.Offsetof(cV4L2CtrlMPEG2Picture{}.Picture_coding_type),
 	}
 
 	for _, tc := range cStructOffsetChecks(goOffsets) {

@@ -1,11 +1,8 @@
 package v4l2
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // SubdevFormatWhich selects whether a sub-device format or selection ioctl operates
@@ -232,36 +229,30 @@ func SetSubdevFormat(fd uintptr, format SubdevFormat) (SubdevFormat, error) {
 // EnumSubdevMBusCodes enumerates all supported media bus format codes on a sub-device pad
 // via VIDIOC_SUBDEV_ENUM_MBUS_CODE.
 func EnumSubdevMBusCodes(fd uintptr, pad uint32, which SubdevFormatWhich) ([]SubdevMBusCode, error) {
-	var codes []SubdevMBusCode
-	for idx := uint32(0); ; idx++ {
+	return enumIndexed(true, func(idx uint32) (SubdevMBusCode, error) {
 		cEnum := cV4L2SubdevMBusCodeEnum{
 			Pad:   pad,
 			Index: idx,
 			Which: which,
 		}
 		if err := send(fd, cVIDIOC_SUBDEV_ENUM_MBUS_CODE, unsafe.Pointer(&cEnum)); err != nil {
-			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
-				break
-			}
-			return codes, fmt.Errorf("subdev enum mbus code (pad %d, index %d): %w", pad, idx, err)
+			return SubdevMBusCode{}, fmt.Errorf("subdev enum mbus code (pad %d, index %d): %w", pad, idx, err)
 		}
-		codes = append(codes, SubdevMBusCode{
+		return SubdevMBusCode{
 			Pad:    cEnum.Pad,
 			Index:  cEnum.Index,
 			Code:   cEnum.Code,
 			Which:  cEnum.Which,
 			Flags:  cEnum.Flags,
 			Stream: cEnum.Stream,
-		})
-	}
-	return codes, nil
+		}, nil
+	})
 }
 
 // EnumSubdevFrameSizes enumerates all supported frame size ranges for a pad and media bus code
 // via VIDIOC_SUBDEV_ENUM_FRAME_SIZE.
 func EnumSubdevFrameSizes(fd uintptr, pad uint32, code MBusFormatCode, which SubdevFormatWhich) ([]SubdevFrameSize, error) {
-	var sizes []SubdevFrameSize
-	for idx := uint32(0); ; idx++ {
+	return enumIndexed(true, func(idx uint32) (SubdevFrameSize, error) {
 		cEnum := cV4L2SubdevFrameSizeEnum{
 			Index: idx,
 			Pad:   pad,
@@ -269,12 +260,9 @@ func EnumSubdevFrameSizes(fd uintptr, pad uint32, code MBusFormatCode, which Sub
 			Which: which,
 		}
 		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_SIZE, unsafe.Pointer(&cEnum)); err != nil {
-			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
-				break
-			}
-			return sizes, fmt.Errorf("subdev enum frame size (pad %d, index %d): %w", pad, idx, err)
+			return SubdevFrameSize{}, fmt.Errorf("subdev enum frame size (pad %d, index %d): %w", pad, idx, err)
 		}
-		sizes = append(sizes, SubdevFrameSize{
+		return SubdevFrameSize{
 			Index:     cEnum.Index,
 			Pad:       cEnum.Pad,
 			Code:      cEnum.Code,
@@ -284,9 +272,8 @@ func EnumSubdevFrameSizes(fd uintptr, pad uint32, code MBusFormatCode, which Sub
 			MaxHeight: cEnum.Max_height,
 			Which:     cEnum.Which,
 			Stream:    cEnum.Stream,
-		})
-	}
-	return sizes, nil
+		}, nil
+	})
 }
 
 // GetSubdevFrameInterval retrieves the active frame interval for a sub-device pad
@@ -327,8 +314,7 @@ func SetSubdevFrameInterval(fd uintptr, ival SubdevFrameInterval) (SubdevFrameIn
 // EnumSubdevFrameIntervals enumerates supported frame intervals for a pad, media bus code,
 // and frame dimensions via VIDIOC_SUBDEV_ENUM_FRAME_INTERVAL.
 func EnumSubdevFrameIntervals(fd uintptr, pad uint32, code MBusFormatCode, width, height uint32, which SubdevFormatWhich) ([]SubdevFrameIntervalEnum, error) {
-	var intervals []SubdevFrameIntervalEnum
-	for idx := uint32(0); ; idx++ {
+	return enumIndexed(true, func(idx uint32) (SubdevFrameIntervalEnum, error) {
 		cEnum := cV4L2SubdevFrameIntervalEnum{
 			Index:  idx,
 			Pad:    pad,
@@ -338,12 +324,9 @@ func EnumSubdevFrameIntervals(fd uintptr, pad uint32, code MBusFormatCode, width
 			Which:  which,
 		}
 		if err := send(fd, cVIDIOC_SUBDEV_ENUM_FRAME_INTERVAL, unsafe.Pointer(&cEnum)); err != nil {
-			if errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL) {
-				break
-			}
-			return intervals, fmt.Errorf("subdev enum frame interval (pad %d, index %d): %w", pad, idx, err)
+			return SubdevFrameIntervalEnum{}, fmt.Errorf("subdev enum frame interval (pad %d, index %d): %w", pad, idx, err)
 		}
-		intervals = append(intervals, SubdevFrameIntervalEnum{
+		return SubdevFrameIntervalEnum{
 			Index:    cEnum.Index,
 			Pad:      cEnum.Pad,
 			Code:     cEnum.Code,
@@ -352,9 +335,8 @@ func EnumSubdevFrameIntervals(fd uintptr, pad uint32, code MBusFormatCode, width
 			Interval: Fract{Numerator: cEnum.Interval.Numerator, Denominator: cEnum.Interval.Denominator},
 			Which:    cEnum.Which,
 			Stream:   cEnum.Stream,
-		})
-	}
-	return intervals, nil
+		}, nil
+	})
 }
 
 // GetSubdevSelection queries a selection rectangle (e.g., SelTargetCrop, SelTargetCropBounds,

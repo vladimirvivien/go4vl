@@ -2,6 +2,7 @@ package v4l2
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"unsafe"
@@ -462,5 +463,159 @@ func TestStreamingAndControlsAndSubdev_MockIoctl(t *testing.T) {
 	}
 	if _, err := SetSubdevSelection(3, ssel); err != nil {
 		t.Fatalf("SetSubdevSelection() = %v", err)
+	}
+}
+
+func TestEnumIndexedWrappedErrno_MockIoctl(t *testing.T) {
+	t.Run("AudioInputAndOutput", func(t *testing.T) {
+		withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+			switch req {
+			case cVIDIOC_ENUMAUDIO:
+				a := (*cV4L2Audio)(arg)
+				if a.Index < 2 {
+					copy(a.Name[:], fmt.Sprintf("AudioIn-%d", a.Index))
+					return 0
+				}
+				return sys.EINVAL
+			case cVIDIOC_ENUMAUDOUT:
+				a := (*cV4L2AudioOut)(arg)
+				if a.Index < 2 {
+					copy(a.Name[:], fmt.Sprintf("AudioOut-%d", a.Index))
+					return 0
+				}
+				return sys.EINVAL
+			default:
+				return sys.ENOTTY
+			}
+		})
+
+		ins, err := GetAllAudioInfo(3)
+		if err != nil || len(ins) != 2 || ins[1].GetName() != "AudioIn-1" {
+			t.Fatalf("GetAllAudioInfo() = %+v, %v", ins, err)
+		}
+		outs, err := GetAllAudioOutInfo(3)
+		if err != nil || len(outs) != 2 || outs[1].GetName() != "AudioOut-1" {
+			t.Fatalf("GetAllAudioOutInfo() = %+v, %v", outs, err)
+		}
+	})
+
+	t.Run("DVTimingsTunersModulatorsAndBands", func(t *testing.T) {
+		withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+			switch req {
+			case cVIDIOC_ENUM_DV_TIMINGS:
+				d := (*cV4L2EnumDVTimings)(arg)
+				if d.Index < 2 {
+					return 0
+				}
+				return sys.EINVAL
+			case cVIDIOC_G_TUNER:
+				tu := (*cV4L2Tuner)(arg)
+				if tu.Index < 2 {
+					copy(tu.Name[:], fmt.Sprintf("Tuner-%d", tu.Index))
+					return 0
+				}
+				return sys.EINVAL
+			case cVIDIOC_G_MODULATOR:
+				m := (*cV4L2Modulator)(arg)
+				if m.Index < 2 {
+					copy(m.Name[:], fmt.Sprintf("Mod-%d", m.Index))
+					return 0
+				}
+				return sys.EINVAL
+			case cVIDIOC_ENUM_FREQ_BANDS:
+				b := (*cV4L2FrequencyBand)(arg)
+				if b.Index < 2 {
+					b.Rangehigh = (b.Index + 1) * 1000
+					return 0
+				}
+				return sys.EINVAL
+			default:
+				return sys.ENOTTY
+			}
+		})
+
+		dv, err := GetAllDVTimings(3, 0)
+		if err != nil || len(dv) != 2 {
+			t.Fatalf("GetAllDVTimings() = %d, %v", len(dv), err)
+		}
+		tuners, err := GetAllTuners(3)
+		if err != nil || len(tuners) != 2 || tuners[1].GetName() != "Tuner-1" {
+			t.Fatalf("GetAllTuners() = %+v, %v", tuners, err)
+		}
+		mods, err := GetAllModulators(3)
+		if err != nil || len(mods) != 2 || mods[1].GetName() != "Mod-1" {
+			t.Fatalf("GetAllModulators() = %+v, %v", mods, err)
+		}
+		bands, err := GetAllFrequencyBands(3, 0, TunerTypeRadio)
+		if err != nil || len(bands) != 2 || bands[1].GetRangeHigh() != 2000 {
+			t.Fatalf("GetAllFrequencyBands() = %+v, %v", bands, err)
+		}
+	})
+
+	t.Run("IndexZeroErrorsAndAllowEmpty", func(t *testing.T) {
+		withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+			return sys.EINVAL
+		})
+		if _, err := GetAllAudioInfo(3); err == nil {
+			t.Fatalf("expected error when index 0 returns EINVAL for GetAllAudioInfo")
+		}
+		if _, err := GetAllTuners(3); err == nil {
+			t.Fatalf("expected error when index 0 returns EINVAL for GetAllTuners")
+		}
+		if ins, err := GetAllVideoInputInfo(3); err != nil || len(ins) != 0 {
+			t.Fatalf("GetAllVideoInputInfo() = %+v, %v; want empty nil", ins, err)
+		}
+		if outs, err := GetAllVideoOutputInfo(3); err != nil || len(outs) != 0 {
+			t.Fatalf("GetAllVideoOutputInfo() = %+v, %v; want empty nil", outs, err)
+		}
+		if stds, err := GetAllStandards(3); err != nil || len(stds) != 0 {
+			t.Fatalf("GetAllStandards() = %+v, %v; want empty nil", stds, err)
+		}
+
+		withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+			return sys.ENOTTY
+		})
+		if _, err := GetAllDVTimings(3, 0); !errors.Is(err, ErrorUnsupported) {
+			t.Fatalf("GetAllDVTimings(ENOTTY) err = %v, want ErrorUnsupported", err)
+		}
+	})
+}
+
+func TestTemporaryErrorAndPollForEvent(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"raw EAGAIN", sys.EAGAIN, true},
+		{"wrapped EAGAIN", fmt.Errorf("dqbuf: %w", sys.EAGAIN), true},
+		{"raw EINTR", sys.EINTR, true},
+		{"wrapped ErrorTemporary", fmt.Errorf("op: %w", ErrorTemporary), true},
+		{"wrapped ErrorInterrupted", fmt.Errorf("op: %w", ErrorInterrupted), true},
+		{"ErrorBadArgument", ErrorBadArgument, false},
+	}
+	for _, tc := range cases {
+		if got := IsTemporaryError(tc.err); got != tc.want {
+			t.Errorf("IsTemporaryError(%s) = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+
+	withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+		return sys.EAGAIN
+	})
+	if ev, err := PollForEvent(3); ev != nil || err != nil {
+		t.Fatalf("PollForEvent(EAGAIN) = (%v, %v), want (nil, nil)", ev, err)
+	}
+
+	withMockIoctl(t, func(fd, req uintptr, arg unsafe.Pointer) sys.Errno {
+		ev := (*cV4L2Event)(arg)
+		ev.Type = EventEOS
+		ev.Sequence = 9
+		return 0
+	})
+	ev, err := PollForEvent(3)
+	if err != nil || ev == nil || !IsEOSEvent(ev) || ev.GetSequence() != 9 {
+		t.Fatalf("PollForEvent(EOS) = (%+v, %v)", ev, err)
 	}
 }

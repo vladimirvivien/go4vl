@@ -93,6 +93,36 @@ static size_t offsetof_v4l2_edid_edid(void) {
 static size_t offsetof_v4l2_subdev_routing_routes(void) {
 	return offsetof(struct v4l2_subdev_routing, routes);
 }
+static size_t offsetof_v4l2_ctrl_h264_sps_flags(void) {
+	return offsetof(struct v4l2_ctrl_h264_sps, flags);
+}
+static size_t offsetof_v4l2_h264_dpb_entry_top_field_order_cnt(void) {
+	return offsetof(struct v4l2_h264_dpb_entry, top_field_order_cnt);
+}
+static size_t offsetof_v4l2_h264_dpb_entry_flags(void) {
+	return offsetof(struct v4l2_h264_dpb_entry, flags);
+}
+static size_t offsetof_v4l2_ctrl_h264_decode_params_flags(void) {
+	return offsetof(struct v4l2_ctrl_h264_decode_params, flags);
+}
+static size_t offsetof_v4l2_ctrl_fwht_params_quantization(void) {
+	return offsetof(struct v4l2_ctrl_fwht_params, quantization);
+}
+static size_t offsetof_v4l2_vp8_loop_filter_flags(void) {
+	return offsetof(struct v4l2_vp8_loop_filter, flags);
+}
+static size_t offsetof_v4l2_vp8_entropy_mv_probs(void) {
+	return offsetof(struct v4l2_vp8_entropy, mv_probs);
+}
+static size_t offsetof_v4l2_ctrl_vp8_frame_dct_part_sizes(void) {
+	return offsetof(struct v4l2_ctrl_vp8_frame, dct_part_sizes);
+}
+static size_t offsetof_v4l2_ctrl_vp8_frame_flags(void) {
+	return offsetof(struct v4l2_ctrl_vp8_frame, flags);
+}
+static size_t offsetof_v4l2_ctrl_mpeg2_picture_picture_coding_type(void) {
+	return offsetof(struct v4l2_ctrl_mpeg2_picture, picture_coding_type);
+}
 */
 import "C"
 
@@ -206,6 +236,25 @@ func cStructSizeChecks(goSizes map[string]uintptr) []abiPair {
 		"cV4L2CtrlAV1TileGroupEntry": uintptr(C.sizeof_struct_v4l2_ctrl_av1_tile_group_entry),
 		"cV4L2CtrlAV1Frame":          uintptr(C.sizeof_struct_v4l2_ctrl_av1_frame),
 		"cV4L2CtrlAV1FilmGrain":      uintptr(C.sizeof_struct_v4l2_ctrl_av1_film_grain),
+		"cV4L2CtrlH264SPS":           uintptr(C.sizeof_struct_v4l2_ctrl_h264_sps),
+		"cV4L2CtrlH264PPS":           uintptr(C.sizeof_struct_v4l2_ctrl_h264_pps),
+		"cV4L2CtrlH264ScalingMatrix": uintptr(C.sizeof_struct_v4l2_ctrl_h264_scaling_matrix),
+		"cV4L2H264WeightFactors":     uintptr(C.sizeof_struct_v4l2_h264_weight_factors),
+		"cV4L2CtrlH264PredWeights":   uintptr(C.sizeof_struct_v4l2_ctrl_h264_pred_weights),
+		"cV4L2H264Reference":         uintptr(C.sizeof_struct_v4l2_h264_reference),
+		"cV4L2CtrlH264SliceParams":   uintptr(C.sizeof_struct_v4l2_ctrl_h264_slice_params),
+		"cV4L2H264DPBEntry":          uintptr(C.sizeof_struct_v4l2_h264_dpb_entry),
+		"cV4L2CtrlH264DecodeParams":  uintptr(C.sizeof_struct_v4l2_ctrl_h264_decode_params),
+		"cV4L2CtrlFWHTParams":        uintptr(C.sizeof_struct_v4l2_ctrl_fwht_params),
+		"cV4L2VP8Segment":            uintptr(C.sizeof_struct_v4l2_vp8_segment),
+		"cV4L2VP8LoopFilter":         uintptr(C.sizeof_struct_v4l2_vp8_loop_filter),
+		"cV4L2VP8Quantization":       uintptr(C.sizeof_struct_v4l2_vp8_quantization),
+		"cV4L2VP8Entropy":            uintptr(C.sizeof_struct_v4l2_vp8_entropy),
+		"cV4L2VP8EntropyCoderState": uintptr(C.sizeof_struct_v4l2_vp8_entropy_coder_state),
+		"cV4L2CtrlVP8Frame":          uintptr(C.sizeof_struct_v4l2_ctrl_vp8_frame),
+		"cV4L2CtrlMPEG2Sequence":     uintptr(C.sizeof_struct_v4l2_ctrl_mpeg2_sequence),
+		"cV4L2CtrlMPEG2Picture":      uintptr(C.sizeof_struct_v4l2_ctrl_mpeg2_picture),
+		"cV4L2CtrlMPEG2Quantisation": uintptr(C.sizeof_struct_v4l2_ctrl_mpeg2_quantisation),
 	}
 	out := make([]abiPair, 0, len(goSizes))
 	for name, got := range goSizes {
@@ -243,6 +292,16 @@ func cStructOffsetChecks(goOffsets map[string]uintptr) []abiPair {
 		"cV4L2MetaFormat.Buffersize":       uintptr(C.offsetof_v4l2_meta_format_buffersize()),
 		"cV4L2EDID.Edid":                   uintptr(C.offsetof_v4l2_edid_edid()),
 		"cV4L2SubdevRouting.Routes":        uintptr(C.offsetof_v4l2_subdev_routing_routes()),
+		"cV4L2CtrlH264SPS.Flags":                       uintptr(C.offsetof_v4l2_ctrl_h264_sps_flags()),
+		"cV4L2H264DPBEntry.Top_field_order_cnt":        uintptr(C.offsetof_v4l2_h264_dpb_entry_top_field_order_cnt()),
+		"cV4L2H264DPBEntry.Flags":                      uintptr(C.offsetof_v4l2_h264_dpb_entry_flags()),
+		"cV4L2CtrlH264DecodeParams.Flags":              uintptr(C.offsetof_v4l2_ctrl_h264_decode_params_flags()),
+		"cV4L2CtrlFWHTParams.Quantization":             uintptr(C.offsetof_v4l2_ctrl_fwht_params_quantization()),
+		"cV4L2VP8LoopFilter.Flags":                     uintptr(C.offsetof_v4l2_vp8_loop_filter_flags()),
+		"cV4L2VP8Entropy.Mv_probs":                     uintptr(C.offsetof_v4l2_vp8_entropy_mv_probs()),
+		"cV4L2CtrlVP8Frame.Dct_part_sizes":             uintptr(C.offsetof_v4l2_ctrl_vp8_frame_dct_part_sizes()),
+		"cV4L2CtrlVP8Frame.Flags":                      uintptr(C.offsetof_v4l2_ctrl_vp8_frame_flags()),
+		"cV4L2CtrlMPEG2Picture.Picture_coding_type":    uintptr(C.offsetof_v4l2_ctrl_mpeg2_picture_picture_coding_type()),
 	}
 	out := make([]abiPair, 0, len(goOffsets))
 	for name, got := range goOffsets {

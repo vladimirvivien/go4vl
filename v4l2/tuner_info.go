@@ -20,8 +20,6 @@ package v4l2
 import (
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // TunerType represents the type of tuner/modulator
@@ -352,21 +350,9 @@ func SetTuner(fd uintptr, tuner TunerInfo) error {
 //	    fmt.Printf("Tuner %d: %s\n", tuner.GetIndex(), tuner.GetName())
 //	}
 func GetAllTuners(fd uintptr) ([]TunerInfo, error) {
-	var result []TunerInfo
-
-	for i := uint32(0); i < 256; i++ {
-		tuner, err := GetTunerInfo(fd, i)
-		if err != nil {
-			// EINVAL indicates no more tuners
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, err
-		}
-		result = append(result, tuner)
-	}
-
-	return result, nil
+	return enumIndexed(false, func(i uint32) (TunerInfo, error) {
+		return GetTunerInfo(fd, i)
+	})
 }
 
 // ============================================================================
@@ -419,21 +405,9 @@ func SetModulator(fd uintptr, modulator ModulatorInfo) error {
 //	    fmt.Printf("Modulator %d: %s\n", mod.GetIndex(), mod.GetName())
 //	}
 func GetAllModulators(fd uintptr) ([]ModulatorInfo, error) {
-	var result []ModulatorInfo
-
-	for i := uint32(0); i < 256; i++ {
-		modulator, err := GetModulatorInfo(fd, i)
-		if err != nil {
-			// EINVAL indicates no more modulators
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, err
-		}
-		result = append(result, modulator)
-	}
-
-	return result, nil
+	return enumIndexed(false, func(i uint32) (ModulatorInfo, error) {
+		return GetModulatorInfo(fd, i)
+	})
 }
 
 // ============================================================================
@@ -518,19 +492,7 @@ func GetFrequencyBandInfo(fd uintptr, tunerIndex uint32, tunerType TunerType, ba
 //	    fmt.Printf("Band %d: %d - %d\n", band.GetIndex(), band.GetRangeLow(), band.GetRangeHigh())
 //	}
 func GetAllFrequencyBands(fd uintptr, tunerIndex uint32, tunerType TunerType) ([]FrequencyBandInfo, error) {
-	var result []FrequencyBandInfo
-
-	for i := uint32(0); i < 256; i++ {
-		band, err := GetFrequencyBandInfo(fd, tunerIndex, tunerType, i)
-		if err != nil {
-			// EINVAL indicates no more bands
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, err
-		}
-		result = append(result, band)
-	}
-
-	return result, nil
+	return enumIndexed(false, func(i uint32) (FrequencyBandInfo, error) {
+		return GetFrequencyBandInfo(fd, tunerIndex, tunerType, i)
+	})
 }

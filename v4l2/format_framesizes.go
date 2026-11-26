@@ -128,26 +128,13 @@ func GetAllFormatFrameSizes(fd uintptr) (result []FrameSizeEnum, err error) {
 
 	// for each supported format, grab frame size
 	for _, format := range formats {
-		index := uint32(0)
-		for {
-			var frmSizeEnum cV4L2FrmSizeEnum
-			frmSizeEnum.Index = index
-			frmSizeEnum.Format = format.PixelFormat
-
-			if err = send(fd, cVIDIOC_ENUM_FRAMESIZES, unsafe.Pointer(&frmSizeEnum)); err != nil {
-				if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
-					break
-				}
-				return result, err
+		sizes, err := GetFormatFrameSizes(fd, format.PixelFormat)
+		result = append(result, sizes...)
+		if err != nil {
+			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
+				continue
 			}
-
-			// At index 0, check the frame type, if not discrete exit loop.
-			// See https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enum-framesizes.html
-			result = append(result, getFrameSize(frmSizeEnum))
-			if index == 0 && frmSizeEnum.Type != FrameSizeTypeDiscrete {
-				break
-			}
-			index++
+			return result, err
 		}
 	}
 	return result, nil

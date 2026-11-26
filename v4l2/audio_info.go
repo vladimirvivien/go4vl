@@ -17,8 +17,6 @@ package v4l2
 import (
 	"fmt"
 	"unsafe"
-
-	sys "golang.org/x/sys/unix"
 )
 
 // AudioCapability represents audio capability flags
@@ -126,18 +124,11 @@ func GetAudioInfo(fd uintptr, index uint32) (AudioInfo, error) {
 // GetAllAudioInfo returns all audio input information for device by
 // iterating from audio index = 0 until an error (EINVAL) is returned.
 func GetAllAudioInfo(fd uintptr) (result []AudioInfo, err error) {
-	index := uint32(0)
-	for {
-		var audio cV4L2Audio
-		audio.Index = index
-		if err = send(fd, cVIDIOC_ENUMAUDIO, unsafe.Pointer(&audio)); err != nil {
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, fmt.Errorf("all audio input info: %w", err)
-		}
-		result = append(result, AudioInfo{v4l2Audio: audio})
-		index++
+	result, err = enumIndexed(false, func(index uint32) (AudioInfo, error) {
+		return GetAudioInfo(fd, index)
+	})
+	if err != nil {
+		return result, fmt.Errorf("all audio input info: %w", err)
 	}
 	return result, nil
 }
@@ -197,18 +188,11 @@ func GetAudioOutInfo(fd uintptr, index uint32) (AudioOutInfo, error) {
 // GetAllAudioOutInfo returns all audio output information for device by
 // iterating from audio output index = 0 until an error (EINVAL) is returned.
 func GetAllAudioOutInfo(fd uintptr) (result []AudioOutInfo, err error) {
-	index := uint32(0)
-	for {
-		var audioOut cV4L2AudioOut
-		audioOut.Index = index
-		if err = send(fd, cVIDIOC_ENUMAUDOUT, unsafe.Pointer(&audioOut)); err != nil {
-			if errno, ok := err.(sys.Errno); ok && errno == sys.EINVAL && len(result) > 0 {
-				break
-			}
-			return result, fmt.Errorf("all audio output info: %w", err)
-		}
-		result = append(result, AudioOutInfo{v4l2AudioOut: audioOut})
-		index++
+	result, err = enumIndexed(false, func(index uint32) (AudioOutInfo, error) {
+		return GetAudioOutInfo(fd, index)
+	})
+	if err != nil {
+		return result, fmt.Errorf("all audio output info: %w", err)
 	}
 	return result, nil
 }

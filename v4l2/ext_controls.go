@@ -198,6 +198,55 @@ func (ec *ExtControls) AddCompound(id CtrlID, data []byte) {
 	ec.controls = append(ec.controls, NewExtControlWithCompound(id, data))
 }
 
+func addCompoundStruct[T any](ec *ExtControls, id CtrlID, name string, val *T) error {
+	if ec == nil {
+		return fmt.Errorf("%s control collection cannot be nil", name)
+	}
+	if val == nil {
+		return fmt.Errorf("%s cannot be nil", name)
+	}
+	size := unsafe.Sizeof(*val)
+	data := unsafe.Slice((*byte)(unsafe.Pointer(val)), size)
+	ec.AddCompound(id, data)
+	return nil
+}
+
+func getCompoundStruct[T any](ec *ExtControl, name string) (*T, error) {
+	if ec == nil {
+		return nil, fmt.Errorf("control cannot be nil")
+	}
+	data := ec.GetCompoundData()
+	if data == nil {
+		return nil, fmt.Errorf("no compound data in control")
+	}
+	var zero T
+	expectedSize := int(unsafe.Sizeof(zero))
+	if len(data) < expectedSize {
+		return nil, fmt.Errorf("invalid %s size: got %d, expected %d", name, len(data), expectedSize)
+	}
+	out := new(T)
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(out)), expectedSize), data)
+	return out, nil
+}
+
+// AddExtControlStruct adds a typed compound control structure to ec under id.
+func AddExtControlStruct[T any](ec *ExtControls, id CtrlID, val *T) error {
+	return addCompoundStruct(ec, id, fmt.Sprintf("control 0x%x", id), val)
+}
+
+// GetExtControlStruct finds the control with id in ec and decodes its compound payload into T.
+func GetExtControlStruct[T any](ec *ExtControls, id CtrlID) (*T, error) {
+	if ec == nil {
+		return nil, fmt.Errorf("control collection cannot be nil")
+	}
+	for _, ctrl := range ec.controls {
+		if ctrl != nil && ctrl.ID == id {
+			return getCompoundStruct[T](ctrl, fmt.Sprintf("control 0x%x", id))
+		}
+	}
+	return nil, fmt.Errorf("control 0x%x not found", id)
+}
+
 // GetControls returns all controls in the collection.
 func (ec *ExtControls) GetControls() []*ExtControl {
 	return ec.controls

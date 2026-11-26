@@ -1086,3 +1086,197 @@ type cV4L2CtrlAV1FilmGrain struct {
 	Cr_offset                 uint16
 	Reserved                  [4]uint8
 }
+type cV4L2CtrlH264SPS struct {
+	Profile_idc                           uint8
+	Constraint_set_flags                  uint8
+	Level_idc                             uint8
+	Seq_parameter_set_id                  uint8
+	Chroma_format_idc                     uint8
+	Bit_depth_luma_minus8                 uint8
+	Bit_depth_chroma_minus8               uint8
+	Log2_max_frame_num_minus4             uint8
+	Pic_order_cnt_type                    uint8
+	Log2_max_pic_order_cnt_lsb_minus4     uint8
+	Max_num_ref_frames                    uint8
+	Num_ref_frames_in_pic_order_cnt_cycle uint8
+	Offset_for_ref_frame                  [255]int32
+	Offset_for_non_ref_pic                int32
+	Offset_for_top_to_bottom_field        int32
+	Pic_width_in_mbs_minus1               uint16
+	Pic_height_in_map_units_minus1        uint16
+	Flags                                 uint32
+}
+type cV4L2CtrlH264PPS struct {
+	Pic_parameter_set_id                 uint8
+	Seq_parameter_set_id                 uint8
+	Num_slice_groups_minus1              uint8
+	Num_ref_idx_l0_default_active_minus1 uint8
+	Num_ref_idx_l1_default_active_minus1 uint8
+	Weighted_bipred_idc                  uint8
+	Pic_init_qp_minus26                  int8
+	Pic_init_qs_minus26                  int8
+	Chroma_qp_index_offset               int8
+	Second_chroma_qp_index_offset        int8
+	Flags                                uint16
+}
+type cV4L2CtrlH264ScalingMatrix struct {
+	List_4x4 [6][16]uint8
+	List_8x8 [6][64]uint8
+}
+type cV4L2H264WeightFactors struct {
+	Luma_weight   [32]int16
+	Luma_offset   [32]int16
+	Chroma_weight [32][2]int16
+	Chroma_offset [32][2]int16
+}
+type cV4L2CtrlH264PredWeights struct {
+	Luma_log2_weight_denom   uint16
+	Chroma_log2_weight_denom uint16
+	Weight_factors           [2]cV4L2H264WeightFactors
+}
+type cV4L2H264Reference struct {
+	Fields uint8
+	Index  uint8
+}
+type cV4L2CtrlH264SliceParams struct {
+	Header_bit_size               uint32
+	First_mb_in_slice             uint32
+	Slice_type                    uint8
+	Colour_plane_id               uint8
+	Redundant_pic_cnt             uint8
+	Cabac_init_idc                uint8
+	Slice_qp_delta                int8
+	Slice_qs_delta                int8
+	Disable_deblocking_filter_idc uint8
+	Slice_alpha_c0_offset_div2    int8
+	Slice_beta_offset_div2        int8
+	Num_ref_idx_l0_active_minus1  uint8
+	Num_ref_idx_l1_active_minus1  uint8
+	Reserved                      uint8
+	Ref_pic_list0                 [32]cV4L2H264Reference
+	Ref_pic_list1                 [32]cV4L2H264Reference
+	Flags                         uint32
+}
+type cV4L2H264DPBEntry struct {
+	Reference_ts           uint64
+	Pic_num                uint32
+	Frame_num              uint16
+	Fields                 uint8
+	Reserved               [5]uint8
+	Top_field_order_cnt    int32
+	Bottom_field_order_cnt int32
+	Flags                  uint32
+}
+type cV4L2CtrlH264DecodeParams struct {
+	Dpb                          [16]cV4L2H264DPBEntry
+	Nal_ref_idc                  uint16
+	Frame_num                    uint16
+	Top_field_order_cnt          int32
+	Bottom_field_order_cnt       int32
+	Idr_pic_id                   uint16
+	Pic_order_cnt_lsb            uint16
+	Delta_pic_order_cnt_bottom   int32
+	Delta_pic_order_cnt0         int32
+	Delta_pic_order_cnt1         int32
+	Dec_ref_pic_marking_bit_size uint32
+	Pic_order_cnt_bit_size       uint32
+	Slice_group_change_cycle     uint32
+	Reserved                     uint32
+	Flags                        uint32
+}
+type cV4L2CtrlFWHTParams struct {
+	Backward_ref_ts uint64
+	Version         uint32
+	Width           uint32
+	Height          uint32
+	Flags           uint32
+	Colorspace      uint32
+	Xfer_func       uint32
+	Ycbcr_enc       uint32
+	Quantization    uint32
+}
+type cV4L2VP8Segment struct {
+	Quant_update  [4]int8
+	Lf_update     [4]int8
+	Segment_probs [3]uint8
+	Padding       uint8
+	Flags         uint32
+}
+type cV4L2VP8LoopFilter struct {
+	Ref_frm_delta   [4]int8
+	Mb_mode_delta   [4]int8
+	Sharpness_level uint8
+	Level           uint8
+	Padding         uint16
+	Flags           uint32
+}
+type cV4L2VP8Quantization struct {
+	Y_ac_qi     uint8
+	Y_dc_delta  int8
+	Y2_dc_delta int8
+	Y2_ac_delta int8
+	Uv_dc_delta int8
+	Uv_ac_delta int8
+	Padding     uint16
+}
+type cV4L2VP8Entropy struct {
+	Coeff_probs   [4][8][3][11]uint8
+	Y_mode_probs  [4]uint8
+	Uv_mode_probs [3]uint8
+	Mv_probs      [2][19]uint8
+	Padding       [3]uint8
+}
+type cV4L2VP8EntropyCoderState struct {
+	Range   uint8
+	Value   uint8
+	Count   uint8
+	Padding uint8
+}
+type cV4L2CtrlVP8Frame struct {
+	Segment                cV4L2VP8Segment
+	Lf                     cV4L2VP8LoopFilter
+	Quant                  cV4L2VP8Quantization
+	Entropy                cV4L2VP8Entropy
+	Coder_state            cV4L2VP8EntropyCoderState
+	Width                  uint16
+	Height                 uint16
+	Horizontal_scale       uint8
+	Vertical_scale         uint8
+	Version                uint8
+	Prob_skip_false        uint8
+	Prob_intra             uint8
+	Prob_last              uint8
+	Prob_gf                uint8
+	Num_dct_parts          uint8
+	First_part_size        uint32
+	First_part_header_bits uint32
+	Dct_part_sizes         [8]uint32
+	Last_frame_ts          uint64
+	Golden_frame_ts        uint64
+	Alt_frame_ts           uint64
+	Flags                  uint64
+}
+type cV4L2CtrlMPEG2Sequence struct {
+	Horizontal_size              uint16
+	Vertical_size                uint16
+	Vbv_buffer_size              uint32
+	Profile_and_level_indication uint16
+	Chroma_format                uint8
+	Flags                        uint8
+}
+type cV4L2CtrlMPEG2Picture struct {
+	Backward_ref_ts     uint64
+	Forward_ref_ts      uint64
+	Flags               uint32
+	F_code              [2][2]uint8
+	Picture_coding_type uint8
+	Picture_structure   uint8
+	Intra_dc_precision  uint8
+	Reserved            [5]uint8
+}
+type cV4L2CtrlMPEG2Quantisation struct {
+	Intra_quantiser_matrix            [64]uint8
+	Non_intra_quantiser_matrix        [64]uint8
+	Chroma_intra_quantiser_matrix     [64]uint8
+	Chroma_non_intra_quantiser_matrix [64]uint8
+}

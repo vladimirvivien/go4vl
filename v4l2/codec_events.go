@@ -157,7 +157,7 @@ func PollForEvent(fd uintptr) (*Event, error) {
 	event, err := DequeueEvent(fd)
 	if err != nil {
 		// EAGAIN means no event available - not an error
-		if err == ErrorTemporary || err == ErrorInterrupted {
+		if IsTemporaryError(err) {
 			return nil, nil
 		}
 		return nil, err

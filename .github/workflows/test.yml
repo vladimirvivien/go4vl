@@ -28,7 +28,7 @@ jobs:
       run: CGO_ENABLED=0 go test -v -cover ./v4l2 ./device
 
     - name: Vet (CGO_ENABLED=0)
-      run: CGO_ENABLED=0 go vet ./v4l2 ./device
+      run: CGO_ENABLED=0 go vet ./...
 
     - name: Install C headers for ABI parity verification
       run: |

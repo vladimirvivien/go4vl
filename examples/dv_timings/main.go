@@ -132,7 +132,8 @@ func displayDetectedTimings(dev *device.Device) {
 	timings, err := dev.QueryDVTimings()
 	if err != nil {
 		fmt.Printf("  Could not detect timings: %v\n", err)
-		fmt.Println("  (No signal present or auto-detection not supported)\n")
+		fmt.Println("  (No signal present or auto-detection not supported)")
+		fmt.Println()
 		return
 	}
 

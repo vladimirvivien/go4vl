@@ -1,10 +1,5 @@
 package v4l2
 
-import (
-	"fmt"
-	"unsafe"
-)
-
 // Stateless HEVC control payload types mapped directly to the Linux kernel UAPI
 // structs in <linux/v4l2-controls.h>.
 type (
@@ -29,31 +24,6 @@ const (
 	CtrlHEVCStartCode         CtrlID = cV4L2_CID_STATELESS_HEVC_START_CODE
 	CtrlHEVCEntryPointOffsets CtrlID = cV4L2_CID_STATELESS_HEVC_ENTRY_POINT_OFFSETS
 )
-
-func addCompoundStruct[T any](ec *ExtControls, id CtrlID, name string, val *T) error {
-	if val == nil {
-		return fmt.Errorf("%s cannot be nil", name)
-	}
-	size := unsafe.Sizeof(*val)
-	data := unsafe.Slice((*byte)(unsafe.Pointer(val)), size)
-	ec.AddCompound(id, data)
-	return nil
-}
-
-func getCompoundStruct[T any](ec *ExtControl, name string) (*T, error) {
-	data := ec.GetCompoundData()
-	if data == nil {
-		return nil, fmt.Errorf("no compound data in control")
-	}
-	var zero T
-	expectedSize := int(unsafe.Sizeof(zero))
-	if len(data) < expectedSize {
-		return nil, fmt.Errorf("invalid %s size: got %d, expected %d", name, len(data), expectedSize)
-	}
-	out := new(T)
-	copy(unsafe.Slice((*byte)(unsafe.Pointer(out)), expectedSize), data)
-	return out, nil
-}
 
 // AddHEVCSPS adds a stateless HEVC SPS control.
 func (ec *ExtControls) AddHEVCSPS(sps *ControlHEVCSPS) error {

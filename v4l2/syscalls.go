@@ -129,6 +129,21 @@ func send(fd, req uintptr, arg unsafe.Pointer) error {
 	}
 }
 
+func enumIndexed[T any](allowEmpty bool, fn func(index uint32) (T, error)) ([]T, error) {
+	var result []T
+	for index := uint32(0); ; index++ {
+		item, err := fn(index)
+		if err != nil {
+			if (errors.Is(err, ErrorBadArgument) || errors.Is(err, sys.EINVAL)) && (allowEmpty || len(result) > 0) {
+				break
+			}
+			return result, err
+		}
+		result = append(result, item)
+	}
+	return result, nil
+}
+
 // WaitForRead returns a channel that is notified when a device is ready to be read.
 // The goroutine exits when ctx is cancelled.
 func WaitForRead(ctx context.Context, dev Device) <-chan struct{} {

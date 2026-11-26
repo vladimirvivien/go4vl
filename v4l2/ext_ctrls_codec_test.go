@@ -9,18 +9,18 @@ func TestExtControls_H264Helpers(t *testing.T) {
 	tests := []struct {
 		name string
 		add  func(*ExtControls) error
-		get  func(*ExtControl) (interface{}, error)
+		get  func(*ExtControl) (any, error)
 	}{
 		{
 			name: "H264SPS",
 			add: func(ec *ExtControls) error {
 				sps := &ControlH264SPS{
-					ProfileIDC: 100,
-					LevelIDC:   51,
+					Profile_idc: 100,
+					Level_idc:   51,
 				}
 				return ec.AddH264SPS(sps)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264SPS()
 			},
 		},
@@ -28,12 +28,12 @@ func TestExtControls_H264Helpers(t *testing.T) {
 			name: "H264PPS",
 			add: func(ec *ExtControls) error {
 				pps := &ControlH264PPS{
-					PicParameterSetID: 0,
-					SeqParameterSetID: 0,
+					Pic_parameter_set_id: 0,
+					Seq_parameter_set_id: 0,
 				}
 				return ec.AddH264PPS(pps)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264PPS()
 			},
 		},
@@ -43,7 +43,7 @@ func TestExtControls_H264Helpers(t *testing.T) {
 				matrix := &ControlH264ScalingMatrix{}
 				return ec.AddH264ScalingMatrix(matrix)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264ScalingMatrix()
 			},
 		},
@@ -51,12 +51,12 @@ func TestExtControls_H264Helpers(t *testing.T) {
 			name: "H264SliceParams",
 			add: func(ec *ExtControls) error {
 				params := &ControlH264SliceParams{
-					HeaderBitSize:  100,
-					FirstMBInSlice: 0,
+					Header_bit_size:   100,
+					First_mb_in_slice: 0,
 				}
 				return ec.AddH264SliceParams(params)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264SliceParams()
 			},
 		},
@@ -64,12 +64,12 @@ func TestExtControls_H264Helpers(t *testing.T) {
 			name: "H264DecodeParams",
 			add: func(ec *ExtControls) error {
 				params := &ControlH264DecodeParams{
-					FrameNum: 1,
-					NalRefIDC: 3,
+					Frame_num:   1,
+					Nal_ref_idc: 3,
 				}
 				return ec.AddH264DecodeParams(params)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264DecodeParams()
 			},
 		},
@@ -77,12 +77,12 @@ func TestExtControls_H264Helpers(t *testing.T) {
 			name: "H264PredWeights",
 			add: func(ec *ExtControls) error {
 				weights := &ControlH264PredictionWeights{
-					LumaLog2WeightDenom:   5,
-					ChromaLog2WeightDenom: 5,
+					Luma_log2_weight_denom:   5,
+					Chroma_log2_weight_denom: 5,
 				}
 				return ec.AddH264PredWeights(weights)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetH264PredWeights()
 			},
 		},
@@ -118,18 +118,18 @@ func TestExtControls_MPEG2Helpers(t *testing.T) {
 	tests := []struct {
 		name string
 		add  func(*ExtControls) error
-		get  func(*ExtControl) (interface{}, error)
+		get  func(*ExtControl) (any, error)
 	}{
 		{
 			name: "MPEG2Sequence",
 			add: func(ec *ExtControls) error {
 				seq := &ControlMPEG2Sequence{
-					HorizontalSize: 1920,
-					VerticalSize:   1080,
+					Horizontal_size: 1920,
+					Vertical_size:   1080,
 				}
 				return ec.AddMPEG2Sequence(seq)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetMPEG2Sequence()
 			},
 		},
@@ -137,12 +137,12 @@ func TestExtControls_MPEG2Helpers(t *testing.T) {
 			name: "MPEG2Picture",
 			add: func(ec *ExtControls) error {
 				pic := &ControlMPEG2Picture{
-					BackwardRefTimestamp: 1000,
-					ForwardRefTimestamp:  2000,
+					Backward_ref_ts: 1000,
+					Forward_ref_ts:  2000,
 				}
 				return ec.AddMPEG2Picture(pic)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetMPEG2Picture()
 			},
 		},
@@ -152,7 +152,7 @@ func TestExtControls_MPEG2Helpers(t *testing.T) {
 				quant := &ControlMPEG2Quantization{}
 				return ec.AddMPEG2Quantization(quant)
 			},
-			get: func(ec *ExtControl) (interface{}, error) {
+			get: func(ec *ExtControl) (any, error) {
 				return ec.GetMPEG2Quantization()
 			},
 		},
@@ -185,9 +185,10 @@ func TestExtControls_VP8Helpers(t *testing.T) {
 	ctrls := NewExtControls()
 
 	frame := &ControlVP8Frame{
-		Width:  1920,
-		Height: 1080,
-		Version: 0,
+		Width:          1920,
+		Height:         1080,
+		Version:        0,
+		Dct_part_sizes: [8]uint32{128, 256},
 	}
 
 	err := ctrls.AddVP8Frame(frame)
@@ -205,9 +206,9 @@ func TestExtControls_VP8Helpers(t *testing.T) {
 		t.Fatalf("Failed to get VP8 frame: %v", err)
 	}
 
-	if retrieved.Width != 1920 || retrieved.Height != 1080 {
-		t.Errorf("VP8 frame data mismatch: got %dx%d, expected 1920x1080",
-			retrieved.Width, retrieved.Height)
+	if retrieved.Width != 1920 || retrieved.Height != 1080 || retrieved.Dct_part_sizes[1] != 256 {
+		t.Errorf("VP8 frame data mismatch: got %dx%d (dct[1]=%d)",
+			retrieved.Width, retrieved.Height, retrieved.Dct_part_sizes[1])
 	}
 }
 
@@ -216,9 +217,10 @@ func TestExtControls_FWHTHelpers(t *testing.T) {
 	ctrls := NewExtControls()
 
 	params := &ControlFWHTParams{
-		Width:   1920,
-		Height:  1080,
-		Version: 1,
+		Width:        1920,
+		Height:       1080,
+		Version:      1,
+		Quantization: 2,
 	}
 
 	err := ctrls.AddFWHTParams(params)
@@ -236,8 +238,8 @@ func TestExtControls_FWHTHelpers(t *testing.T) {
 		t.Fatalf("Failed to get FWHT params: %v", err)
 	}
 
-	if retrieved.Width != 1920 || retrieved.Height != 1080 || retrieved.Version != 1 {
-		t.Errorf("FWHT params data mismatch")
+	if retrieved.Width != 1920 || retrieved.Height != 1080 || retrieved.Version != 1 || retrieved.Quantization != 2 {
+		t.Errorf("FWHT params data mismatch: %+v", retrieved)
 	}
 }
 
@@ -277,19 +279,19 @@ func TestExtControls_MultipleCodecControls(t *testing.T) {
 	ctrls := NewExtControls()
 
 	// Add H.264 SPS
-	sps := &ControlH264SPS{ProfileIDC: 100}
+	sps := &ControlH264SPS{Profile_idc: 100}
 	if err := ctrls.AddH264SPS(sps); err != nil {
 		t.Fatalf("Failed to add H264 SPS: %v", err)
 	}
 
 	// Add H.264 PPS
-	pps := &ControlH264PPS{PicParameterSetID: 0}
+	pps := &ControlH264PPS{Pic_parameter_set_id: 0}
 	if err := ctrls.AddH264PPS(pps); err != nil {
 		t.Fatalf("Failed to add H264 PPS: %v", err)
 	}
 
 	// Add MPEG2 sequence
-	seq := &ControlMPEG2Sequence{HorizontalSize: 1920}
+	seq := &ControlMPEG2Sequence{Horizontal_size: 1920}
 	if err := ctrls.AddMPEG2Sequence(seq); err != nil {
 		t.Fatalf("Failed to add MPEG2 sequence: %v", err)
 	}
@@ -297,5 +299,45 @@ func TestExtControls_MultipleCodecControls(t *testing.T) {
 	// Verify all were added
 	if len(ctrls.GetControls()) != 3 {
 		t.Errorf("Expected 3 controls, got %d", len(ctrls.GetControls()))
+	}
+}
+
+func TestExtControls_GenericStructHelpers(t *testing.T) {
+	ctrls := NewExtControls()
+	in := &ControlH264SPS{
+		Profile_idc: 100,
+		Level_idc:   41,
+		Flags:       0x03,
+	}
+
+	if err := AddExtControlStruct(ctrls, CtrlH264SPS, in); err != nil {
+		t.Fatalf("AddExtControlStruct() = %v", err)
+	}
+
+	got, err := GetExtControlStruct[ControlH264SPS](ctrls, CtrlH264SPS)
+	if err != nil {
+		t.Fatalf("GetExtControlStruct() = %v", err)
+	}
+	if got.Profile_idc != in.Profile_idc || got.Level_idc != in.Level_idc || got.Flags != in.Flags {
+		t.Fatalf("round-trip mismatch: got %+v, want %+v", got, in)
+	}
+
+	if err := AddExtControlStruct[ControlH264SPS](nil, CtrlH264SPS, in); err == nil {
+		t.Fatalf("expected error for nil ExtControls in AddExtControlStruct")
+	}
+	if err := AddExtControlStruct[ControlH264SPS](ctrls, CtrlH264SPS, nil); err == nil {
+		t.Fatalf("expected error for nil value in AddExtControlStruct")
+	}
+	if _, err := GetExtControlStruct[ControlH264SPS](nil, CtrlH264SPS); err == nil {
+		t.Fatalf("expected error for nil ExtControls in GetExtControlStruct")
+	}
+	if _, err := GetExtControlStruct[ControlH264PPS](ctrls, CtrlH264PPS); err == nil {
+		t.Fatalf("expected error for missing control ID in GetExtControlStruct")
+	}
+
+	bad := NewExtControls()
+	bad.AddCompound(CtrlH264SPS, []byte{1, 2, 3})
+	if _, err := GetExtControlStruct[ControlH264SPS](bad, CtrlH264SPS); err == nil {
+		t.Fatalf("expected error for truncated compound payload in GetExtControlStruct")
 	}
 }

@@ -17,8 +17,11 @@ package v4l2
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/dev-decoder.html
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
+
+	sys "golang.org/x/sys/unix"
 )
 
 // Encoder command constants for VIDIOC_ENCODER_CMD.
@@ -724,7 +727,10 @@ func StreamOffCapture(fd uintptr) error {
 
 // IsTemporaryError checks if an error is temporary (EAGAIN, EINTR).
 func IsTemporaryError(err error) bool {
-	return err == ErrorTemporary || err == ErrorInterrupted
+	return errors.Is(err, sys.EAGAIN) ||
+		errors.Is(err, sys.EINTR) ||
+		errors.Is(err, ErrorTemporary) ||
+		errors.Is(err, ErrorInterrupted)
 }
 
 // Encoder and decoder command name maps for debugging and display

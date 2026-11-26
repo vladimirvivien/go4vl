@@ -216,24 +216,24 @@ ctrls := v4l2.NewExtControls()
 
 // Add H.264 SPS (Sequence Parameter Set) using type-safe API
 sps := &v4l2.ControlH264SPS{
-    ProfileIDC:              100, // High Profile
-    LevelIDC:                51,  // Level 5.1
-    ChromaFormatIDC:         1,   // 4:2:0
-    Log2MaxFrameNumMinus4:   0,
-    PicOrderCntType:         0,
-    Log2MaxPicOrderCntLsbMinus4: 2,
-    MaxNumRefFrames:         4,
-    PicWidthInMbsMinus1:     119, // 1920 pixels
-    PicHeightInMapUnitsMinus1: 67, // 1080 pixels
+    Profile_idc:                     100, // High Profile
+    Level_idc:                       51,  // Level 5.1
+    Chroma_format_idc:               1,   // 4:2:0
+    Log2_max_frame_num_minus4:       0,
+    Pic_order_cnt_type:              0,
+    Log2_max_pic_order_cnt_lsb_minus4: 2,
+    Max_num_ref_frames:              4,
+    Pic_width_in_mbs_minus1:         119, // 1920 pixels
+    Pic_height_in_map_units_minus1:  67,  // 1080 pixels
 }
 ctrls.AddH264SPS(sps)
 
 // Add H.264 PPS (Picture Parameter Set)
 pps := &v4l2.ControlH264PPS{
-    PicParameterSetID: 0,
-    SeqParameterSetID: 0,
-    NumRefIndexL0DefaultActiveMinus1: 3,
-    NumRefIndexL1DefaultActiveMinus1: 0,
+    Pic_parameter_set_id:                 0,
+    Seq_parameter_set_id:                 0,
+    Num_ref_idx_l0_default_active_minus1: 3,
+    Num_ref_idx_l1_default_active_minus1: 0,
 }
 ctrls.AddH264PPS(pps)
 
@@ -255,7 +255,7 @@ dev.GetExtControls(readCtrls)
 
 retrievedSPS, err := readCtrls.GetControls()[0].GetH264SPS()
 if err == nil {
-    fmt.Printf("Profile: %d, Level: %d\n", retrievedSPS.ProfileIDC, retrievedSPS.LevelIDC)
+    fmt.Printf("Profile: %d, Level: %d\n", retrievedSPS.Profile_idc, retrievedSPS.Level_idc)
 }
 ```
 
@@ -266,20 +266,20 @@ ctrls := v4l2.NewExtControls()
 
 // MPEG2 Sequence Header
 seq := &v4l2.ControlMPEG2Sequence{
-    HorizontalSize: 1920,
-    VerticalSize:   1080,
-    VBVBufferSize:  224,
-    ProfileAndLevelIndication: 0x85, // Main Profile @ Main Level
-    ChromaFormat:   1,                // 4:2:0
+    Horizontal_size:              1920,
+    Vertical_size:                1080,
+    Vbv_buffer_size:              224,
+    Profile_and_level_indication: 0x85, // Main Profile @ Main Level
+    Chroma_format:                1,    // 4:2:0
 }
 ctrls.AddMPEG2Sequence(seq)
 
 // MPEG2 Picture Header
 pic := &v4l2.ControlMPEG2Picture{
-    BackwardRefTimestamp: 0,
-    ForwardRefTimestamp:  0,
-    PictureCodingType:    1, // I-frame
-    FCode:                [[2][2]uint8{{15, 15}, {15, 15}}],
+    Backward_ref_ts:     0,
+    Forward_ref_ts:      0,
+    Picture_coding_type: 1, // I-frame
+    F_code:              [2][2]uint8{{15, 15}, {15, 15}},
 }
 ctrls.AddMPEG2Picture(pic)
 
@@ -298,12 +298,12 @@ ctrls := v4l2.NewExtControls()
 
 // VP8 Frame Parameters
 frame := &v4l2.ControlVP8Frame{
-    Width:         1920,
-    Height:        1080,
-    Version:       0,
-    HorizontalScale: 0,
-    VerticalScale:   0,
-    Flags:          0,
+    Width:            1920,
+    Height:           1080,
+    Version:          0,
+    Horizontal_scale: 0,
+    Vertical_scale:   0,
+    Flags:            0,
 }
 ctrls.AddVP8Frame(frame)
 

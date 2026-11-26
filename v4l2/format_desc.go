@@ -1,7 +1,6 @@
 package v4l2
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -93,20 +92,11 @@ func GetFormatDescription(fd uintptr, index uint32) (FormatDescription, error) {
 
 // GetAllFormatDescriptionsByType retrieves all supported format descriptions for the specified buffer type.
 func GetAllFormatDescriptionsByType(fd uintptr, bufType BufType) (result []FormatDescription, err error) {
-	index := uint32(0)
-	for {
-		var fmtDesc cV4L2FmtDesc
-		fmtDesc.Index = index
-		fmtDesc.Type = bufType
-
-		if err = send(fd, cVIDIOC_ENUM_FMT, unsafe.Pointer(&fmtDesc)); err != nil {
-			if errors.Is(err, ErrorBadArgument) && len(result) > 0 {
-				break
-			}
-			return result, fmt.Errorf("format desc: all: %w", err)
-		}
-		result = append(result, makeFormatDescription(fmtDesc))
-		index++
+	result, err = enumIndexed(false, func(index uint32) (FormatDescription, error) {
+		return GetFormatDescriptionByType(fd, bufType, index)
+	})
+	if err != nil {
+		return result, fmt.Errorf("format desc: all: %w", err)
 	}
 	return result, nil
 }

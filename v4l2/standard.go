@@ -24,7 +24,6 @@ package v4l2
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enumstd.html
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -306,20 +305,12 @@ func EnumStandard(fd uintptr, index uint32) (Standard, error) {
 //
 // See: https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/vidioc-enumstd.html
 func GetAllStandards(fd uintptr) ([]Standard, error) {
-	var standards []Standard
-
-	for index := uint32(0); ; index++ {
-		std, err := EnumStandard(fd, index)
-		if err != nil {
-			// EINVAL means we've reached the end of the list
-			if errors.Is(err, ErrorBadArgument) {
-				break
-			}
-			return nil, fmt.Errorf("failed to enumerate standard at index %d: %w", index, err)
-		}
-		standards = append(standards, std)
+	standards, err := enumIndexed(true, func(index uint32) (Standard, error) {
+		return EnumStandard(fd, index)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to enumerate standards: %w", err)
 	}
-
 	return standards, nil
 }
 

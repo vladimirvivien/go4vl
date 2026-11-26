@@ -16,7 +16,6 @@ package v4l2
 // See: https://linuxtv.org/downloads/v4l-dvb-apis/userspace-api/v4l/vidioc-enumoutput.html
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -176,19 +175,11 @@ func GetVideoInputInfo(fd uintptr, index uint32) (InputInfo, error) {
 // GetAllVideoInputInfo returns all input information for device by
 // iterating from input index = 0 until an error (EINVAL) is returned.
 func GetAllVideoInputInfo(fd uintptr) (result []InputInfo, err error) {
-	index := uint32(0)
-	for {
-		var input cV4L2Input
-		input.Index = index
-		if err = send(fd, cVIDIOC_ENUMINPUT, unsafe.Pointer(&input)); err != nil {
-			// ErrorBadArgument (EINVAL) indicates no more inputs (end of enumeration)
-			if errors.Is(err, ErrorBadArgument) {
-				break
-			}
-			return result, fmt.Errorf("all video input info: %w", err)
-		}
-		result = append(result, InputInfo{v4l2Input: input})
-		index++
+	result, err = enumIndexed(true, func(index uint32) (InputInfo, error) {
+		return GetVideoInputInfo(fd, index)
+	})
+	if err != nil {
+		return result, fmt.Errorf("all video input info: %w", err)
 	}
 	return result, nil
 }
@@ -235,19 +226,11 @@ func GetVideoOutputInfo(fd uintptr, index uint32) (OutputInfo, error) {
 // GetAllVideoOutputInfo returns all output information for device by
 // iterating from output index = 0 until an error (EINVAL) is returned.
 func GetAllVideoOutputInfo(fd uintptr) (result []OutputInfo, err error) {
-	index := uint32(0)
-	for {
-		var output cV4L2Output
-		output.Index = index
-		if err = send(fd, cVIDIOC_ENUMOUTPUT, unsafe.Pointer(&output)); err != nil {
-			// ErrorBadArgument (EINVAL) indicates no more outputs (end of enumeration)
-			if errors.Is(err, ErrorBadArgument) {
-				break
-			}
-			return result, fmt.Errorf("all video output info: %w", err)
-		}
-		result = append(result, OutputInfo{v4l2Output: output})
-		index++
+	result, err = enumIndexed(true, func(index uint32) (OutputInfo, error) {
+		return GetVideoOutputInfo(fd, index)
+	})
+	if err != nil {
+		return result, fmt.Errorf("all video output info: %w", err)
 	}
 	return result, nil
 }
