@@ -55,6 +55,16 @@ type Control struct {
 	Step    int32
 	Default int32
 	Flags   uint32
+
+	// Minimum64, Maximum64, Step64 and Default64 are the range, step and default
+	// in 64 bits, as VIDIOC_QUERY_EXT_CTRL reports them (QueryExtControlInfo,
+	// GetExtControl, QueryAllExtControls): Minimum, Maximum, Step and Default
+	// truncate those of a 64-bit control to 32 bits. They are zero for a control
+	// from VIDIOC_QUERYCTRL (QueryControlInfo).
+	Minimum64 int64
+	Maximum64 int64
+	Step64    uint64
+	Default64 int64
 }
 
 // ControlMenuItem represents a single option in a menu-type V4L2 control.
