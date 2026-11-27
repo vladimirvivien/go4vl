@@ -1,6 +1,6 @@
 # Testing & CI
 
-Every code change in `go4vl` is backed by fast hardware-free unit tests, pure-Go ABI layout verification, race detection, and end-to-end streaming integration tests against `v4l2loopback` or physical cameras.
+Every code change in `go4vl` is backed by fast hardware-free unit tests, ABI layout verification under `CGO_ENABLED=0`, race detection, and end-to-end streaming integration tests against `v4l2loopback` or physical cameras.
 
 ## Running unit tests (no camera required)
 
@@ -19,10 +19,11 @@ CGO_ENABLED=1 go test -race ./v4l2 ./device
 
 ## Verifying ABI layouts and cross-architecture builds
 
-The pure-Go ABI test verifies wrapper struct sizes, patched struct layouts, 64-bit time fields, and union offsets without CGO or Linux kernel headers:
+The ABI test suite validates wrapper struct sizes, patched struct layouts, 64-bit time fields, union offsets, and generator rewrite rules with CGO disabled:
 
 ```bash
 CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
+go test -v ./v4l2/internal/gen
 ```
 
 Also cross-compile all packages across `amd64`, `arm64`, `arm`, and `riscv64` with `CGO_ENABLED=0` to verify 32-bit and 64-bit UAPI parity:

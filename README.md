@@ -51,7 +51,7 @@ Working directly with V4L2 in Go requires low-level ioctl marshaling, buffer rin
 **Software:**
 * Go 1.26 or later
 * Linux kernel 5.10 or later with V4L2 drivers
-* *(Optional)* `gcc` or `clang` and `linux-libc-dev` are needed only when regenerating ABI definitions (`go generate ./v4l2`)
+* *(Optional)* `gcc` or `clang` and Linux 6.12+ `linux-libc-dev` (or Docker with `golang:1.26-trixie`) are needed only when regenerating ABI definitions (`go generate ./v4l2`)
 
 **Hardware:**
 * V4L2-compatible capture/output device (webcam, capture card, CSI-2 pipeline, hardware codec, or `v4l2loopback`) accessible via `/dev/video*`
@@ -195,7 +195,7 @@ Browse categorized listings on the [Examples page](https://vladimirvivien.github
 * **Device not found:** Run `ls -l /dev/video*` or `v4l2-ctl --list-devices`.
 * **Permission denied:** Add your user to `video` (`sudo usermod -a -G video "$USER"` and log back in).
 * **No frames received:** Inspect hardware capabilities and formats with `v4l2-ctl -d /dev/video0 --all` and `v4l2-ctl -d /dev/video0 --list-formats-ext`.
-* **ABI regeneration errors:** Install `sudo apt-get install build-essential linux-libc-dev` (required only when running `go generate ./v4l2`).
+* **ABI regeneration errors:** Install Linux 6.12+ headers (`sudo apt-get install build-essential linux-libc-dev`) or run code generation inside Docker — see [docs/BUILD.md](./docs/BUILD.md#regenerating-uapi-definitions-contributors).
 
 ## Testing
 

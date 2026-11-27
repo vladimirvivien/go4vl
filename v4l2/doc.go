@@ -32,7 +32,7 @@
 //   - Linux kernel 5.10 or later with V4L2 / Media Controller drivers
 //   - Supported architectures: linux/amd64, linux/arm64, linux/arm, linux/riscv64 (CGO_ENABLED=0)
 //   - Read/write access to /dev/video*, /dev/media*, or /dev/v4l-subdev* nodes
-//   - Optional (contributors regenerating ABI definitions): gcc or clang and linux-libc-dev for go generate
+//   - Optional (contributors regenerating ABI definitions): gcc or clang and Linux 6.12+ linux-libc-dev (or Docker) for go generate
 //
 // # Basic Usage
 //

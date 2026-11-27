@@ -1,6 +1,6 @@
 # Testing Guide for `go4vl`
 
-`go4vl` verifies correctness through fast hardware-free unit tests, pure-Go ABI layout checks, race detector runs, and end-to-end integration tests using `v4l2loopback` or physical V4L2 devices.
+`go4vl` verifies correctness through fast hardware-free unit tests, ABI layout checks under `CGO_ENABLED=0`, race detector runs, and end-to-end integration tests using `v4l2loopback` or physical V4L2 devices.
 
 ## Table of Contents
 
@@ -49,8 +49,9 @@ Run unit tests, multi-arch `CGO_ENABLED=0` builds, `go vet`, and race checks loc
 CGO_ENABLED=0 go test -v -cover ./v4l2 ./device
 CGO_ENABLED=0 go vet ./v4l2 ./device
 
-# Pure-Go ABI layout verification
+# ABI layout and UAPI generator verification
 CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
+go test -v ./v4l2/internal/gen
 
 # Multi-architecture build check
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...

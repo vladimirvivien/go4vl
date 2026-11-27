@@ -55,6 +55,7 @@ go test -v -tags=integration ./test/... -run TestV4L2
 | `-use-device` | `/dev/video0` | Use specific real device |
 | `-use-device-emulation` | `auto` | Auto-discover or load v4l2loopback |
 | `-use-device-emulation` | `/dev/video42,/dev/video43` | Use specific loopback devices |
+| `-require-streaming` | `false` | Fail instead of skipping if streaming capture/output cannot run |
 | `-keep-running` | | Keep v4l2loopback loaded after tests |
 | `-verbose` | | Enable verbose logging |
 
@@ -76,13 +77,13 @@ go test -tags=integration -bench=BenchmarkIntegration_GetFrames -benchmem -bench
 See [TESTING_GUIDE.md](../TESTING_GUIDE.md#prerequisites) for detailed prerequisites.
 
 **Quick summary:**
-- Go 1.25 or later
-- For emulation: `v4l2loopback-dkms` and `ffmpeg` packages
+- Go 1.26 or later
+- For emulation: `v4l2loopback-dkms` (streaming tests drive frames via an in-process `Device.WriteFrame` producer)
 - For real devices: video group membership or root access
 
 ```bash
 # Ubuntu/Debian (for v4l2loopback emulation)
-sudo apt-get install -y v4l2loopback-dkms ffmpeg
+sudo apt-get install -y v4l2loopback-dkms
 ```
 
 ## Environment Variables
