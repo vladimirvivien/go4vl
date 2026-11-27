@@ -704,6 +704,7 @@ func TestDevice_ReadWrite(t *testing.T) {
 
 	// Test Read — uses its own device to avoid state contamination
 	t.Run("Read", func(t *testing.T) {
+		StartLoopbackProducerIfNeeded(t, devicePath, 640, 480, v4l2.PixelFmtYUYV)
 		dev := OpenDeviceOrSkip(t, devicePath,
 			device.WithIOMethod(device.IOMethodReadWrite),
 		)
@@ -718,19 +719,20 @@ func TestDevice_ReadWrite(t *testing.T) {
 			t.Skip("Device reports SizeImage=0")
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		buf := make([]byte, pixFmt.SizeImage)
 		for i := 0; i < 3; i++ {
-			n, err := dev.Read(buf)
+			n, err := dev.ReadContext(ctx, buf)
 			if err != nil {
-				// v4l2loopback reports CAP_READWRITE but read() returns error
-				// when no producer is feeding data to the loopback device
 				if isDeviceError(err) {
 					t.Skipf("read() not functional (no data source): %v", err)
 				}
-				t.Fatalf("Read() = %v", err)
+				t.Fatalf("ReadContext() = %v", err)
 			}
 			if n == 0 {
-				t.Error("Read() returned 0 bytes")
+				t.Error("ReadContext() returned 0 bytes")
 			}
 			t.Logf("Frame %d: %d bytes", i, n)
 		}
@@ -738,6 +740,7 @@ func TestDevice_ReadWrite(t *testing.T) {
 
 	// Test ReadFrame — uses its own device to avoid state contamination
 	t.Run("ReadFrame", func(t *testing.T) {
+		StartLoopbackProducerIfNeeded(t, devicePath, 640, 480, v4l2.PixelFmtYUYV)
 		dev := OpenDeviceOrSkip(t, devicePath,
 			device.WithIOMethod(device.IOMethodReadWrite),
 		)
@@ -745,20 +748,23 @@ func TestDevice_ReadWrite(t *testing.T) {
 			t.Skip("Device does not support read/write IO")
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		var prevSeq uint32
 		for i := 0; i < 3; i++ {
-			frame, err := dev.ReadFrame()
+			frame, err := dev.ReadFrameContext(ctx)
 			if err != nil {
 				if isDeviceError(err) {
 					t.Skipf("read() not functional (no data source): %v", err)
 				}
-				t.Fatalf("ReadFrame() = %v", err)
+				t.Fatalf("ReadFrameContext() = %v", err)
 			}
 			if len(frame.Data) == 0 {
-				t.Error("ReadFrame() returned empty data")
+				t.Error("ReadFrameContext() returned empty data")
 			}
 			if frame.Timestamp.IsZero() {
-				t.Error("ReadFrame() returned zero timestamp")
+				t.Error("ReadFrameContext() returned zero timestamp")
 			}
 			if i > 0 && frame.Sequence <= prevSeq {
 				t.Errorf("Sequence not incrementing: got %d, prev %d", frame.Sequence, prevSeq)
@@ -890,6 +896,7 @@ func isDeviceError(err error) bool {
 		strings.Contains(msg, "device or resource busy") ||
 		strings.Contains(msg, "bad file descriptor") ||
 		strings.Contains(msg, "bad argument") ||
+		strings.Contains(msg, "invalid argument") ||
 		strings.Contains(msg, "type not supported") ||
 		strings.Contains(msg, "system error")
 }

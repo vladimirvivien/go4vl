@@ -52,7 +52,8 @@ func (d *Device) ReadContext(ctx context.Context, buf []byte) (int, error) {
 			continue
 		}
 		if errors.Is(err, sys.EAGAIN) {
-			ev, pollErr := v4l2.Poll(ctx, d.fd, v4l2.PollIn, 0)
+			// Bound each poll wait because drivers such as v4l2loopback do not signal readiness on read()-only fds.
+			ev, pollErr := v4l2.Poll(ctx, d.fd, v4l2.PollIn, 50*time.Millisecond)
 			if pollErr != nil {
 				return 0, pollErr
 			}
@@ -166,7 +167,8 @@ func (d *Device) WriteContext(ctx context.Context, buf []byte) (int, error) {
 			continue
 		}
 		if errors.Is(err, sys.EAGAIN) {
-			ev, pollErr := v4l2.Poll(ctx, d.fd, v4l2.PollOut, 0)
+			// Bound each poll wait to match ReadContext and retry write() on drivers with incomplete poll() support.
+			ev, pollErr := v4l2.Poll(ctx, d.fd, v4l2.PollOut, 50*time.Millisecond)
 			if pollErr != nil {
 				return 0, pollErr
 			}
