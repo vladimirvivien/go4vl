@@ -6,7 +6,7 @@ Because `go4vl` checks in shared Linux UAPI constants (`v4l2/zconsts_linux.go`) 
 
 * **Go 1.26 or later**
 * **Target OS:** `GOOS=linux` with `GOARCH` set to `amd64`, `arm64`, `arm`, or `riscv64`
-* **Optional ABI regeneration dependencies:** `gcc` or `clang` plus `linux-libc-dev` are needed only when regenerating UAPI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` parity checks on Linux headers.
+* **Optional ABI regeneration dependencies:** `gcc` or `clang` plus `linux-libc-dev` are needed only when regenerating UAPI definitions (`go generate ./v4l2`).
 
 ## Native Linux builds
 
@@ -58,10 +58,10 @@ Building for a Linux `GOARCH` outside the four pre-generated targets (such as `3
 
     Passing `-consts=false` skips `v4l2/zconsts_linux.go` and regenerates only `v4l2/ztypes_linux_<goarch>.go`.
 
-2. **Verify C ABI parity on the target architecture** so Go struct sizes, field offsets, and ioctl constants match the target kernel headers:
+2. **Verify ABI layouts on the target architecture** so wrapper struct sizes, patched struct layouts, and union offsets match:
 
     ```bash
-    CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
+    CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
     ```
 
 3. **Review word-size and endianness assumptions** before shipping on a new target: inspect `v4l2/streaming.go` for 32-bit union packing (`is32Bit` / pointer-sized `m` fields), `v4l2/timing.go` for `timeval`/`timespec` field widths, and any big-endian byte-order assumptions if targeting a big-endian architecture such as `s390x`.
@@ -117,8 +117,8 @@ go generate ./v4l2
 # Or cross-generate for another target architecture
 CC=aarch64-linux-gnu-gcc go run ./v4l2/internal/gen -consts=false -arch=arm64
 
-# Verify Go struct sizes, field offsets, ioctl IDs, and constants against host C headers
-CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
+# Verify wrapper struct sizes, patched struct layouts, and union offsets
+CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
 ```
 
 Run `CGO_ENABLED=0 go build ./...` across `amd64`, `arm64`, `arm`, and `riscv64` after regenerating so that 32-bit and 64-bit builds remain aligned.

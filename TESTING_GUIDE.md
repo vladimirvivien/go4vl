@@ -1,12 +1,12 @@
 # Testing Guide for `go4vl`
 
-`go4vl` verifies correctness through fast hardware-free unit tests, C ABI parity checks against host Linux headers, race detector runs, and end-to-end integration tests using `v4l2loopback` or physical V4L2 devices.
+`go4vl` verifies correctness through fast hardware-free unit tests, pure-Go ABI layout checks, race detector runs, and end-to-end integration tests using `v4l2loopback` or physical V4L2 devices.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
-- [Unit Tests & C ABI Verification](#unit-tests--c-abi-verification)
+- [Unit Tests & ABI Verification](#unit-tests--abi-verification)
 - [Integration Tests (`v4l2loopback` and Hardware)](#integration-tests-v4l2loopback-and-hardware)
 - [Integration Test Flags](#integration-test-flags)
 - [CI Workflow](#ci-workflow)
@@ -16,7 +16,7 @@
 ## Overview
 
 * **Unit Tests (`./v4l2`, `./device`):** Run without V4L2 hardware or CGO by mocking the `ioctlSyscall` seam and testing buffer encoding, frame pooling, MPLANE layout helpers, and iterator cleanup.
-* **C ABI Parity (`-tags=cgo_verify`):** Verifies checked-in UAPI struct sizes, field offsets, constant values, and encoded ioctl numbers against host kernel headers.
+* **ABI Layout Verification (`TestABI`):** Verifies wrapper struct sizes, patched C struct layouts, 64-bit time fields, and union offsets under `CGO_ENABLED=0`.
 * **Integration Tests (`-tags=integration ./test/...`):** Exercise live kernel ioctls and streaming against virtual `v4l2loopback` nodes or attached camera/codec hardware. Streaming integration tests use an in-process `Device.WriteFrame` producer on loopback devices rather than requiring `ffmpeg` or the `vivid` kernel driver.
 
 ## Prerequisites
@@ -40,7 +40,7 @@
   cd /tmp/v4l2loopback && make && sudo make install && sudo depmod -a
   ```
 
-## Unit Tests & C ABI Verification
+## Unit Tests & ABI Verification
 
 Run unit tests, multi-arch `CGO_ENABLED=0` builds, `go vet`, and race checks locally:
 
@@ -49,6 +49,9 @@ Run unit tests, multi-arch `CGO_ENABLED=0` builds, `go vet`, and race checks loc
 CGO_ENABLED=0 go test -v -cover ./v4l2 ./device
 CGO_ENABLED=0 go vet ./v4l2 ./device
 
+# Pure-Go ABI layout verification
+CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
+
 # Multi-architecture build check
 CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=arm go build ./...
@@ -56,9 +59,6 @@ CGO_ENABLED=0 GOOS=linux GOARCH=riscv64 go build ./...
 
 # Race detector (requires CGO=1)
 CGO_ENABLED=1 go test -race ./v4l2 ./device
-
-# Linux header ABI parity check (requires gcc and linux-libc-dev)
-CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 ```
 
 ## Integration Tests (`v4l2loopback` and Hardware)
@@ -107,7 +107,7 @@ Pass test harness flags after `-args`:
 
 The authoritative GitHub Actions configuration lives in [`.github/workflows/test.yml`](./.github/workflows/test.yml) and runs two jobs on Go 1.26:
 
-1. **`unit-tests`:** Compiles `CGO_ENABLED=0` across `amd64`, `arm64`, `arm`, and `riscv64` (including integration test compilation and `simplecam`/`webcam` examples), runs `CGO_ENABLED=0 go test -v -cover ./v4l2 ./device`, `go vet`, `-tags=cgo_verify ./v4l2 -run TestABI`, and `CGO_ENABLED=1 go test -race ./v4l2 ./device`.
+1. **`unit-tests`:** Compiles `CGO_ENABLED=0` across `amd64`, `arm64`, `arm`, and `riscv64` (including integration test compilation and `simplecam`/`webcam` examples), runs `CGO_ENABLED=0 go test -v -cover ./v4l2 ./device` (which includes `TestABI` layout assertions), `go vet`, and `CGO_ENABLED=1 go test -race ./v4l2 ./device`.
 2. **`integration-tests`:** Builds and loads `v4l2loopback` from source against the GitHub runner kernel and executes `test/...` with `-use-device-emulation=/dev/video10,/dev/video11 -require-streaming` under both `CGO_ENABLED=0` and `CGO_ENABLED=1 -race`.
 
 ## Troubleshooting

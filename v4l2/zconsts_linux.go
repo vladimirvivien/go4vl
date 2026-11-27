@@ -289,8 +289,8 @@ const (
 	cV4L2_CTRL_TYPE_H264_SCALING_MATRIX               = 0x202
 	cV4L2_CTRL_TYPE_H264_SLICE_PARAMS                 = 0x203
 	cV4L2_CTRL_TYPE_H264_SPS                          = 0x200
-	cV4L2_CTRL_TYPE_HDR10_CLL_INFO                    = 0x228
-	cV4L2_CTRL_TYPE_HDR10_MASTERING_DISPLAY           = 0x229
+	cV4L2_CTRL_TYPE_HDR10_CLL_INFO                    = 0x110
+	cV4L2_CTRL_TYPE_HDR10_MASTERING_DISPLAY           = 0x111
 	cV4L2_CTRL_TYPE_INTEGER                           = 0x1
 	cV4L2_CTRL_TYPE_INTEGER64                         = 0x5
 	cV4L2_CTRL_TYPE_INTEGER_MENU                      = 0x9
@@ -740,7 +740,6 @@ const (
 	cV4L2_META_FMT_VIVID                              = 0x44564956
 	cV4L2_META_FMT_RK_ISP1_PARAMS                     = 0x50314b52
 	cV4L2_META_FMT_RK_ISP1_STAT_3A                    = 0x53314b52
-	cV4L2_META_FMT_BCM2835_ISP_STATS                  = 0x41545342
 	cV4L2_META_FMT_RPI_BE_CFG                         = 0x43425052
 	cV4L2_META_FMT_RPI_FE_CFG                         = 0x43465052
 	cV4L2_META_FMT_RPI_FE_STATS                       = 0x53465052

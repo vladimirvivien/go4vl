@@ -3,7 +3,12 @@
 package v4l2
 
 /*
-#include "compat.h"
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+#ifndef _TIME_BITS
+#define _TIME_BITS 64
+#endif
 #include <linux/videodev2.h>
 #include <linux/v4l2-controls.h>
 #include <linux/v4l2-common.h>

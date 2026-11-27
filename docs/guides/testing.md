@@ -1,6 +1,6 @@
 # Testing & CI
 
-Every code change in `go4vl` is backed by fast hardware-free unit tests, C ABI struct/ioctl parity verification against host Linux headers, race detection, and end-to-end streaming integration tests against `v4l2loopback` or physical cameras.
+Every code change in `go4vl` is backed by fast hardware-free unit tests, pure-Go ABI layout verification, race detection, and end-to-end streaming integration tests against `v4l2loopback` or physical cameras.
 
 ## Running unit tests (no camera required)
 
@@ -17,13 +17,12 @@ To verify concurrent safety under Go's race detector:
 CGO_ENABLED=1 go test -race ./v4l2 ./device
 ```
 
-## Verifying Linux C ABI parity (`-tags=cgo_verify`)
+## Verifying ABI layouts and cross-architecture builds
 
-Whenever UAPI structures or ioctl constants change across architectures, contributors verify binary layout compatibility (struct sizes, field offsets, constant values, and encoded `_IOWR`/`_IOR`/`_IOW` numbers) directly against `/usr/include/linux/videodev2.h`, `media.h`, and `v4l2-subdev.h`:
+The pure-Go ABI test verifies wrapper struct sizes, patched struct layouts, 64-bit time fields, and union offsets without CGO or Linux kernel headers:
 
 ```bash
-# Requires gcc and linux-libc-dev on a Linux host
-CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
+CGO_ENABLED=0 go test -v ./v4l2 -run TestABI
 ```
 
 Also cross-compile all packages across `amd64`, `arm64`, `arm`, and `riscv64` with `CGO_ENABLED=0` to verify 32-bit and 64-bit UAPI parity:

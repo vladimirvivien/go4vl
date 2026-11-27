@@ -15,7 +15,8 @@ const (
 	MetaFmtVivid           FourCCType = cV4L2_META_FMT_VIVID
 	MetaFmtRKISP1Params    FourCCType = cV4L2_META_FMT_RK_ISP1_PARAMS
 	MetaFmtRKISP1Stat3A    FourCCType = cV4L2_META_FMT_RK_ISP1_STAT_3A
-	MetaFmtBCM2835ISPStats FourCCType = cV4L2_META_FMT_BCM2835_ISP_STATS
+	// Raspberry Pi downstream kernel FourCC ('BSTA'), not present in mainline Linux UAPI.
+	MetaFmtBCM2835ISPStats FourCCType = FourCCType('B') | FourCCType('S')<<8 | FourCCType('T')<<16 | FourCCType('A')<<24
 	MetaFmtRPiBECfg        FourCCType = cV4L2_META_FMT_RPI_BE_CFG
 	MetaFmtRPiFECfg        FourCCType = cV4L2_META_FMT_RPI_FE_CFG
 	MetaFmtRPiFEStats      FourCCType = cV4L2_META_FMT_RPI_FE_STATS

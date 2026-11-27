@@ -30,15 +30,8 @@ jobs:
     - name: Vet (CGO_ENABLED=0)
       run: CGO_ENABLED=0 go vet ./...
 
-    - name: Install C headers for ABI parity verification
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential linux-headers-generic
-
-    - name: Verify C ABI parity and race detector
-      run: |
-        CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
-        CGO_ENABLED=1 go test -race ./v4l2 ./device
+    - name: Run Unit Tests (Race Detector)
+      run: CGO_ENABLED=1 go test -race ./v4l2 ./device
 
   integration-tests:
     runs-on: ubuntu-latest

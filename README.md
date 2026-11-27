@@ -51,7 +51,7 @@ Working directly with V4L2 in Go requires low-level ioctl marshaling, buffer rin
 **Software:**
 * Go 1.26 or later
 * Linux kernel 5.10 or later with V4L2 drivers
-* *(Optional)* `gcc` and `linux-libc-dev` are needed only when regenerating ABI definitions (`go generate ./v4l2`) or running `-tags=cgo_verify` parity tests
+* *(Optional)* `gcc` or `clang` and `linux-libc-dev` are needed only when regenerating ABI definitions (`go generate ./v4l2`)
 
 **Hardware:**
 * V4L2-compatible capture/output device (webcam, capture card, CSI-2 pipeline, hardware codec, or `v4l2loopback`) accessible via `/dev/video*`
@@ -195,7 +195,7 @@ Browse categorized listings on the [Examples page](https://vladimirvivien.github
 * **Device not found:** Run `ls -l /dev/video*` or `v4l2-ctl --list-devices`.
 * **Permission denied:** Add your user to `video` (`sudo usermod -a -G video "$USER"` and log back in).
 * **No frames received:** Inspect hardware capabilities and formats with `v4l2-ctl -d /dev/video0 --all` and `v4l2-ctl -d /dev/video0 --list-formats-ext`.
-* **ABI regeneration / `cgo_verify` errors:** Install `sudo apt-get install build-essential linux-libc-dev` (required only when running `go generate ./v4l2` or `-tags=cgo_verify`).
+* **ABI regeneration errors:** Install `sudo apt-get install build-essential linux-libc-dev` (required only when running `go generate ./v4l2`).
 
 ## Testing
 
@@ -203,9 +203,6 @@ Browse categorized listings on the [Examples page](https://vladimirvivien.github
 # Unit tests and vet (no CGO or video hardware required)
 CGO_ENABLED=0 go test -v ./v4l2 ./device
 CGO_ENABLED=0 go vet ./v4l2 ./device
-
-# Verify generated ABI layouts against host Linux headers
-CGO_ENABLED=1 go test -v -tags=cgo_verify ./v4l2 -run TestABI
 
 # Integration tests (requires v4l2loopback or a /dev/video* device)
 CGO_ENABLED=0 go test -v -tags=integration ./test/... -args -use-device-emulation=auto -require-streaming
